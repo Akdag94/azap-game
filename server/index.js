@@ -480,4 +480,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`\n  ⛧ AZAP v9 aktif: http://localhost:${PORT}\n  Created by Azad Akdağ\n`));
+server.listen(PORT, '0.0.0.0', () => console.log(`\n  ⛧ AZAP v4 aktif: http://localhost:${PORT}\n  Created by Azad Akdağ\n`));

@@ -174,6 +174,36 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 
 .htog{position:fixed;bottom:14px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--dim);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .htog.sh{display:flex}
+/* Rol bilgisi - sol üst (her zaman görünür) */
+.role-info-btn{position:fixed;top:30px;left:14px;z-index:91;background:var(--bg3);border:1px solid var(--brd);color:var(--txt);padding:6px 10px;border-radius:6px;cursor:pointer;display:none;align-items:center;gap:6px;font-size:.78rem;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.role-info-btn.sh{display:flex}
+.role-info-btn:hover{background:var(--bg2)}
+/* Rol rehberi butonu */
+.role-guide-btn{position:fixed;bottom:60px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--dim);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.role-guide-btn.sh{display:flex}
+/* Modal genel */
+.role-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;padding:14px}
+.role-modal.sh{display:flex}
+.role-modal-content{background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:16px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;position:relative}
+.role-modal-close{position:absolute;top:8px;right:12px;background:transparent;border:none;color:var(--dim);font-size:1.4rem;cursor:pointer}
+.role-modal-title{font-family:'Cinzel Decorative',serif;font-size:1rem;color:var(--hi);text-align:center;letter-spacing:2px;margin-bottom:12px}
+.role-card{background:rgba(255,255,255,.03);border:1px solid var(--brd);border-radius:6px;padding:10px;margin-bottom:8px}
+.role-card-hdr{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.role-card-emoji{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.role-card-emoji.t-masum{background:rgba(39,174,96,.15)}
+.role-card-emoji.t-hain{background:rgba(192,57,43,.15)}
+.role-card-emoji.t-tarafsız{background:rgba(41,128,185,.15)}
+.role-card-emoji.t-deli{background:rgba(142,68,173,.15)}
+.role-card-name{font-weight:600;font-size:.92rem}
+.role-card-team{font-size:.7rem;padding:1px 6px;border-radius:3px;font-weight:500}
+.role-card-team.t-masum{background:rgba(39,174,96,.2);color:var(--safe)}
+.role-card-team.t-hain{background:rgba(192,57,43,.2);color:var(--hain)}
+.role-card-team.t-tarafsız{background:rgba(41,128,185,.2);color:var(--tarafsiz)}
+.role-card-team.t-deli{background:rgba(142,68,173,.2);color:var(--deli)}
+.role-card-desc{font-size:.78rem;color:var(--dim);line-height:1.5}
+.role-tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.role-tab{padding:5px 10px;background:transparent;border:1px solid var(--brd);border-radius:4px;color:var(--dim);font-size:.74rem;cursor:pointer}
+.role-tab.active{background:var(--bg3);color:var(--txt)}
 /* Suikast floating buton */
 .suikast-btn{position:fixed;bottom:14px;right:14px;z-index:91;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#791f1f,#c0392b);border:2px solid #c0392b;color:#fff;font-size:1.3rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(192,57,43,.6);animation:suikast-pulse 2s ease-in-out infinite}
 .suikast-btn.sh{display:flex}
@@ -359,6 +389,34 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 </div>
 
 <button class="htog" id="HT" onclick="Q('HP').classList.toggle('op')">📜</button>
+
+<!-- Kendi rolünü gösteren badge (sol üst, oyun başladıysa) -->
+<button class="role-info-btn" id="ROLE_INFO_BTN" onclick="openMyRoleModal()">
+  <span id="ROLE_INFO_EMOJI">🎭</span>
+  <span id="ROLE_INFO_NAME">Rol</span>
+</button>
+
+<!-- Rol rehberi butonu (sol alt) -->
+<button class="role-guide-btn" id="ROLE_GUIDE_BTN" onclick="openRoleGuideModal()" title="Rol Rehberi">📖</button>
+
+<!-- Kendi rolünün detayı modal -->
+<div class="role-modal" id="MY_ROLE_MODAL">
+<div class="role-modal-content">
+<button class="role-modal-close" onclick="Q('MY_ROLE_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title">SENİN ROLÜN</div>
+<div id="MY_ROLE_BODY"></div>
+</div>
+</div>
+
+<!-- Tüm rol rehberi modal -->
+<div class="role-modal" id="ROLE_GUIDE_MODAL">
+<div class="role-modal-content">
+<button class="role-modal-close" onclick="Q('ROLE_GUIDE_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title">📖 ROL REHBERİ</div>
+<div class="role-tabs" id="ROLE_GUIDE_TABS"></div>
+<div id="ROLE_GUIDE_BODY"></div>
+</div>
+</div>
 
 <!-- Floating Suikast butonu (sadece suikastçı için, gündüz/oylama fazında) -->
 <button class="suikast-btn" id="SUIKAST_BTN_FLOAT" onclick="openSuikastModal()" title="Suikast">🗡️</button>
@@ -607,28 +665,50 @@ const Q=id=>document.getElementById(id);
 let ytPlayer=null, ytReady=false, musicPlaying=false, userMusicPref=true; // user wants music on by default
 
 const RDEF={
-  DOKTOR:{e:'🩺',n:'Doktor',t:'masum',d:'Birini saldırıdan korur. Kendini sadece 1 kez koruyabilir. Kurtardıysa öğrenir.'},
-  POLIS:{e:'🔦',n:'Polis',t:'masum',d:'Birinin gece rol kullanımını engeller.'},
-  SAVCI:{e:'⚖️',n:'Savcı',t:'masum',d:'Sadece 1 defa birinin rolünü kesin olarak öğrenir.'},
-  MUHTAR:{e:'🏛️',n:'Muhtar',t:'masum',d:'Oyu 2 sayılır.'},
-  GAZETECI:{e:'📰',n:'Gazeteci',t:'masum',d:'Birinin rol kullanıp kullanmadığını öğrenir.'},
-  PSIKOLOG:{e:'🧠',n:'Psikolog',t:'masum',d:'Birinin deli olup olmadığını öğrenir.'},
-  GAZI:{e:'🛡️',n:'Gazi',t:'masum',d:'Bir gece kendini ölümsüz yapar (tek kullanım).'},
-  DEDIKODUCU:{e:'🗣️',n:'Dedikocucu',t:'masum',d:'İki kişinin aynı takımda olup olmadığını öğrenir.'},
-  AJAN:{e:'🕵️',n:'Ajan',t:'masum',d:'Birinin rolünü 3 seçenek arasından görür. Takımlar her zaman doğru gösterilir.'},
-  SERIF:{e:'🤠',n:'Şerif',t:'masum',d:'1 kez birini vurabilir. Hain/tarafsız vurursa kahraman. Masum vurursa ertesi gece intihar.'},
-  KURBAN:{e:'🩸',n:'Kurban',t:'masum',d:'Pasif rol. Öldürülürse katilinin adını vasiyet olarak açıklar.'},
-  CILINGIR:{e:'🔑',n:'Çilingir',t:'masum',d:'Birini evine kilitler: yetenek kullanamaz ama saldırılardan da korunur.'},
-  TAKIPCI:{e:'👣',n:'Takipçi',t:'masum',d:'Gece birini takip eder. Kime rol kullandığını öğrenir.'},
-  SUIKASTCI:{e:'🗡️',n:'Suikastçı',t:'hain',d:'Gündüz birinin rolünü tahmin eder. Doğruysa anında öldürür, yanlışsa kendisi ölür.'},
-  HIPNOTIZMACI:{e:'🌀',n:'Hipnotizmacı',t:'hain',d:'Birini o gece deli yapar.'},
-  BOMBACI:{e:'💣',n:'Bombacı',t:'hain',d:'Bomba koy/patlat. Aynı gece ikisini yapamaz.'},
-  GOLGE:{e:'👤',n:'Gölge',t:'hain',d:'Ertesi gün birini susturur. Sadece ikisi bilir.'},
-  DODO:{e:'🦤',n:'Dodo',t:'tarafsız',d:'Kendini astırırsa kazanır.'},
-  SERI_KATIL:{e:'🔪',n:'Seri Katil',t:'tarafsız',d:'Engellenemez, iz bırakmaz. Sona kalırsa kazanır.'},
-  CELLAT:{e:'⛓️',n:'Cellat',t:'tarafsız',d:'Otomatik hedefi astırırsa kazanır.'},
-  YAMYAM:{e:'🍖',n:'Yamyam',t:'tarafsız',d:'Gece ölenlerin yeteneklerini toplar.'},
-  DELI:{e:'🤡',n:'Deli',t:'deli',d:'Bir masum rol gibi görünür ama tüm sonuçları sahtedir. Kendi bilemez.'}
+  DOKTOR:{e:'🩺',n:'Doktor',t:'masum',d:'Birini saldırıdan korur. Kendini sadece 1 kez koruyabilir.',
+    full:'Her gece bir kişi seçersin ve o gecelik onu hain saldırısı, seri katil veya şerif kurşunundan korursun. Korunan kişi saldırıya uğradıysa ve kurtardıysan rapor alırsın. Kendini sadece 1 kez koruyabilirsin (tüm oyun boyunca).'},
+  POLIS:{e:'🔦',n:'Polis',t:'masum',d:'Birinin gece rol kullanımını engeller.',
+    full:'Her gece bir kişiyi seçerek o gecelik tüm yetenek kullanımını engellersin. Engellenen kişi yapamaz: ne saldırabilir ne bilgi toplayabilir. Engellediğin kişiye "Polis seni engelledi!" bildirimi gider. Seri katili engelleyemezsin.'},
+  SAVCI:{e:'⚖️',n:'Savcı',t:'masum',d:'Sadece 1 defa birinin rolünü kesin olarak öğrenir.',
+    full:'Oyun boyunca sadece 1 kez kullanabilirsin. Bir kişi seçersin ve o kişinin rolünü ve takımını kesin olarak öğrenirsin. Hain/Hipnotizmacı seni deli yaparsa sahte bilgi alırsın ama hak harcanır.'},
+  MUHTAR:{e:'🏛️',n:'Muhtar',t:'masum',d:'Oyu 2 sayılır. Gece aksiyonu yok.',
+    full:'Gece aksiyonun yok. Asılma oylamalarında oyun 2 sayılır — hain/tarafsız oyunculara karşı güçlü bir tartı. Deli olduğunda oyun rastgele etki eder.'},
+  GAZETECI:{e:'📰',n:'Gazeteci',t:'masum',d:'Birinin rol kullanıp kullanmadığını öğrenir.',
+    full:'Gece bir kişi seçer ve o kişinin rol kullanıp kullanmadığını öğrenirsin. Sonuç: "Rol kullandı" veya "Rol kullanmadı". Pasif roller (Muhtar, Kurban, Dodo, Cellat, Yamyam) her zaman pasif görünür. Seri Katil iz bırakmaz, hep "kullanmadı" çıkar.'},
+  PSIKOLOG:{e:'🧠',n:'Psikolog',t:'masum',d:'Birinin deli olup olmadığını öğrenir.',
+    full:'Gece bir kişi seçersin ve o kişinin deli olup olmadığını öğrenirsin. Hem kalıcı deli (oyun başında atanan) hem geçici deli (Hipnotizmacı etkisi) tespit eder.'},
+  GAZI:{e:'🛡️',n:'Gazi',t:'masum',d:'Bir gece kendini ölümsüz yapar (tek kullanım).',
+    full:'Oyun boyunca 1 kez aktifleştirebilirsin. Aktifleştirdiğin gece hiçbir saldırı seni öldüremez (hain saldırısı, seri katil, şerif kurşunu, bomba — hepsi etkisiz).'},
+  DEDIKODUCU:{e:'🗣️',n:'Dedikocucu',t:'masum',d:'İki kişinin aynı takımda olup olmadığını öğrenir.',
+    full:'Gece iki kişi seçersin ve aynı takımda olup olmadıklarını öğrenirsin: "Aynı takım" veya "Farklı takım". Tarafsızlar kendi başına bir takımdır. Seçtiğin kişilerden biri Polis/Çilingir tarafından engellenmişse yeteneğin başarısız olur.'},
+  AJAN:{e:'🕵️',n:'Ajan',t:'masum',d:'Birinin rolünü 3 seçenek arasından görür.',
+    full:'Gece bir kişi seçersin. Onun gerçek rolü ile birlikte 2 yanlış seçenek alırsın — toplam 3. Doğru olanı bulmak senin işin. Takımlar doğru gösterilir. Oyunda tarafsız hiç yoksa, seçenekler sadece masum/hain rollerinden gelir.'},
+  SERIF:{e:'🤠',n:'Şerif',t:'masum',d:'1 kez birini vurabilir.',
+    full:'Oyun boyunca 1 kez birini vurabilirsin. Hain/tarafsız vurursan kahraman olursun. Masum vurursan o ölür VE sen ertesi gece otomatik intihar edersin. Hedef korumalıysa (Doktor/Çilingir/Gazi) kurşun etkisiz, hak harcanır.'},
+  KURBAN:{e:'🩸',n:'Kurban',t:'masum',d:'Öldürülürse katilinin adını söyler.',
+    full:'Pasif rol — gece aksiyonun yok. Öldürülürsen vasiyet bırakırsın: tüm oyuncular katilini öğrenir. Tek-kill modunda oyu veren hainlerden biri rastgele duyurulur, çoklu-kill modunda direkt katil. Seri Katil öldürdüyse "Bir Seri Katil tarafından öldürüldü" der (ismini vermez).'},
+  CILINGIR:{e:'🔑',n:'Çilingir',t:'masum',d:'Birini evine kilitler: korunur ama yetenek kullanamaz.',
+    full:'Gece bir kişiyi evine kilitlersin. O gece hem yetenek kullanamaz HEM saldırılardan korunur. Polis + Doktor karışımı gibi düşün. Hain kilitlerse öldüremez ama korunur.'},
+  TAKIPCI:{e:'👣',n:'Takipçi',t:'masum',d:'Birini takip eder, kime rol kullandığını öğrenir.',
+    full:'Gece birini takip edersin. O kişinin kime gece aksiyonu yaptığını öğrenirsin: "X, Y kişisine rol kullandı" veya "Hiçbir şey yapmadı". Ne yaptığını söylemez, sadece kime yaptığını. Seri Katil iz bırakmaz, hep "yapmadı" çıkar.'},
+  SUIKASTCI:{e:'🗡️',n:'Suikastçı',t:'hain',d:'Gündüz birinin rolünü tahmin eder. Doğruysa öldürür.',
+    full:'Gündüz (tartışma veya oylama fazında) birini hedef seçip rolünü tahmin edersin. Doğru tahmin → hedef ANINDA ölür. Yanlış tahmin → SEN anında ölürsün. Her tur 1 deneme hakkın var. Gece sadece hain sohbetine katılırsın, kill yapmazsın (kill diğer hainlerin işi).'},
+  HIPNOTIZMACI:{e:'🌀',n:'Hipnotizmacı',t:'hain',d:'Birini o gece deli yapar (geçici).',
+    full:'Gece bir kişi seçersin ve o kişiyi o gecelik deli yaparsın. Hedefin gece aksiyonları sahte sonuç verir, raporu yanlış olur. Geçici delilik 1 gecelik — sonra normale döner. Doktor/Savcı/Psikolog gibi bilgi rollerini yanıltmak için ideal.'},
+  BOMBACI:{e:'💣',n:'Bombacı',t:'hain',d:'Bomba koyar/patlatır. Öldürme yetkisi yok.',
+    full:'Hain takımı içinde özel rol — kill oylamasına katılmazsın. İki ayrı buton: 💣 Bomba Koy ve 💥 Patlat. Bombayı koyduktan sonra biriktirebilirsin (üst üste birden çok kişiye), Patlat dediğinde önceki turlardan kalan TÜM bombaların aynı anda patlar. Aynı gece koyup patlatamazsın.'},
+  GOLGE:{e:'👤',n:'Gölge',t:'hain',d:'Ertesi gün birini susturur.',
+    full:'Gece bir kişi seçersin ve o ertesi gündüz konuşamaz. Sadece sen ve hedef bilir kim susturuldu. Stratejik avantaj: bilgi paylaşacak kişiyi susturmak.'},
+  DODO:{e:'🦤',n:'Dodo',t:'tarafsız',d:'Kendini astırırsa kazanır.',
+    full:'Bağımsız kazanma koşulu: gündüz oylamasında en çok oyu alıp asılırsan, sen TEK BAŞINA kazanırsın, herkes kaybeder. Gece öldürülürsen kazanamazsın. Stratejin: şüpheli davranıp aslana yem olmak.'},
+  SERI_KATIL:{e:'🔪',n:'Seri Katil',t:'tarafsız',d:'Engellenemez, iz bırakmaz, sona kalırsa kazanır.',
+    full:'Her gece dilediğin birini öldürebilirsin (atlama da olur). HİÇBİR şey seni engelleyemez (Polis bile). Gazeteci/Takipçi seni gözlerse "rol kullanmadı" görür. Bağımsız kazanma: son 2 kişi içinde olursan kazanırsın. Hedeflerin korunabilir (Doktor/Gazi/Çilingir).'},
+  CELLAT:{e:'⛓️',n:'Cellat',t:'tarafsız',d:'Otomatik hedefi astırırsa kazanır.',
+    full:'Oyun başında sana rastgele bir masum hedef atanır (sadece sen bilirsin). O hedefi gündüz oylamasında astırtırsan bağımsız kazanırsın. Hedef gece öldürülürse kazanamazsın. Hainlerle/masumlarla geçici işbirliği yapabilirsin.'},
+  YAMYAM:{e:'🍖',n:'Yamyam',t:'tarafsız',d:'Gece ölenlerin rollerini toplar (pasif).',
+    full:'Pasif rol — gece aksiyonun yok. Biri gecede öldüğünde otomatik olarak o kişinin rolünü öğrenirsin ve listesine eklersin. Sadece bilgi toplarsın, yetenek kullanamazsın. Tarafsız takımdasın, masumlarla beraber kazanırsın eğer hainler/SK elenirse.'},
+  DELI:{e:'🤡',n:'Deli',t:'deli',d:'Bir masum rol gibi görünür ama tüm sonuçları sahtedir.',
+    full:'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'}
 };
 
 // id -> emoji+name lookup
@@ -1436,6 +1516,8 @@ function renderTL(){
         <button class="b ${mode==='detonate'?'b1':'b2'} bs" style="flex:1" onclick="setBombMode('detonate')" ${myBombs.length===0?'disabled':''}>💥 Patlat</button>
       </div>
     ` + targetListHtml;
+    // Onayla butonu durumunu güncelle (place: hedef seçili olmalı, detonate: bomba olmalı)
+    setTimeout(()=>updAB(),0);
     return;
   }
 
@@ -1532,7 +1614,7 @@ function renderDay(){
     Q('DP').appendChild(li);
   });
   // Suikastçı floating butonu güncelle (gündüzde görünür)
-  updateSuikastFloatingBtn();
+  updateSuikastFloatingBtn();updateRoleInfoBtn();
 }
 
 // Suikast modal & floating buton mantığı
@@ -1548,6 +1630,102 @@ function updateSuikastFloatingBtn(){
   } else {
     btn.classList.remove('sh');
   }
+}
+
+// Rol bilgi badge ve modal
+function updateRoleInfoBtn(){
+  const btn=Q('ROLE_INFO_BTN');
+  const guideBtn=Q('ROLE_GUIDE_BTN');
+  if(!btn||!guideBtn)return;
+  const inGame = gs && gs.phase!=='lobby' && gs.phase!=='auth' && gs.phase!=='post_game' && gs.phase!=='game_over';
+  // Rol info badge — sadece oyun içindeyken ve rolü olan oyuncular
+  if(inGame && ps?.role && !isSpec){
+    btn.classList.add('sh');
+    Q('ROLE_INFO_EMOJI').textContent = ps.roleEmoji || '🎭';
+    Q('ROLE_INFO_NAME').textContent = ps.roleName || 'Rol';
+    // Takım rengine göre kenarlık
+    const teamColor = ps.team==='hain' ? 'var(--hain)' : ps.team==='tarafsız' ? 'var(--tarafsiz)' : 'var(--safe)';
+    btn.style.borderColor = teamColor;
+  } else {
+    btn.classList.remove('sh');
+  }
+  // Rol rehberi butonu — oyun içinde her zaman göster
+  if(inGame){
+    guideBtn.classList.add('sh');
+  } else {
+    guideBtn.classList.remove('sh');
+  }
+}
+
+function openMyRoleModal(){
+  if(!ps?.role)return;
+  const body=Q('MY_ROLE_BODY');
+  // Kendi rolünü RDEF'ten bul (id'den key'e çevir)
+  const roleKey=ps.role.toUpperCase().replace(/_/g,'_');
+  // ID -> key mapping
+  const keyMap={doktor:'DOKTOR',polis:'POLIS',savci:'SAVCI',muhtar:'MUHTAR',gazeteci:'GAZETECI',
+    psikolog:'PSIKOLOG',gazi:'GAZI',dedikoducu:'DEDIKODUCU',ajan:'AJAN',serif:'SERIF',kurban:'KURBAN',
+    cilingir:'CILINGIR',takipci:'TAKIPCI',suikastci:'SUIKASTCI',hipnotizmaci:'HIPNOTIZMACI',
+    bombaci:'BOMBACI',golge:'GOLGE',dodo:'DODO',seri_katil:'SERI_KATIL',cellat:'CELLAT',yamyam:'YAMYAM'};
+  const rd=RDEF[keyMap[ps.role]];
+  if(!rd){body.innerHTML='<div style="color:var(--dim)">Rol bilgisi bulunamadı.</div>';
+    Q('MY_ROLE_MODAL').classList.add('sh');return;}
+  body.innerHTML=`
+    <div class="role-card">
+      <div class="role-card-hdr">
+        <div class="role-card-emoji t-${rd.t}">${rd.e}</div>
+        <div style="flex:1">
+          <div class="role-card-name">${rd.n}</div>
+          <span class="role-card-team t-${rd.t}">${rd.t.toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="role-card-desc" style="font-size:.85rem;line-height:1.6">${rd.full||rd.d}</div>
+    </div>
+    ${ps.teammates&&ps.teammates.length?`
+      <div style="margin-top:10px;padding:10px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:5px">
+        <div style="font-size:.78rem;color:var(--hain);margin-bottom:6px;font-weight:600">🧛 Takım Arkadaşların</div>
+        ${ps.teammates.map(t=>`<div style="display:flex;align-items:center;gap:6px;font-size:.85rem;margin:3px 0;color:var(--hain)">${t.emoji} <strong>${t.name}</strong> <span style="color:var(--dim);font-size:.75rem">(${t.roleName})</span></div>`).join('')}
+      </div>`:''}
+    ${ps.cellatTarget?`
+      <div style="margin-top:10px;padding:10px;background:rgba(41,128,185,.08);border:1px solid rgba(41,128,185,.25);border-radius:5px">
+        <div style="font-size:.78rem;color:var(--tarafsiz);margin-bottom:4px;font-weight:600">⛓️ Hedefin</div>
+        <div style="font-size:.85rem">${ps.cellatTarget}</div>
+      </div>`:''}
+  `;
+  Q('MY_ROLE_MODAL').classList.add('sh');
+}
+
+function openRoleGuideModal(){
+  // Tüm RDEF'i göster, sekmeli
+  const tabs=[
+    {id:'all',l:'Tümü'},
+    {id:'masum',l:'Masum'},
+    {id:'hain',l:'Hain'},
+    {id:'tarafsız',l:'Tarafsız'},
+    {id:'deli',l:'Deli'}
+  ];
+  const tabEl=Q('ROLE_GUIDE_TABS');
+  tabEl.innerHTML=tabs.map(t=>`<button class="role-tab ${t.id==='all'?'active':''}" data-rgt="${t.id}" onclick="filterRoleGuide('${t.id}')">${t.l}</button>`).join('');
+  filterRoleGuide('all');
+  Q('ROLE_GUIDE_MODAL').classList.add('sh');
+}
+
+function filterRoleGuide(team){
+  document.querySelectorAll('[data-rgt]').forEach(b=>b.classList.toggle('active',b.dataset.rgt===team));
+  const body=Q('ROLE_GUIDE_BODY');
+  const entries=Object.entries(RDEF).filter(([k,v])=>team==='all'||v.t===team);
+  body.innerHTML=entries.map(([k,rd])=>`
+    <div class="role-card">
+      <div class="role-card-hdr">
+        <div class="role-card-emoji t-${rd.t}">${rd.e}</div>
+        <div style="flex:1">
+          <div class="role-card-name">${rd.n}</div>
+          <span class="role-card-team t-${rd.t}">${rd.t.toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="role-card-desc">${rd.full||rd.d}</div>
+    </div>
+  `).join('');
 }
 
 function openSuikastModal(){
@@ -1760,7 +1938,7 @@ io2.on('state',s=>{
   if(s.phase==='mvp_vote'&&phaseChanged)renderMV();
   if(s.phase==='mvp_result' && s.mvpResult)renderMvpResult(s.mvpResult);
   // Suikast butonu her state güncellemesinde kontrol edilsin
-  updateSuikastFloatingBtn();
+  updateSuikastFloatingBtn();updateRoleInfoBtn();
   Q('HT').classList.toggle('sh',['night','morning_report','day_discussion','voting','vote_result'].includes(s.phase));
   applyMusicForCurrentScreen();
 });
@@ -1798,7 +1976,7 @@ io2.on('priv',s=>{
   // Ölü/izleyici ise normal render yapma — S10'da kalsın
   if(isSpec||isDead){
     if(!s.isAlive&&!deathOk){Q('DOV').classList.add('sh');deathOk=true;}
-    updateSuikastFloatingBtn();
+    updateSuikastFloatingBtn();updateRoleInfoBtn();
     return;
   }
   if(gs?.phase==='role_reveal')renderRole();
@@ -1807,7 +1985,7 @@ io2.on('priv',s=>{
     if(s.hainKillVotes&&s.team==='hain')renderHKV(s.hainKillVotes);}
   renderH();
   // Suikastçı durumu değişebilir - butonu güncelle
-  updateSuikastFloatingBtn();
+  updateSuikastFloatingBtn();updateRoleInfoBtn();
   if(!s.isAlive&&!deathOk){
     Q('DOV').classList.add('sh');
     deathOk=true;

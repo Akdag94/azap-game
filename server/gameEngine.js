@@ -96,7 +96,14 @@ class GameEngine {
     if (c.votingDuration) this.config.VOTING_DURATION = Math.max(10, Math.min(120, c.votingDuration));
     if (c.presidentVoteDuration) this.config.PRESIDENT_VOTE_DURATION = Math.max(10, Math.min(60, c.presidentVoteDuration));
   }
-  setTeamCounts(h, t) { this.manualCounts = true; this.hainCount = Math.max(0, h); this.tarafsizCount = Math.max(0, t); }
+  setTeamCounts(h, t) {
+    this.manualCounts = true;
+    // Hain rolü sayısı (4) ve tarafsız rolü sayısı (4) ile sınırla
+    const maxHain = Object.values(ROLES).filter(r => r.team === TEAMS.HAIN).length;
+    const maxTarafsiz = Object.values(ROLES).filter(r => r.team === TEAMS.TARAFSIZ).length;
+    this.hainCount = Math.max(0, Math.min(maxHain, h));
+    this.tarafsizCount = Math.max(0, Math.min(maxTarafsiz, t));
+  }
   setHainKillMode(m) { this.hainKillMode = m === 'single' ? 'single' : 'multi'; }
   setRoleSelectionMode(m) { this.roleSelectionMode = m === 'pick' ? 'pick' : 'auto'; }
 
@@ -526,7 +533,11 @@ class GameEngine {
     // 1. POLİS + ÇİLİNGİR
     acts.filter(a => a.role === 'polis' && a.targetId).forEach(a => {
       const insane = this.isInsane(a.pid);
-      if (!insane) this.blocked.add(a.targetId);
+      if (!insane) {
+        this.blocked.add(a.targetId);
+        // Tutulan kişiye bildirim
+        rep.get(a.targetId)?.push({ i: '🔦', t: 'Polis seni gece engelledi! Yeteneğini kullanamadın.' });
+      }
       rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} bu gece engellendi.` });
       this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Başarılı');
     });
@@ -540,6 +551,8 @@ class GameEngine {
         this.blocked.add(a.targetId);
         t.isShielded = true;
         this.locked.set(a.targetId, a.pid);
+        // Kilitlenen kişiye bildirim
+        rep.get(a.targetId)?.push({ i: '🔑', t: 'Çilingir seni evine kilitledi. Güvendeydin ama yetenek kullanamadın.' });
       }
       // Deli bile aynı raporu alır
       rep.get(a.pid)?.push({ i: '🔑', t: `${t.name} evine kilitlendi. Güvende ama yetenek kullanamaz.` });
@@ -848,6 +861,15 @@ class GameEngine {
       const insane = this.isInsane(a.pid);
       const t1 = this.players.get(a.target1Id), t2 = this.players.get(a.target2Id);
       if (!t1 || !t2) return;
+      // Hedeflerden biri engellenmiş (polis/çilingir) ise dedikoducu yeteneğini kullanamaz
+      const t1Blocked = this.blocked.has(a.target1Id);
+      const t2Blocked = this.blocked.has(a.target2Id);
+      if (t1Blocked || t2Blocked) {
+        const blockedName = t1Blocked ? t1.name : t2.name;
+        rep.get(a.pid)?.push({ i: '🗣️', t: `${blockedName} ulaşılamadı, dedikoducu yapamadın.` });
+        this.hist(a.pid, 'Dedikodu', `${t1.name} & ${t2.name}`, 'Engellendi');
+        return;
+      }
       const same = t1.actualTeam === t2.actualTeam;
       const result = insane ? Math.random() > 0.5 : same;
       rep.get(a.pid)?.push({ i: '🗣️', t: `${t1.name} & ${t2.name}: ${result ? 'Aynı takım' : 'Farklı takım'}` });
@@ -859,15 +881,22 @@ class GameEngine {
       const t = this.players.get(a.targetId); if (!t) return;
       const realR = this.ro(t.role);
       const realTeam = realR?.team || t.actualTeam;
-      const all = Object.values(ROLES).filter(r => r.id !== 'deli');
+      // Oyunda hangi takımlar var? Tarafsız hiç yoksa seçeneklerden çıkar
+      const aliveAndDead = [...this.players.values()];
+      const hasTarafsiz = aliveAndDead.some(p => p.actualTeam === TEAMS.TARAFSIZ);
+      const all = Object.values(ROLES).filter(r => {
+        if (r.id === 'deli') return false;
+        // Tarafsız oyunda yoksa tarafsız rolleri seçeneklerden çıkar
+        if (!hasTarafsiz && r.team === TEAMS.TARAFSIZ) return false;
+        return true;
+      });
       let opts;
       if (insane) {
         // Deli ajan: takımlar DOĞRU ama roller RASTGELE
-        // 3 rastgele rol, her birinin takımı kendi gerçek takımı
         const shuffled = this.shuf([...all]);
         opts = shuffled.slice(0, 3).map(r => `${r.team} ${r.name}`);
       } else {
-        // Normal: doğru cevap + 2 yanlış (her rolün kendi gerçek takımıyla)
+        // Normal: doğru cevap + 2 yanlış
         const correct = `${realTeam} ${realR.name}`;
         const others = this.shuf(all.filter(r => r.id !== t.role)).slice(0, 2)
           .map(r => `${r.team} ${r.name}`);
@@ -884,7 +913,7 @@ class GameEngine {
       // Seri Katil iz bırakmaz — takipçi de onu göremez
       if (t.role === 'seri_katil' && !insane) {
         rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: Bu gece hiçbir şey yapmadı.` });
-        this.hist(a.pid, 'Takip', t.name, 'Pasif');
+        this.hist(a.pid, 'Takip', t.name, 'Hiçbir şey yapmadı');
         return;
       }
       // Takip edilen kişinin gece aksiyonundaki hedefini bul
@@ -895,15 +924,16 @@ class GameEngine {
         if (Math.random() > 0.5 && allAlive.length > 0) {
           const rp = allAlive[Math.floor(Math.random() * allAlive.length)];
           rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: ${rp.name} kişisine rol kullandı.` });
+          this.hist(a.pid, 'Takip', t.name, `${rp.name}'e gitti (sahte)`);
         } else {
           rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: Bu gece hiçbir şey yapmadı.` });
+          this.hist(a.pid, 'Takip', t.name, 'Hiçbir şey yapmadı');
         }
-        this.hist(a.pid, 'Takip', t.name, 'Sahte');
         return;
       }
       if (!targetAction) {
         rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: Bu gece hiçbir şey yapmadı.` });
-        this.hist(a.pid, 'Takip', t.name, 'Pasif');
+        this.hist(a.pid, 'Takip', t.name, 'Hiçbir şey yapmadı');
         return;
       }
       // Hedefin aksiyonundaki targetId'yi bul
@@ -912,10 +942,10 @@ class GameEngine {
         const at = this.players.get(actionTarget);
         const atName = at ? at.name : '?';
         rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: ${atName} kişisine rol kullandı.` });
-        this.hist(a.pid, 'Takip', t.name, atName);
+        this.hist(a.pid, 'Takip', t.name, `${atName}'e gitti`);
       } else {
         rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: Bu gece hiçbir şey yapmadı.` });
-        this.hist(a.pid, 'Takip', t.name, 'Pasif');
+        this.hist(a.pid, 'Takip', t.name, 'Hiçbir şey yapmadı');
       }
     });
 
