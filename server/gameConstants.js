@@ -1,0 +1,100 @@
+// ============================================================
+// AZAP v5 - Oyun Sabitleri
+// ============================================================
+const TEAMS = { MASUM: 'masum', HAIN: 'hain', TARAFSIZ: 'tarafsız' };
+
+const ROLES = {
+  // ── MASUMLAR (yeşil) ──
+  DOKTOR: { id:'doktor', name:'Doktor', team:TEAMS.MASUM, emoji:'🩺',
+    desc:'Birini saldırıdan korur. Kendini sadece 1 kez koruyabilir. Kurtardıysa öğrenir.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  POLIS: { id:'polis', name:'Polis', team:TEAMS.MASUM, emoji:'🔦',
+    desc:'Birinin gece rol kullanımını engeller. Engellenen kişi o gece hiçbir şey yapamaz.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  SAVCI: { id:'savci', name:'Savcı', team:TEAMS.MASUM, emoji:'⚖️',
+    desc:'Sadece 1 defa birinin rolünü kesin olarak öğrenir.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  MUHTAR: { id:'muhtar', name:'Muhtar', team:TEAMS.MASUM, emoji:'🏛️',
+    desc:'Oyu 2 sayılır. Gece aksiyonu yoktur.',
+    canBeHain:false, canBeChosen:true, hasNightAction:false },
+  GAZETECI: { id:'gazeteci', name:'Gazeteci', team:TEAMS.MASUM, emoji:'📰',
+    desc:'Seçtiği kişinin gece rolünü kullanıp kullanmadığını öğrenir.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  PSIKOLOG: { id:'psikolog', name:'Psikolog', team:TEAMS.MASUM, emoji:'🧠',
+    desc:'Birinin deli olup olmadığını öğrenir.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  GAZI: { id:'gazi', name:'Gazi', team:TEAMS.MASUM, emoji:'🛡️',
+    desc:'Bir gece kendini ölümsüz yapar (tek kullanım).',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  DEDIKODUCU: { id:'dedikoducu', name:'Dedikocucu', team:TEAMS.MASUM, emoji:'🗣️',
+    desc:'İki kişinin aynı takımda olup olmadığını öğrenir.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  AJAN: { id:'ajan', name:'Ajan', team:TEAMS.MASUM, emoji:'🕵️',
+    desc:'Seçtiği kişinin rolünü 3 seçenek arasından görür (biri doğrudur). Takımlar her zaman doğru gösterilir.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  SERIF: { id:'serif', name:'Şerif', team:TEAMS.MASUM, emoji:'🤠',
+    desc:'Oyun boyunca 1 kez gece birini vurabilir. Hain/tarafsız vurursa kahraman olur. Masum vurursa ertesi gece intihar eder.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  KURBAN: { id:'kurban', name:'Kurban', team:TEAMS.MASUM, emoji:'🩸',
+    desc:'Pasif rol. Öldürülürse sabah raporunda katilinin adını söyler (vasiyetname).',
+    canBeHain:false, canBeChosen:true, hasNightAction:false },
+  CILINGIR: { id:'cilingir', name:'Çilingir', team:TEAMS.MASUM, emoji:'🔑',
+    desc:'Gece birini evine kilitler. Kilitlenen kişi yetenek kullanamaz AMA saldırılardan da korunur.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+  TAKIPCI: { id:'takipci', name:'Takipçi', team:TEAMS.MASUM, emoji:'👣',
+    desc:'Gece birini takip eder. O kişinin birine rol kullanıp kullanmadığını ve kime kullandığını öğrenir.',
+    canBeHain:false, canBeChosen:true, hasNightAction:true },
+
+  // ── HAİNLER (kırmızı) ──
+  SUIKASTCI: { id:'suikastci', name:'Suikastçı', team:TEAMS.HAIN, emoji:'🗡️',
+    desc:'Gündüz tartışmada birinin rolünü tahmin eder. Doğruysa anında öldürür, yanlışsa kendisi ölür.',
+    canBeChosen:true, hasNightAction:true },
+  HIPNOTIZMACI: { id:'hipnotizmaci', name:'Hipnotizmacı', team:TEAMS.HAIN, emoji:'🌀',
+    desc:'Birini seçer, o gece o kişi deli olur ve sahte bilgi alır.',
+    canBeChosen:true, hasNightAction:true },
+  BOMBACI: { id:'bombaci', name:'Bombacı', team:TEAMS.HAIN, emoji:'💣',
+    desc:'Bir geceyi bomba koymaya, başka geceyi patlatmaya ayırır. Aynı gece ikisini yapamaz.',
+    canBeChosen:true, hasNightAction:true },
+  GOLGE: { id:'golge', name:'Gölge', team:TEAMS.HAIN, emoji:'👤',
+    desc:'Ertesi gün birini tamamen susturur. Sadece susturan ve susturulan bilir.',
+    canBeChosen:true, hasNightAction:true },
+
+  // ── TARAFSIZLAR (mavi) ──
+  DODO: { id:'dodo', name:'Dodo', team:TEAMS.TARAFSIZ, emoji:'🦤',
+    desc:'Kendini astırırsa kazanır. Gece aksiyonu yoktur.',
+    canBeChosen:true, hasNightAction:false },
+  SERI_KATIL: { id:'seri_katil', name:'Seri Katil', team:TEAMS.TARAFSIZ, emoji:'🔪',
+    desc:'Her gece dilerse birini öldürür. Sona kalırsa kazanır.',
+    canBeChosen:true, hasNightAction:true },
+  CELLAT: { id:'cellat', name:'Cellat', team:TEAMS.TARAFSIZ, emoji:'⛓️',
+    desc:'Otomatik seçilen masumu astırırsa kendi içinde kazanır, oyun devam eder.',
+    canBeChosen:true, hasNightAction:false },
+  YAMYAM: { id:'yamyam', name:'Yamyam', team:TEAMS.TARAFSIZ, emoji:'🍖',
+    desc:'Gece ölenlerin yeteneklerini toplar.',
+    canBeChosen:true, hasNightAction:false },
+
+  // ── DELİ (mor) ──
+  DELI: { id:'deli', name:'Deli', team:TEAMS.MASUM, emoji:'🤡',
+    desc:'Bir masum rol gibi görünür ama tüm sonuçları sahtedir. Kendi bilemez.',
+    canBeChosen:false, hasNightAction:false }
+};
+
+const PHASES = {
+  LOBBY:'lobby', ROLE_SELECTION:'role_selection', ROLE_REVEAL:'role_reveal',
+  PRESIDENT_VOTE:'president_vote', NIGHT:'night',
+  MORNING_REPORT:'morning_report', DAY_DISCUSSION:'day_discussion',
+  VOTING:'voting', VOTE_RESULT:'vote_result',
+  MVP_VOTE:'mvp_vote', MVP_RESULT:'mvp_result',
+  GAME_OVER:'game_over', POST_GAME:'post_game'
+};
+
+const DEFAULT_CONFIG = {
+  MIN_PLAYERS: 4, MAX_PLAYERS: 20,
+  NIGHT_DURATION: 20, DISCUSSION_DURATION: 180,
+  VOTING_DURATION: 30, ROLE_REVEAL_DURATION: 20,
+  REPORT_DURATION: 10, RESULT_DURATION: 8,
+  PRESIDENT_VOTE_DURATION: 25, ROLE_SELECTION_DURATION: 10,
+  MVP_VOTE_DURATION: 30, MVP_RESULT_DURATION: 12
+};
+
+module.exports = { TEAMS, ROLES, PHASES, DEFAULT_CONFIG };
