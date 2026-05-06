@@ -184,6 +184,12 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 /* Admin bakış butonu (sadece admin görür) */
 .admin-btn{position:fixed;bottom:106px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#5d3a8e,#9b59b6);border:1.5px solid #9b59b6;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(155,89,182,.5)}
 .admin-btn.sh{display:flex}
+/* Admin menü butonu (sadece admin görür) */
+.admin-menu-btn{position:fixed;bottom:152px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7d3c98,#bb8fce);border:1.5px solid #bb8fce;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(187,143,206,.5)}
+.admin-menu-btn.sh{display:flex}
+/* Report butonu - sağ alt floating, profil/rehberden uzak */
+.report-btn{position:fixed;bottom:60px;right:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:rgba(192,57,43,.15);border:1px solid var(--hain);color:var(--hain);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3);transition:all .15s}
+.report-btn:hover{background:rgba(192,57,43,.25);transform:scale(1.05)}
 .admin-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px 8px;background:rgba(255,255,255,.03);border-left:3px solid;border-radius:4px;margin:3px 0;font-size:.82rem}
 .admin-row.t-masum{border-left-color:var(--safe)}
 .admin-row.t-hain{border-left-color:var(--hain)}
@@ -192,6 +198,30 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 .admin-row .name{font-weight:600}
 .admin-row .role{font-size:.75rem;color:var(--dim)}
 .admin-row .insane{font-size:.65rem;background:var(--deli);color:#fff;padding:1px 4px;border-radius:2px}
+/* Admin menü tablo stili */
+.am-tabs{display:flex;gap:4px;margin-bottom:10px;border-bottom:1px solid var(--brd)}
+.am-tab{padding:6px 12px;background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:.8rem;border-bottom:2px solid transparent}
+.am-tab.active{color:var(--hi);border-bottom-color:var(--hi)}
+.am-user{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:4px;margin-bottom:4px;font-size:.8rem}
+.am-user.is-admin{background:rgba(155,89,182,.1);border-left:3px solid #9b59b6}
+.am-user-actions{display:flex;gap:4px;flex-wrap:wrap}
+.am-btn{padding:3px 8px;font-size:.7rem;border-radius:3px;cursor:pointer;border:1px solid;background:transparent}
+.am-btn.danger{color:var(--hain);border-color:var(--hain)}
+.am-btn.danger:hover{background:rgba(192,57,43,.15)}
+.am-btn.warn{color:#f39c12;border-color:#f39c12}
+.am-btn.warn:hover{background:rgba(243,156,18,.15)}
+.am-btn.ok{color:var(--safe);border-color:var(--safe)}
+.am-btn.ok:hover{background:rgba(39,174,96,.15)}
+.am-btn.info{color:var(--hi);border-color:var(--hi)}
+.am-btn.info:hover{background:rgba(255,255,255,.05)}
+.am-report{background:rgba(255,255,255,.03);border-left:3px solid var(--hain);padding:10px;border-radius:4px;margin-bottom:8px}
+.am-report.closed{border-left-color:var(--safe);opacity:.6}
+.am-report-hdr{display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:4px;color:var(--dim);flex-wrap:wrap;gap:6px}
+.am-report-user{color:var(--hi);font-weight:600}
+.am-report-desc{font-size:.85rem;background:rgba(0,0,0,.3);padding:8px;border-radius:3px;white-space:pre-wrap;word-wrap:break-word;margin:6px 0}
+.am-report-img{max-width:100%;max-height:300px;border-radius:4px;border:1px solid var(--brd);cursor:pointer;display:block;margin-top:6px}
+.am-create-form{background:rgba(155,89,182,.08);border:1px solid rgba(155,89,182,.3);padding:10px;border-radius:5px;margin-bottom:10px}
+.am-create-form input{margin:3px 0;padding:5px 8px;font-size:.8rem;background:var(--bg2);border:1px solid var(--brd);color:var(--txt);border-radius:3px;width:100%}
 /* Modal genel */
 .role-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;padding:14px}
 .role-modal.sh{display:flex}
@@ -376,6 +406,8 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 <input class="inp" id="NEW_PW" type="password" placeholder="Yeni şifre">
 <button class="b b1 bs" onclick="changePass()">Şifreyi Güncelle</button>
 </div>
+<div class="st mt12" style="color:var(--hain)">Hesap</div>
+<button class="b bs" style="border:1px solid var(--hain);color:var(--hain);background:transparent;width:100%" onclick="doLogout()">🚪 Çıkış Yap</button>
 </div></div>
 
 <div class="dov" id="DOV">
@@ -411,7 +443,12 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 <button class="role-guide-btn" id="ROLE_GUIDE_BTN" onclick="openRoleGuideModal()" title="Rol Rehberi">📖</button>
 
 <!-- Admin Bakış butonu (sadece admin için) -->
-<button class="admin-btn" id="ADMIN_BTN" onclick="openAdminModal()" title="🕵️ Admin Bakış">👁️</button>
+<button class="admin-btn" id="ADMIN_BTN" onclick="openAdminModal()" title="🕵️ Admin Bakış (oyun içi)">👁️</button>
+
+<!-- Admin Menü butonu (sadece admin için) - kullanıcı yönetimi + rapor görüntüleme -->
+<button class="admin-menu-btn" id="ADMIN_MENU_BTN" onclick="openAdminMenuModal()" title="⚙️ Admin Menü">⚙️</button>
+
+<!-- Report butonu top-actions içine yerleştirilmiş -->
 
 <!-- Admin Bakış modal -->
 <div class="role-modal" id="ADMIN_MODAL">
@@ -420,6 +457,50 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 <div class="role-modal-title" style="color:#9b59b6">👁️ ADMİN BAKIŞ</div>
 <div style="font-size:.7rem;color:var(--dim);text-align:center;margin-bottom:10px;font-style:italic">Bu görünüm sadece sana özel — kimse haberdar değil.</div>
 <div id="ADMIN_BODY"></div>
+</div>
+</div>
+
+<!-- Admin Menü modal: Kullanıcılar + Raporlar -->
+<div class="role-modal" id="ADMIN_MENU_MODAL">
+<div class="role-modal-content" style="max-width:780px">
+<button class="role-modal-close" onclick="Q('ADMIN_MENU_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title" style="color:#bb8fce">⚙️ ADMİN MENÜ</div>
+<div class="am-tabs">
+<button class="am-tab active" data-amtab="users" onclick="amSwitchTab('users')">👥 Kullanıcılar</button>
+<button class="am-tab" data-amtab="reports" onclick="amSwitchTab('reports')">🐛 Bug Raporları</button>
+</div>
+<div id="AM_USERS_PANE">
+<div class="am-create-form">
+<div style="font-size:.78rem;font-weight:600;margin-bottom:6px;color:#bb8fce">+ Yeni Hesap Oluştur</div>
+<input id="AM_NEW_U" placeholder="Kullanıcı adı (2-16 karakter)" maxlength="16">
+<input id="AM_NEW_P" type="password" placeholder="Şifre (min 3)">
+<label style="display:flex;align-items:center;gap:6px;font-size:.78rem;margin:4px 0"><input type="checkbox" id="AM_NEW_ADMIN"> Admin yetkisi</label>
+<button class="b b1 bs" style="width:100%;margin-top:4px" onclick="amCreateUser()">Hesap Oluştur</button>
+</div>
+<div id="AM_USERS_LIST">Yükleniyor...</div>
+</div>
+<div id="AM_REPORTS_PANE" style="display:none">
+<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+<button class="am-btn info" onclick="amLoadReports()">🔄 Yenile</button>
+<button class="am-btn ok" onclick="amExportReports()">📥 Tüm Raporları İndir (HTML)</button>
+</div>
+<div id="AM_REPORTS_LIST">Yükleniyor...</div>
+</div>
+</div>
+</div>
+
+<!-- Report modal (her kullanıcıya): bug bildir -->
+<div class="role-modal" id="REPORT_MODAL">
+<div class="role-modal-content" style="max-width:520px">
+<button class="role-modal-close" onclick="Q('REPORT_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title" style="color:var(--hain)">🐛 HATA / GERİ BİLDİRİM</div>
+<div style="font-size:.78rem;color:var(--dim);margin-bottom:10px;text-align:center">Hata, öneri ya da geri bildirimini paylaş.</div>
+<div class="lbl">Açıklama</div>
+<textarea id="RPT_DESC" rows="5" placeholder="Ne oldu? Ne yaparken oldu? Ne bekliyordun?" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--brd);color:var(--txt);border-radius:4px;font-family:inherit;font-size:.85rem;resize:vertical"></textarea>
+<div class="lbl mt8">Ekran Görüntüsü (opsiyonel — max 5MB)</div>
+<input id="RPT_IMG" type="file" accept="image/*" style="font-size:.78rem;width:100%">
+<div id="RPT_PREVIEW" style="margin-top:6px;text-align:center"></div>
+<button class="b b1 bs bw mt12" id="RPT_SUBMIT" onclick="submitReport()">📤 Raporu Gönder</button>
 </div>
 </div>
 
@@ -444,6 +525,9 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 
 <!-- Floating Suikast butonu (sadece suikastçı için, gündüz/oylama fazında) -->
 <button class="suikast-btn" id="SUIKAST_BTN_FLOAT" onclick="openSuikastModal()" title="Suikast">🗡️</button>
+
+<!-- Hata Bildir floating buton (giriş yapmış herkese, sağ alt) -->
+<button class="report-btn" id="REPORT_BTN" onclick="openReportModal()" title="Hata Bildir">🐛</button>
 
 <!-- Suikast Modal -->
 <div class="suikast-modal" id="SUIKAST_MODAL">
@@ -483,6 +567,9 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 <div style="display:flex;flex-direction:column;gap:8px">
 <input class="inp" id="AU" placeholder="Kullanıcı adı" maxlength="16" autocomplete="off">
 <input class="inp" id="AP" placeholder="Şifre" type="password" maxlength="32">
+<label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--dim);cursor:pointer;padding:2px 0">
+  <input type="checkbox" id="REMEMBER_ME" checked style="cursor:pointer"> Beni hatırla (bu cihazda otomatik giriş)
+</label>
 <button class="b b1 bw" id="AB" onclick="doAuth()">Giriş Yap</button>
 </div>
 <button class="b b2 bw bs mt8" onclick="openModal('MDL_GUIDE');renderGuide()">📜 Roller Rehberi</button>
@@ -850,13 +937,93 @@ function setAM(m){
 function doAuth(){
   const u=Q('AU').value.trim(),p=Q('AP').value;
   if(!u||!p)return toast('Alanları doldur!',1);
-  io2.emit(AM==='login'?'auth:login':'auth:register',{username:u,password:p},r=>{
-    if(r.success){user=r.user;updateUserUI();
+  const rememberMe = AM==='login' && Q('REMEMBER_ME')?.checked;
+  io2.emit(AM==='login'?'auth:login':'auth:register',{username:u,password:p,rememberMe},r=>{
+    if(r.success){
+      user=r.user;
+      // Token varsa localStorage'a kaydet (otomatik giriş için)
+      if(r.token){
+        try{ localStorage.setItem('azap_token', r.token); }catch{}
+      }
+      updateUserUI();
       toast(AM==='login'?'Giriş başarılı!':'Hesap oluşturuldu!');
-      // Müzik yükle ve başlat
+      // Müzik yükle ve başlat - HEMEN (user gesture aktif)
+      userMusicPref = true;
       loadYouTubeAPI();
-      setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); }, 500);
+      tryStartMusicNow();
+      setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); tryStartMusicNow(); setupDraggableButtons(); }, 300);
+      setTimeout(()=>tryStartMusicNow(), 1500);
+      setTimeout(()=>tryStartMusicNow(), 3000);
+      // Sürükleme ipucu (sadece ilk giriş)
+      try{
+        if(!localStorage.getItem('azap_drag_hint_shown')){
+          setTimeout(()=>{
+            toast('💡 İpucu: Yan butonları basılı tutarak istediğin yere taşıyabilirsin!');
+            localStorage.setItem('azap_drag_hint_shown','1');
+          }, 1500);
+        }
+      }catch{}
+      updateRoleInfoBtn();
     }else toast(r.error,1);
+  });
+}
+
+// Müziği başlat — user-gesture içinde çağrılmalı (mobil autoplay engeli için kritik)
+function tryStartMusicNow(){
+  if(!userMusicPref)return;
+  if(!shouldPlayMusic())return;
+  if(ytReady && ytPlayer){
+    try{
+      ytPlayer.unMute();
+      ytPlayer.setVolume(35);
+      ytPlayer.playVideo();
+      musicPlaying=true;
+      updateMusicUI();
+    }catch(_){}
+  }
+}
+
+// Otomatik token girişi (sayfa yüklendiğinde)
+function tryAutoLogin(){
+  let token = null;
+  try{ token = localStorage.getItem('azap_token'); }catch{}
+  if(!token)return false;
+  io2.emit('auth:loginByToken',{token},r=>{
+    if(r?.success){
+      user=r.user;
+      updateUserUI();
+      toast('Hoş geldin '+user.username+'!');
+      userMusicPref = true;
+      loadYouTubeAPI();
+      setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); setupDraggableButtons(); }, 300);
+      updateRoleInfoBtn();
+      // Mobilde otomatik müzik için: ilk dokunmada başlat
+      const firstTouchHandler = ()=>{
+        tryStartMusicNow();
+        document.removeEventListener('click', firstTouchHandler);
+        document.removeEventListener('touchstart', firstTouchHandler);
+      };
+      document.addEventListener('click', firstTouchHandler, {once:true});
+      document.addEventListener('touchstart', firstTouchHandler, {once:true});
+    } else {
+      // Token geçersiz - sil
+      try{ localStorage.removeItem('azap_token'); }catch{}
+    }
+  });
+  return true;
+}
+
+// Çıkış yap
+function doLogout(){
+  if(!confirm('Çıkış yapmak istediğine emin misin?'))return;
+  let token = null;
+  try{ token = localStorage.getItem('azap_token'); localStorage.removeItem('azap_token'); }catch{}
+  io2.emit('auth:logout',{token},()=>{
+    user=null;
+    closeModal('MDL_PROFILE');
+    toast('Çıkış yapıldı.');
+    // Sayfayı yeniden yükle - tüm state temizlensin
+    setTimeout(()=>location.reload(),500);
   });
 }
 function updateUserUI(){
@@ -1704,12 +1871,31 @@ function updateRoleInfoBtn(){
   } else {
     guideBtn.classList.remove('sh');
   }
-  // Admin butonu — sadece admin oyuncular oyun içindeyken
+  // Admin butonu — sadece admin oyuncular oyun içindeyken (oyun bakış)
   if(adminBtn){
     if(inGame && ps?.isAdmin){
       adminBtn.classList.add('sh');
     } else {
       adminBtn.classList.remove('sh');
+    }
+  }
+  // Admin menü butonu — admin için her zaman (giriş yapmışsa)
+  const adminMenuBtn=Q('ADMIN_MENU_BTN');
+  if(adminMenuBtn){
+    if(user?.isAdmin){
+      adminMenuBtn.classList.add('sh');
+    } else {
+      adminMenuBtn.classList.remove('sh');
+    }
+  }
+  // Report butonu — giriş yapmış herkes için (giriş ekranında değilse)
+  const reportBtn=Q('REPORT_BTN');
+  if(reportBtn){
+    if(user){
+      reportBtn.style.display='flex';
+      setupReportImg();
+    } else {
+      reportBtn.style.display='none';
     }
   }
 }
@@ -1748,6 +1934,180 @@ function openAdminModal(){
 
   body.innerHTML=html;
   Q('ADMIN_MODAL').classList.add('sh');
+}
+
+// ── ADMIN MENÜ (kullanıcı yönetimi + raporlar) ──
+function openAdminMenuModal(){
+  if(!user?.isAdmin){toast('Admin yetkin yok!',1);return;}
+  Q('ADMIN_MENU_MODAL').classList.add('sh');
+  amSwitchTab('users');
+}
+function amSwitchTab(tab){
+  document.querySelectorAll('[data-amtab]').forEach(b=>b.classList.toggle('active',b.dataset.amtab===tab));
+  Q('AM_USERS_PANE').style.display = tab==='users' ? 'block' : 'none';
+  Q('AM_REPORTS_PANE').style.display = tab==='reports' ? 'block' : 'none';
+  if(tab==='users')amLoadUsers();
+  else amLoadReports();
+}
+function amLoadUsers(){
+  const list=Q('AM_USERS_LIST');
+  list.innerHTML='Yükleniyor...';
+  io2.emit('admin:listUsers',{},r=>{
+    if(!r?.ok){list.innerHTML=`<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
+    if(!r.users.length){list.innerHTML='<div style="color:var(--dim)">Henüz kullanıcı yok.</div>';return;}
+    list.innerHTML=r.users.map(u=>`
+      <div class="am-user${u.isAdmin?' is-admin':''}">
+        <span style="font-size:1.2rem">${u.isAdmin?'👁️':'👤'}</span>
+        <div>
+          <div style="font-weight:600">${u.username}${u.isAdmin?' <span style="color:#bb8fce;font-size:.7rem">(ADMIN)</span>':''}</div>
+          <div style="font-size:.7rem;color:var(--dim)">🏆 ${u.stats.won} • 🎮 ${u.stats.played} • ❤️ ${u.stats.mvp||0}</div>
+        </div>
+        <div class="am-user-actions">
+          <button class="am-btn info" onclick="amEditStats('${u.username}')">📊</button>
+          <button class="am-btn warn" onclick="amResetPassword('${u.username}')">🔑</button>
+          <button class="am-btn ${u.isAdmin?'warn':'ok'}" onclick="amToggleAdmin('${u.username}',${!u.isAdmin})">${u.isAdmin?'⬇️':'⬆️'}</button>
+          <button class="am-btn danger" onclick="amDeleteUser('${u.username}')">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+function amCreateUser(){
+  const u=Q('AM_NEW_U').value.trim();
+  const p=Q('AM_NEW_P').value;
+  const ad=Q('AM_NEW_ADMIN').checked;
+  if(!u||!p){toast('Kullanıcı adı ve şifre boş bırakılamaz!',1);return;}
+  io2.emit('admin:createUser',{username:u,password:p,isAdmin:ad},r=>{
+    if(r.ok){
+      toast('Hesap oluşturuldu!');
+      Q('AM_NEW_U').value=''; Q('AM_NEW_P').value=''; Q('AM_NEW_ADMIN').checked=false;
+      amLoadUsers();
+    } else toast(r.err||'Hata!',1);
+  });
+}
+function amDeleteUser(username){
+  if(!confirm(`"${username}" hesabını silmek istediğine emin misin?`))return;
+  io2.emit('admin:deleteUser',{username},r=>{
+    if(r.ok){toast('Hesap silindi.');amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amToggleAdmin(username,makeAdmin){
+  io2.emit('admin:toggleAdmin',{username,isAdmin:makeAdmin},r=>{
+    if(r.ok){toast(makeAdmin?'Admin yapıldı.':'Admin yetkisi kaldırıldı.');amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amResetPassword(username){
+  const np=prompt(`"${username}" için yeni şifre (min 3):`);
+  if(!np||np.length<3)return;
+  io2.emit('admin:resetPassword',{username,newPassword:np},r=>{
+    if(r.ok)toast('Şifre güncellendi.');
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amEditStats(username){
+  const won=prompt(`"${username}" — Kazanılan oyun sayısı?`,'0');
+  if(won===null)return;
+  const played=prompt(`Oynanan toplam oyun sayısı?`,won);
+  if(played===null)return;
+  const mvp=prompt(`MVP sayısı?`,'0');
+  if(mvp===null)return;
+  const lost=Math.max(0, parseInt(played)-parseInt(won));
+  io2.emit('admin:setStats',{username,stats:{
+    played:parseInt(played)||0,
+    won:parseInt(won)||0,
+    lost,
+    mvp:parseInt(mvp)||0
+  }},r=>{
+    if(r.ok){toast('İstatistik güncellendi.');amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amLoadReports(){
+  const list=Q('AM_REPORTS_LIST');
+  list.innerHTML='Yükleniyor...';
+  io2.emit('admin:getToken',{},tr=>{
+    const token = tr?.token;
+    io2.emit('admin:listReports',{},r=>{
+      if(!r?.ok){list.innerHTML=`<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
+      if(!r.reports.length){list.innerHTML='<div style="color:var(--dim);text-align:center;padding:20px">📭 Henüz rapor yok.</div>';return;}
+      list.innerHTML=r.reports.map(rp=>{
+        const date=new Date(rp.createdAt).toLocaleString('tr-TR');
+        const escaped=rp.description.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const imgHtml=rp.screenshot?`<img class="am-report-img" src="/admin/screenshot/${rp.screenshot}?token=${token}" onclick="window.open(this.src,'_blank')">`:'';
+        return `<div class="am-report${rp.status==='closed'?' closed':''}">
+          <div class="am-report-hdr">
+            <span><span class="am-report-user">${rp.username}</span> <span style="font-family:monospace;font-size:.65rem;opacity:.6">${rp.id}</span></span>
+            <span>${date}</span>
+          </div>
+          <div class="am-report-desc">${escaped}</div>
+          ${imgHtml}
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="am-btn ${rp.status==='closed'?'info':'ok'}" onclick="amSetReportStatus('${rp.id}','${rp.status==='closed'?'open':'closed'}')">${rp.status==='closed'?'↩️ Aç':'✓ Kapat'}</button>
+            <button class="am-btn danger" onclick="amDeleteReport('${rp.id}')">🗑️ Sil</button>
+          </div>
+        </div>`;
+      }).join('');
+    });
+  });
+}
+function amDeleteReport(id){
+  if(!confirm('Bu raporu silmek istediğine emin misin?'))return;
+  io2.emit('admin:deleteReport',{id},r=>{
+    if(r.ok){toast('Rapor silindi.');amLoadReports();}
+    else toast('Hata!',1);
+  });
+}
+function amSetReportStatus(id,status){
+  io2.emit('admin:setReportStatus',{id,status},r=>{
+    if(r.ok)amLoadReports();
+  });
+}
+function amExportReports(){
+  io2.emit('admin:getToken',{},r=>{
+    if(!r?.ok)return;
+    window.open(`/admin/export-reports?token=${r.token}`,'_blank');
+  });
+}
+
+// ── REPORT (her oyuncu) ──
+function openReportModal(){
+  Q('RPT_DESC').value='';
+  Q('RPT_IMG').value='';
+  Q('RPT_PREVIEW').innerHTML='';
+  window._rptImg=null;
+  Q('REPORT_MODAL').classList.add('sh');
+}
+window._rptImg=null;
+function setupReportImg(){
+  const inp=Q('RPT_IMG');
+  if(!inp || inp._setupDone)return;
+  inp._setupDone=true;
+  inp.addEventListener('change',(e)=>{
+    const f=e.target.files?.[0];
+    if(!f){window._rptImg=null;Q('RPT_PREVIEW').innerHTML='';return;}
+    if(f.size>5*1024*1024){toast('Görüntü çok büyük (max 5MB).',1);inp.value='';return;}
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      window._rptImg=ev.target.result;
+      Q('RPT_PREVIEW').innerHTML=`<img src="${ev.target.result}" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--brd)">`;
+    };
+    reader.readAsDataURL(f);
+  });
+}
+function submitReport(){
+  const desc=Q('RPT_DESC').value.trim();
+  if(desc.length<5){toast('Açıklama en az 5 karakter olmalı.',1);return;}
+  const btn=Q('RPT_SUBMIT');
+  btn.disabled=true;btn.textContent='Gönderiliyor...';
+  io2.emit('report:create',{description:desc,screenshot:window._rptImg},r=>{
+    btn.disabled=false;btn.textContent='📤 Raporu Gönder';
+    if(r.success){
+      toast('🐛 Rapor gönderildi! Teşekkürler.');
+      Q('REPORT_MODAL').classList.remove('sh');
+    } else toast(r.error||'Hata!',1);
+  });
 }
 
 function openMyRoleModal(){
@@ -1975,8 +2335,154 @@ function renderSpec(data){
   Q('SLG').scrollTop=Q('SLG').scrollHeight;
 }
 
+// ── SÜRÜKLENEBİLİR BUTONLAR ──
+// Floating butonları basılı tutarak (long-press) istediğin yere taşıyabilirsin.
+// Konumlar localStorage'da kalır, sayfayı kapatıp açtığında aynı konumda durur.
+function makeDraggable(elementId, opts={}){
+  const el = Q(elementId);
+  if(!el || el._draggableSetup) return;
+  el._draggableSetup = true;
+  const LONG_PRESS_MS = 400;
+  const STORAGE_KEY = 'azap_pos_' + elementId;
+
+  // Kayıtlı konumu yükle
+  try{
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved){
+      const pos = JSON.parse(saved);
+      if(pos && typeof pos.left==='number' && typeof pos.top==='number'){
+        // Ekran sınırları içindeyse uygula
+        const maxL = window.innerWidth - el.offsetWidth - 5;
+        const maxT = window.innerHeight - el.offsetHeight - 5;
+        el.style.left = Math.max(5, Math.min(pos.left, maxL)) + 'px';
+        el.style.top = Math.max(5, Math.min(pos.top, maxT)) + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+      }
+    }
+  }catch{}
+
+  let pressTimer = null;
+  let isDragging = false;
+  let startX=0, startY=0, startLeft=0, startTop=0;
+
+  function getPoint(e){
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX, y: t.clientY };
+  }
+
+  function onPressStart(e){
+    if(e.button===2)return; // sağ tık değil
+    const pt = getPoint(e);
+    startX = pt.x; startY = pt.y;
+
+    // Long-press timer
+    pressTimer = setTimeout(()=>{
+      pressTimer = null;
+      isDragging = true;
+      // Mevcut absolute pozisyona dönüştür
+      const r = el.getBoundingClientRect();
+      startLeft = r.left;
+      startTop = r.top;
+      el.style.left = r.left + 'px';
+      el.style.top = r.top + 'px';
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+      el.style.transition = 'none';
+      el.style.opacity = '0.7';
+      el.style.transform = 'scale(1.15)';
+      // Haptic feedback (mobil)
+      if(navigator.vibrate)try{navigator.vibrate(50);}catch{}
+    }, LONG_PRESS_MS);
+  }
+
+  function onPressMove(e){
+    if(pressTimer){
+      // Long-press tetiklenmeden çok hareket varsa iptal et (kaydırma niyeti)
+      const pt = getPoint(e);
+      const dx = Math.abs(pt.x - startX), dy = Math.abs(pt.y - startY);
+      if(dx > 8 || dy > 8){
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+      return;
+    }
+    if(!isDragging) return;
+    e.preventDefault();
+    const pt = getPoint(e);
+    const dx = pt.x - startX, dy = pt.y - startY;
+    let newLeft = startLeft + dx;
+    let newTop = startTop + dy;
+    // Ekran sınırları
+    newLeft = Math.max(5, Math.min(newLeft, window.innerWidth - el.offsetWidth - 5));
+    newTop = Math.max(5, Math.min(newTop, window.innerHeight - el.offsetHeight - 5));
+    el.style.left = newLeft + 'px';
+    el.style.top = newTop + 'px';
+  }
+
+  function onPressEnd(e){
+    if(pressTimer){
+      clearTimeout(pressTimer);
+      pressTimer = null;
+      // Normal click — onclick handler çalışsın (engellemiyoruz)
+      return;
+    }
+    if(isDragging){
+      e.preventDefault();
+      e.stopPropagation();
+      isDragging = false;
+      el.style.transition = '';
+      el.style.opacity = '';
+      el.style.transform = '';
+      // Konumu kaydet
+      const r = el.getBoundingClientRect();
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({left: r.left, top: r.top}));
+      }catch{}
+    }
+  }
+
+  // Mouse
+  el.addEventListener('mousedown', onPressStart);
+  document.addEventListener('mousemove', onPressMove);
+  document.addEventListener('mouseup', onPressEnd);
+  // Touch
+  el.addEventListener('touchstart', onPressStart, {passive:true});
+  document.addEventListener('touchmove', onPressMove, {passive:false});
+  document.addEventListener('touchend', onPressEnd);
+  document.addEventListener('touchcancel', ()=>{
+    if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}
+    if(isDragging){isDragging=false;el.style.opacity='';el.style.transform='';}
+  });
+  // Click sırasında drag tetiklenmişse onclick'i engelle
+  el.addEventListener('click', (e)=>{
+    if(isDragging){e.preventDefault();e.stopPropagation();isDragging=false;}
+  }, true);
+  // Sağ tık ile sıfırla menüsü (opsiyonel - basit)
+  el.addEventListener('contextmenu', (e)=>{
+    e.preventDefault();
+    if(confirm(`"${el.title || elementId}" konumunu varsayılana sıfırla?`)){
+      try{ localStorage.removeItem(STORAGE_KEY); }catch{}
+      el.style.left=''; el.style.top=''; el.style.right=''; el.style.bottom='';
+    }
+  });
+}
+
+// Tüm floating butonları sürüklenebilir yap
+function setupDraggableButtons(){
+  ['ROLE_INFO_BTN','ROLE_GUIDE_BTN','ADMIN_BTN','ADMIN_MENU_BTN','REPORT_BTN','SUIKAST_BTN_FLOAT','HT'].forEach(id=>{
+    if(Q(id)) makeDraggable(id);
+  });
+}
+
 // ── SOCKET ──
-io2.on('connect',()=>{me=io2.id});
+io2.on('connect',()=>{
+  me=io2.id;
+  // Sayfa yüklendiğinde token varsa otomatik giriş
+  if(!user)tryAutoLogin();
+  // Sürüklenebilir butonları kur (DOM hazır olduktan sonra)
+  setTimeout(setupDraggableButtons, 100);
+});
 
 // Phase tracking for optimized rendering
 let _lastPhase = null;

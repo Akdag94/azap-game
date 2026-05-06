@@ -2,15 +2,97 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
+const archiver = null; // archiver yoksa zip yapamayacağız, fallback olarak json+screenshots klasörü ver
 const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
+const Reports = require('./reports');
 const { PHASES } = require('./gameConstants');
 
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 5e5 });
+// 8MB buffer (screenshot için)
+const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 8e6 });
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Report screenshot endpoint - sadece admin authentication ile bakılabilir
+app.get('/admin/screenshot/:filename', (req, res) => {
+  const token = req.query.token;
+  if (!token) return res.status(403).send('Forbidden');
+  // Token kontrolü: socket id token'ı admin authed.get'inden gelir
+  const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
+  if (!u || !Accounts.isAdmin(u[1])) return res.status(403).send('Forbidden');
+  const fpath = Reports.getScreenshotPath(req.params.filename);
+  if (!fpath || !fs.existsSync(fpath)) return res.status(404).send('Not found');
+  res.sendFile(fpath);
+});
+
+// Tüm raporları + ekran görüntülerini tek HTML dosyası olarak dışa aktar
+app.get('/admin/export-reports', (req, res) => {
+  const token = req.query.token;
+  if (!token) return res.status(403).send('Forbidden');
+  const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
+  if (!u || !Accounts.isAdmin(u[1])) return res.status(403).send('Forbidden');
+
+  const reports = Reports.list();
+  const screenshotDir = Reports.getScreenshotDir();
+  // HTML olarak inline base64 görüntüler
+  let html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>AZAP — Tüm Bug Raporları</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#1a1a1a;color:#e0e0e0;padding:20px;line-height:1.5}
+h1{color:#c0392b;border-bottom:2px solid #c0392b;padding-bottom:8px;margin-bottom:20px}
+.summary{background:#2a2a2a;padding:12px;border-radius:6px;margin-bottom:20px;font-size:14px}
+.report{background:#252525;border-left:4px solid #c0392b;padding:16px;margin-bottom:16px;border-radius:4px}
+.report.closed{border-left-color:#27ae60;opacity:0.7}
+.report-hdr{display:flex;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.report-id{font-family:monospace;color:#888;font-size:12px}
+.report-user{color:#3498db;font-weight:600}
+.report-status{padding:2px 8px;border-radius:3px;font-size:11px;background:#c0392b;color:#fff}
+.report-status.closed{background:#27ae60}
+.report-date{color:#888;font-size:12px}
+.report-desc{background:#1a1a1a;padding:12px;border-radius:4px;margin:10px 0;white-space:pre-wrap;word-wrap:break-word;font-size:13px}
+.report-img{max-width:100%;border:1px solid #444;border-radius:4px;margin-top:8px}
+</style></head><body>
+<h1>⛧ AZAP — Bug Raporları</h1>
+<div class="summary">
+<strong>Toplam Rapor:</strong> ${reports.length} •
+<strong>Açık:</strong> ${reports.filter(r => r.status === 'open').length} •
+<strong>Kapalı:</strong> ${reports.filter(r => r.status === 'closed').length} •
+<strong>Dışa aktarma:</strong> ${new Date().toLocaleString('tr-TR')}
+</div>
+`;
+
+  reports.forEach(r => {
+    const date = new Date(r.createdAt).toLocaleString('tr-TR');
+    let imgHtml = '';
+    if (r.screenshot) {
+      try {
+        const buf = fs.readFileSync(path.join(screenshotDir, r.screenshot));
+        const ext = r.screenshot.split('.').pop();
+        const mime = ext === 'jpg' ? 'jpeg' : ext;
+        imgHtml = `<img class="report-img" src="data:image/${mime};base64,${buf.toString('base64')}" alt="Screenshot">`;
+      } catch (e) {
+        imgHtml = `<div style="color:#888;font-style:italic">[Ekran görüntüsü yüklenemedi: ${r.screenshot}]</div>`;
+      }
+    }
+    html += `<div class="report ${r.status === 'closed' ? 'closed' : ''}">
+<div class="report-hdr">
+  <div><span class="report-user">${r.username}</span> <span class="report-id">${r.id}</span></div>
+  <div><span class="report-status ${r.status}">${r.status === 'closed' ? 'KAPALI' : 'AÇIK'}</span> <span class="report-date">${date}</span></div>
+</div>
+<div class="report-desc">${r.description.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+${imgHtml}
+</div>`;
+  });
+
+  html += '</body></html>';
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="azap-reports-${Date.now()}.html"`);
+  res.send(html);
+});
+
 app.get('*', (_, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
 const radioStartTime = Date.now(); // Sunucu ilk açıldığında radyoyu başlat
@@ -240,7 +322,23 @@ io.on('connection', (socket) => {
 
   socket.on('auth:register', (d, cb) => { /* ... */ });
   socket.on('auth:register', (d, cb) => { const r = Accounts.register(d.username, d.password); if (r.success) authed.set(socket.id, d.username.trim()); cb(r); });
-  socket.on('auth:login', (d, cb) => { const r = Accounts.login(d.username, d.password); if (r.success) authed.set(socket.id, d.username.trim()); cb(r); });
+  socket.on('auth:login', (d, cb) => {
+    const r = Accounts.login(d.username, d.password, !!d.rememberMe);
+    if (r.success) authed.set(socket.id, d.username.trim());
+    cb(r);
+  });
+  // Token ile otomatik giriş
+  socket.on('auth:loginByToken', ({ token }, cb) => {
+    const r = Accounts.loginByToken(token);
+    if (r.success) authed.set(socket.id, r.user.username);
+    cb(r);
+  });
+  // Çıkış yap (hem socket auth'unu sil hem token'ı kaldır)
+  socket.on('auth:logout', ({ token }, cb) => {
+    if (token) Accounts.logoutToken(token);
+    authed.delete(socket.id);
+    cb?.({ success: true });
+  });
   socket.on('auth:stats', (_, cb) => { const u = authed.get(socket.id); cb(u ? Accounts.getStats(u) : null); });
   socket.on('auth:leaderboard', (_, cb) => cb(Accounts.leaderboard()));
   socket.on('auth:changePassword', ({ oldPass, newPass }, cb) => {
@@ -471,6 +569,95 @@ io.on('connection', (socket) => {
         }
       }
     }
+  });
+
+  // ── BUG RAPOR (tüm kullanıcılar) ──
+  socket.on('report:create', ({ description, screenshot }, cb) => {
+    const u = authed.get(socket.id);
+    const result = Reports.create({
+      username: u || 'anonim',
+      description,
+      screenshot
+    });
+    cb?.(result);
+  });
+
+  // ── ADMIN HANDLERLARI ──
+  // Tüm admin işlemleri admin kontrolünden geçer
+  function requireAdmin(cb) {
+    const u = authed.get(socket.id);
+    if (!u || !Accounts.isAdmin(u)) {
+      cb?.({ ok: false, err: 'Admin yetkin yok!' });
+      return false;
+    }
+    return true;
+  }
+
+  // Kullanıcı listesi
+  socket.on('admin:listUsers', (_, cb) => {
+    if (!requireAdmin(cb)) return;
+    cb?.({ ok: true, users: Accounts.listAll() });
+  });
+
+  // Yeni hesap oluştur
+  socket.on('admin:createUser', ({ username, password, isAdmin }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Accounts.adminCreate(username, password, isAdmin);
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+
+  // Hesap sil
+  socket.on('admin:deleteUser', ({ username }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Accounts.adminDelete(username);
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+
+  // İstatistik düzenleme
+  socket.on('admin:setStats', ({ username, stats }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Accounts.adminSetStats(username, stats);
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+
+  // Admin yetkisi değiştir
+  socket.on('admin:toggleAdmin', ({ username, isAdmin }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Accounts.adminToggle(username, isAdmin);
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+
+  // Şifre sıfırla
+  socket.on('admin:resetPassword', ({ username, newPassword }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Accounts.adminResetPassword(username, newPassword);
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+
+  // Bug raporlarını listele
+  socket.on('admin:listReports', (_, cb) => {
+    if (!requireAdmin(cb)) return;
+    cb?.({ ok: true, reports: Reports.list() });
+  });
+
+  // Rapor sil
+  socket.on('admin:deleteReport', ({ id }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Reports.delete(id);
+    cb?.(r.success ? { ok: true } : { ok: false });
+  });
+
+  // Rapor durumunu değiştir (open/closed)
+  socket.on('admin:setReportStatus', ({ id, status }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Reports.setStatus(id, status);
+    cb?.(r.success ? { ok: true } : { ok: false });
+  });
+
+  // Admin token al (screenshot URL'leri için)
+  socket.on('admin:getToken', (_, cb) => {
+    if (!requireAdmin(cb)) return;
+    cb?.({ ok: true, token: socket.id });
   });
 
   socket.on('disconnect', () => {
