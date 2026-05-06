@@ -85,12 +85,23 @@ function resolveVote(rc) {
   const res = g.resolveVoting();
   io.to(rc).emit('voteResult', res); emit(rc);
   let wc = g.checkWin();
-  // Dodo veya cellat kazandıysa wc'yi onlara göre ayarla
+  // Dodo kendini astırırsa anında oyun biter, tek başına kazanır
   if (!wc.over && res.dodoWins) {
     wc = { over: true, winner: 'dodo', msg: '🦤 Dodo kazandı! Kendini astırdı!' };
-  } else if (!wc.over && res.cellatWins) {
+  } else if (res.cellatWins) {
+    // Cellat hedefini astırdı: oyunu bitirme, sadece bildirim ve kazanma kayıtı
+    // (Cellat artık kazananlar listesinde olacak ama oyun devam eder)
     const cellat = g.players.get(res.cellatWins);
-    wc = { over: true, winner: 'cellat', msg: `⛓️ Cellat (${cellat?.name||'?'}) hedefini astırdı!` };
+    const target = g.players.get(g.cellatTarget.get(res.cellatWins));
+    // ÖNEMLİ: cellat ismi tüm odaya gönderilmez (gizlilik). Sadece hedefin adı + cellat kurbanı olduğu bildirimi.
+    io.to(rc).emit('cellatVictory', {
+      targetName: target?.name || '?'
+    });
+    // Cellata özel bildirim (sadece kendisi görür)
+    io.sockets.sockets.get(res.cellatWins)?.emit('cellatPrivateWin', {
+      targetName: target?.name || '?'
+    });
+    g.log(`⛓️ Cellat ${cellat?.name} hedefi ${target?.name}'i astırdı!`);
   }
   if (wc.over) {
     setTimeout(() => endGame(rc, wc, res), g.config.RESULT_DURATION * 1000);
@@ -103,13 +114,16 @@ function endGame(rc, wc, res) {
   g.phase = PHASES.GAME_OVER;
   g.gameEnded = true;
 
-  // Kazananları wc.winner'a göre hesapla (getWinners checkWin'i çağırıyor, dodo/cellat döndürmüyor)
+  // Kazananları wc.winner'a göre hesapla
   const winnerKey = wc.winner;
   const winnerPlayers = [...g.players.values()].filter(p => {
+    // Cellat hedefini astırmışsa daima kazanır (oyunu kim kazansa kazansın)
+    if (p.role === 'cellat' && g.cellatWon.has(p.id)) return true;
+    // Yamyam: hem hainlerle hem masumlarla kazanır (kazanan takım masum/hain ise)
+    if (p.role === 'yamyam' && (winnerKey === TEAMS.MASUM || winnerKey === TEAMS.HAIN)) return true;
     if (winnerKey === p.actualTeam) return true;
     if (winnerKey === 'seri_katil' && p.role === 'seri_katil') return true;
     if (winnerKey === 'dodo' && p.role === 'dodo') return true;
-    if (winnerKey === 'cellat' && p.role === 'cellat' && g.cellatWon.has(p.id)) return true;
     return false;
   });
   const winnerUsernames = winnerPlayers.map(p => p.username).filter(Boolean);

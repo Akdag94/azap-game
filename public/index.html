@@ -501,14 +501,14 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="st">⚙️ Ayarlar</div>
 <div class="srow"><span>🧠 Delilik</span><input type="range" min="0" max="50" value="15" id="SI" oninput="uSet()"><span class="sval" id="VI">%15</span></div>
 <div class="srow"><span>🌙 Gece</span><input type="range" min="10" max="120" value="20" step="5" id="SN" oninput="uSet()"><span class="sval" id="VN">20s</span></div>
-<div class="srow"><span>☀️ Tartışma</span><input type="range" min="30" max="600" value="180" step="15" id="SD" oninput="uSet()"><span class="sval" id="VD">3dk</span></div>
-<div class="srow"><span>🗳️ Oylama</span><input type="range" min="10" max="120" value="30" step="5" id="SV" oninput="uSet()"><span class="sval" id="VV">30s</span></div>
+<div class="srow"><span>☀️ Tartışma</span><input type="range" min="10" max="120" value="20" step="5" id="SD" oninput="uSet()"><span class="sval" id="VD">20s</span></div>
+<div class="srow"><span>🗳️ Oylama</span><input type="range" min="30" max="240" value="90" step="10" id="SV" oninput="uSet()"><span class="sval" id="VV">90s</span></div>
 
 <div class="st mt8">Takım Sayıları</div>
 <div class="srow"><label style="display:flex;gap:5px;align-items:center;font-size:.78rem;cursor:pointer"><input type="checkbox" id="MC" onchange="uSet()"> Manuel ayarla</label></div>
 <div id="MCA" style="display:none">
-<div class="srow"><span>🧛 Hain</span><input type="range" min="1" max="8" value="1" id="HC2" oninput="uSet()"><span class="sval" id="VH">1</span></div>
-<div class="srow"><span>⚖️ Tarafsız</span><input type="range" min="0" max="5" value="0" id="TC2" oninput="uSet()"><span class="sval" id="VT">0</span></div>
+<div class="srow"><span>🧛 Hain</span><input type="range" min="1" max="4" value="1" id="HC2" oninput="uSet()"><span class="sval" id="VH">1</span></div>
+<div class="srow"><span>⚖️ Tarafsız</span><input type="range" min="0" max="4" value="0" id="TC2" oninput="uSet()"><span class="sval" id="VT">0</span></div>
 </div>
 
 <div class="st mt8">Hain Öldürme</div>
@@ -922,11 +922,6 @@ function renderGuide(){
     });
     c.appendChild(sec);
   });
-  const note=document.createElement('div');
-  note.className='role-guide-item';
-  note.style.borderLeftColor='var(--hi)';
-  note.innerHTML=`<div class="role-guide-h"><span class="em">⚠️</span><span class="nm">Hain Olabilenler</span></div><div class="role-guide-d">Doktor, Muhtar, Kurban ve Deli HARİÇ tüm masum roller hain de olabilir.</div>`;
-  c.appendChild(note);
 }
 
 // ── ROOM ──
@@ -1072,16 +1067,18 @@ function renderRS(){
     const ol=Q('RS_OPT_LIST');ol.innerHTML='';
 
     if(ps.myRoleForced){
-      // Zorla atanmış — sadece 1 seçenek, rastgele butonu yok
-      const roleId=ps.myRoleOptions[0];
-      const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
-      const d=document.createElement('div');
-      d.className='rs-opt';
-      d.style.borderColor='var(--danger)';
-      d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--danger);margin-top:2px">Bu rol sana otomatik atandı (takım dengelemesi)</div></div>`;
-      d.onclick=()=>pickRole(roleId);
-      ol.appendChild(d);
-      Q('RS_SUB').textContent='Rol otomatik atandı!';
+      // Zorla atanmış takım — kalan rollerden seçim yapılabilir (rastgele yok)
+      const teamLabel = ps.myRoleForcedTeam ? ` (${ps.myRoleForcedTeam.toUpperCase()})` : '';
+      ps.myRoleOptions.forEach(roleId=>{
+        const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
+        const d=document.createElement('div');
+        d.className='rs-opt';
+        d.style.borderColor='var(--danger)';
+        d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
+        d.onclick=()=>pickRole(roleId);
+        ol.appendChild(d);
+      });
+      Q('RS_SUB').textContent=`Takım dengelemesi: bir ${ps.myRoleForcedTeam||'rol'} seçmelisin!`;
     } else {
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
@@ -1178,14 +1175,13 @@ function updAB(){
   else if(r==='serif')Q('BSA').disabled=!sel1||ps?.serifUsed;
   else if(r==='bombaci'){
     const mode=window._bombMode||'place';
+    const myBombs=ps?.myBombs||[];
     if(mode==='place'){
-      Q('BSA').disabled=!sel1;
-      Q('BSA').textContent='💣 Bomba Koy';
+      Q('BSA').textContent = sel1 ? '💣 Bomba Koy' : '💣 Önce Hedef Seç';
     } else {
-      const myBombs=ps.myBombs||[];
-      Q('BSA').disabled=myBombs.length===0;
-      Q('BSA').textContent='💥 Patlat';
+      Q('BSA').textContent = myBombs.length>0 ? '💥 Tüm Bombaları Patlat' : '💥 (Bomba Yok)';
     }
+    Q('BSA').disabled=false; // daima enabled - validation conf'ta
   }
   else Q('BSA').disabled=!sel1;
 }
@@ -1201,7 +1197,14 @@ function conf(type){
   else if(r==='cilingir')a={targetId:sel1};
   else if(r==='bombaci'){
     const mode=window._bombMode||'place';
-    a=mode==='place'?{action:'place',abilityTargetId:sel1}:{action:'detonate'};
+    if(mode==='place'){
+      if(!sel1){toast('Hedef seç!',1);return;}
+      a={action:'place',abilityTargetId:sel1};
+    } else {
+      const myBombs=ps.myBombs||[];
+      if(myBombs.length===0){toast('Patlatacak bomba yok!',1);return;}
+      a={action:'detonate'};
+    }
   }
   else if(isHain){
     if(type==='kill')a={action:'kill',killTargetId:sel1};
@@ -1398,7 +1401,8 @@ function renderRole(){
   if(ps.teammates?.length){
     x.innerHTML=`<div style="padding:8px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:5px">
       <div class="lbl" style="color:var(--hain)">🧛 Hain Takımın</div>
-      ${ps.teammates.map(t=>`<div style="display:flex;align-items:center;gap:6px;font-size:.85rem;margin:3px 0">${avHTML(t.avatar,'sm')}<span style="color:var(--hain);font-weight:600">${t.emoji} ${t.name}</span><span style="color:var(--dim);font-size:.78rem">(${t.roleName})</span></div>`).join('')}</div>`;
+      <div style="font-size:.7rem;color:var(--dim);margin-bottom:4px;font-style:italic">Rolleri sen de bilmiyorsun.</div>
+      ${ps.teammates.map(t=>`<div style="display:flex;align-items:center;gap:6px;font-size:.85rem;margin:3px 0">${avHTML(t.avatar,'sm')}<span style="color:var(--hain);font-weight:600">🧛 ${t.name}</span></div>`).join('')}</div>`;
   } else if(ps.cellatTarget){
     x.innerHTML=`<div style="padding:8px;background:rgba(211,84,0,.06);border:1px solid rgba(211,84,0,.15);border-radius:5px">
       <div class="lbl" style="color:var(--tarafsiz)">⛓️ Hedefin: <strong>${ps.cellatTarget}</strong></div></div>`;
@@ -1410,7 +1414,7 @@ function renderNight(){
   Q('NR').textContent='Tur '+gs.round;Q('NE').textContent=ps.roleEmoji;Q('NN').textContent=ps.roleName;
   const r=ps.role,isH=ps.team==='hain',isSK=r==='seri_katil';
 
-  const labels={doktor:'Korumak istediğin kişiyi seç',polis:'Engellemek istediğin kişiyi seç',
+  const labels={doktor:ps.doktorSelfUsed?'Korumak istediğin kişiyi seç':'Korumak istediğin kişiyi seç (kendini 1 kez koruyabilirsin)',polis:'Engellemek istediğin kişiyi seç',
     savci:ps.savciUsed?'Sorgulama hakkını kullandın':'Rolünü öğrenmek istediğin kişiyi seç',
     gazeteci:'Kontrol etmek istediğin kişiyi seç',
     psikolog:'Kontrol etmek istediğin kişiyi seç',gazi:'Ölümsüzlük kalkanını aktive et',
@@ -1516,12 +1520,23 @@ function renderTL(){
         <button class="b ${mode==='detonate'?'b1':'b2'} bs" style="flex:1" onclick="setBombMode('detonate')" ${myBombs.length===0?'disabled':''}>💥 Patlat</button>
       </div>
     ` + targetListHtml;
-    // Onayla butonu durumunu güncelle (place: hedef seçili olmalı, detonate: bomba olmalı)
-    setTimeout(()=>updAB(),0);
+    // BSA butonunun durumunu doğrudan ayarla — daima enabled (validation conf'ta)
+    const bsa = Q('BSA');
+    if(bsa){
+      if(mode==='place'){
+        bsa.textContent = sel1 ? '💣 Bomba Koy' : '💣 Önce Hedef Seç';
+        bsa.disabled = false;
+      } else {
+        bsa.textContent = myBombs.length>0 ? '💥 Tüm Bombaları Patlat' : '💥 (Bomba Yok)';
+        bsa.disabled = false;
+      }
+    }
     return;
   }
 
-  const alive=gs.players.filter(p=>p.isAlive&&p.id!==me);
+  // Doktor kendini koruyabilir (1 kez), bu yüzden kendi de listede olsun
+  const allowSelf = r==='doktor' && !ps.doktorSelfUsed;
+  const alive=gs.players.filter(p=>p.isAlive && (p.id!==me || allowSelf));
   const isHain=ps?.team==='hain';
   // Hain ise: diğer hain takım arkadaşlarının id'lerini topla
   const teammateIds = new Set();
@@ -1530,15 +1545,21 @@ function renderTL(){
   }
   // Bombacı: kendi bombalarını işaretle
   const myBombIds = new Set(ps.myBombs || []);
+  // Cellat: kendi hedefini işaretle (sadece cellat görür)
+  const cellatTargetId = r==='cellat' ? ps.cellatTargetId : null;
   list.innerHTML='';
   alive.forEach(p=>{
     const s=p.id===sel1||p.id===sel2;
     const isTeammate = teammateIds.has(p.id);
     const hasBomb = myBombIds.has(p.id);
+    const isCellatTarget = p.id===cellatTargetId;
+    const isMe = p.id===me;
     const d=document.createElement('div');d.className='tb'+(s?' sel':'');
-    const nameStyle = isTeammate ? 'color:var(--hain);font-weight:600' : '';
+    const nameStyle = isTeammate ? 'color:var(--hain);font-weight:600' : (isCellatTarget ? 'color:var(--tarafsiz);font-weight:600' : (isMe ? 'color:var(--hi);font-weight:600' : ''));
     const bombIcon = hasBomb ? ' <span style="color:var(--hain);" title="Bomba kondu">💣</span>' : '';
-    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="tb-name"><span style="${nameStyle}">${p.name}${isTeammate?' 🧛':''}${bombIcon}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>`;
+    const cellatIcon = isCellatTarget ? ' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>' : '';
+    const meTag = isMe ? ' <span style="font-size:.7rem;color:var(--hi)">(SEN — TEK KULLANIM!)</span>' : '';
+    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="tb-name"><span style="${nameStyle}">${p.name}${isTeammate?' 🧛':''}${cellatIcon}${bombIcon}${meTag}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>`;
     d.onclick=()=>selT(p.id);list.appendChild(d);
   });
 }
@@ -1588,7 +1609,7 @@ function renderReport(reps){
 
 function renderDay(){
   if(!gs)return;theme(true);
-  Q('DAY_PS').textContent=gs.presidentId?`Başkan: ${gs.players.find(p=>p.id===gs.presidentId)?.name||'-'}`:'Konuşun, tartışın!';
+  Q('DAY_PS').textContent=gs.presidentId?`Başkan: ${gs.players.find(p=>p.id===gs.presidentId)?.name||'-'} • Oylama yaklaşıyor...`:'Tartışın! Oylama 20 saniye sonra başlıyor...';
   Q('SM').innerHTML=ps?.isSilenced?'<div class="silban">🤐 Susturuldun! Bu tur konuşamazsın.</div>':'';
   const da=Q('DA');
   // Gece ölenler: backend'den gelen deadThisNight (gündüz ölenler dahil değil)
@@ -1604,13 +1625,17 @@ function renderDay(){
   const isHain2=ps?.team==='hain';
   const tmIds=new Set();
   if(isHain2&&ps.teammates)ps.teammates.forEach(t=>tmIds.add(t.id));
+  // Cellat: kendi hedefi
+  const cellatTargetId = ps?.role==='cellat' ? ps.cellatTargetId : null;
   gs.players.forEach(p=>{
     const isT=tmIds.has(p.id);
     const isMe=p.id===me;
+    const isCT=p.id===cellatTargetId;
     const li=document.createElement('li');li.className='pi'+(p.isAlive?'':' dead')+(p.isPresident?' president':'');
-    const nameStyle=isT?'color:var(--hain);font-weight:600':'';
+    const nameStyle=isT?'color:var(--hain);font-weight:600':(isCT?'color:var(--tarafsiz);font-weight:600':'');
     const meTag=isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'';
-    li.innerHTML=`${avHTML(p.avatar,'sm')}<span class="pi-name"><span style="${nameStyle}">${p.name}${meTag}${isT?' 🧛':''}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>${!p.isAlive?'<span style="font-size:.85rem">💀</span>':''}`;
+    const ctIcon=isCT?' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>':'';
+    li.innerHTML=`${avHTML(p.avatar,'sm')}<span class="pi-name"><span style="${nameStyle}">${p.name}${meTag}${isT?' 🧛':''}${ctIcon}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>${!p.isAlive?'<span style="font-size:.85rem">💀</span>':''}`;
     Q('DP').appendChild(li);
   });
   // Suikastçı floating butonu güncelle (gündüzde görünür)
@@ -1683,8 +1708,9 @@ function openMyRoleModal(){
     </div>
     ${ps.teammates&&ps.teammates.length?`
       <div style="margin-top:10px;padding:10px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:5px">
-        <div style="font-size:.78rem;color:var(--hain);margin-bottom:6px;font-weight:600">🧛 Takım Arkadaşların</div>
-        ${ps.teammates.map(t=>`<div style="display:flex;align-items:center;gap:6px;font-size:.85rem;margin:3px 0;color:var(--hain)">${t.emoji} <strong>${t.name}</strong> <span style="color:var(--dim);font-size:.75rem">(${t.roleName})</span></div>`).join('')}
+        <div style="font-size:.78rem;color:var(--hain);margin-bottom:4px;font-weight:600">🧛 Takım Arkadaşların</div>
+        <div style="font-size:.7rem;color:var(--dim);margin-bottom:6px;font-style:italic">Rollerini sen de bilmiyorsun. Sohbette koordine olun.</div>
+        ${ps.teammates.map(t=>`<div style="display:flex;align-items:center;gap:6px;font-size:.85rem;margin:3px 0;color:var(--hain)">🧛 <strong>${t.name}</strong></div>`).join('')}
       </div>`:''}
     ${ps.cellatTarget?`
       <div style="margin-top:10px;padding:10px;background:rgba(41,128,185,.08);border:1px solid rgba(41,128,185,.25);border-radius:5px">
@@ -1771,13 +1797,16 @@ function renderVote(){
   const isH=ps?.team==='hain';
   const tmIds=new Set();
   if(isH&&ps.teammates)ps.teammates.forEach(t=>tmIds.add(t.id));
+  const cellatTargetId = ps?.role==='cellat' ? ps.cellatTargetId : null;
   // Tüm canlı oyuncular (kendi de dahil)
   gs.players.filter(p=>p.isAlive).forEach(p=>{
     const isT=tmIds.has(p.id);
     const isMe=p.id===me;
+    const isCT=p.id===cellatTargetId;
     const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
-    const nameStyle=isT?'color:var(--hain);font-weight:600':(isMe?'color:var(--hi)':'');
-    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="${nameStyle}">${p.name}${isMe?' (SEN)':''}${isT?' 🧛':''}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span><span class="vc" data-vc="${p.id}">0</span><span class="tk">✓</span>`;
+    const nameStyle=isT?'color:var(--hain);font-weight:600':(isCT?'color:var(--tarafsiz);font-weight:600':(isMe?'color:var(--hi)':''));
+    const ctIcon=isCT?' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>':'';
+    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="${nameStyle}">${p.name}${isMe?' (SEN)':''}${isT?' 🧛':''}${ctIcon}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span><span class="vc" data-vc="${p.id}">0</span><span class="tk">✓</span>`;
     d.onclick=()=>doVote(p.id);grid.appendChild(d);
   });
   // Skip (Atla) butonu - kimseye oy verme
@@ -2004,6 +2033,21 @@ io2.on('timer',({rem,total})=>{
 
 io2.on('report',({reports})=>renderReport(reports));
 io2.on('voteResult',r=>renderVR(r));
+
+// Cellat hedefini astırdı bildirimi - tüm oyunculara (cellat anonim, sadece hedef gözükür)
+io2.on('cellatVictory',d=>{
+  const ov=Q('SUIKAST_OV');
+  Q('SUIKAST_TXT').textContent=`⛓️ ${d.targetName}'in eceli oldu!`;
+  Q('SUIKAST_SUB').textContent=`Bir cellat hedefini buldu. Oyun devam ediyor.`;
+  ov.style.background='rgba(0,30,60,.96)';
+  ov.classList.add('sh');
+  setTimeout(()=>ov.classList.remove('sh'),4500);
+});
+
+// Sadece cellata özel bildirim
+io2.on('cellatPrivateWin',d=>{
+  toast(`⛓️ Hedefini ${d.targetName} astırdın! Kazandın.`);
+});
 io2.on('voteTally',t=>updateTally(t));
 io2.on('presidentVoteTally',t=>updatePVTally(t));
 io2.on('hainKillVotes',v=>renderHKV(v));

@@ -122,12 +122,20 @@ class GameEngine {
     let hC, tC;
     if (this.manualCounts) {
       hC = this.hainCount; tC = this.tarafsizCount;
-      if (hC + tC >= n) { hC = Math.max(1, Math.floor(n / 4)); tC = 0; }
+      // Eğer toplam (hain+tarafsız) oyuncu sayısını AŞIYORSA orantılı küçült
+      if (hC + tC > n) {
+        const ratio = n / (hC + tC);
+        hC = Math.max(1, Math.floor(hC * ratio));
+        tC = Math.max(0, n - hC);
+      }
+      // En az 1 hain olmalı
+      if (hC < 1) hC = 1;
+      if (hC > n - 1) hC = n - 1;
     } else {
       hC = Math.max(1, Math.floor(n / 4));
       tC = Math.max(0, Math.min(2, Math.floor((n - hC) / 6)));
     }
-    return { hC, tC, mC: n - hC - tC };
+    return { hC, tC, mC: Math.max(0, n - hC - tC) };
   }
 
   _distributeAuto() {
@@ -1163,10 +1171,47 @@ class GameEngine {
     const al = this.alive();
     const hains = al.filter(p => p.actualTeam === TEAMS.HAIN);
     const masums = al.filter(p => p.actualTeam === TEAMS.MASUM);
+    const tarafsizlar = al.filter(p => p.actualTeam === TEAMS.TARAFSIZ);
     const sk = al.find(p => p.role === 'seri_katil');
-    if (hains.length === 0 && !sk) return { over: true, winner: TEAMS.MASUM, msg: '🌅 Masumlar kazandı!' };
-    if (hains.length >= masums.length && !sk) return { over: true, winner: TEAMS.HAIN, msg: '🧛 Hainler kazandı!' };
-    if (sk && al.length <= 2) return { over: true, winner: 'seri_katil', msg: '🔪 Seri Katil kazandı!' };
+
+    // Seri Katil son 1 kalırsa kazanır (son 2'de değil — muhtar/oylama şansı tanı)
+    if (al.length === 1 && sk) {
+      return { over: true, winner: 'seri_katil', msg: '🔪 Seri Katil son kişi olarak kazandı!' };
+    }
+
+    // Yamyam dual win: oyun bittikten sonra "yamyam ne yaptıysa kazanır" mantığı
+    // Yamyam tarafsız ama "hainlerle de masumlarla da" kazanabilir.
+    // Hangi takım kazanırsa, yamyam da o takımla beraber kazansın diye getWinners'da elle ekleyeceğiz.
+
+    // Hainler yok + SK yok → masumlar kazandı (yamyam masum olmadığı için ayrı)
+    if (hains.length === 0 && !sk) {
+      // Eğer hayatta yamyam varsa, masum + yamyam kazanır
+      return { over: true, winner: TEAMS.MASUM, msg: '🌅 Masumlar kazandı!' };
+    }
+
+    // Masum yok + SK yok → hainler kazandı
+    if (masums.length === 0 && !sk && hains.length > 0) {
+      return { over: true, winner: TEAMS.HAIN, msg: '🧛 Hainler kazandı!' };
+    }
+
+    // Hain >= Masum (SK yokken) → hainler kazandı
+    // Ama tarafsız kalıyorsa (yamyam vs.) ve sayıca dengelenebiliyorsa ihtimal düşür
+    if (!sk && hains.length > 0 && hains.length >= masums.length && masums.length === 0) {
+      return { over: true, winner: TEAMS.HAIN, msg: '🧛 Hainler kazandı!' };
+    }
+
+    // 3'lü stalemate (1H/1M/1T): oyun devam etsin, biri ölene kadar bekle
+    // Buradaki amaç: 1H 1M 1T (sk değil) → over=false
+    if (al.length === 3 && hains.length === 1 && masums.length === 1 && tarafsizlar.length === 1 && !sk) {
+      return { over: false };
+    }
+
+    // 2 kişi (1 hain 1 masum, SK değil): oyun devam etsin oylama ile çözülsün
+    // Aslında bu durumda hain >= masum → hain kazanır mantığı tetiklenir, ki doğru.
+    if (!sk && hains.length >= masums.length && masums.length > 0) {
+      return { over: true, winner: TEAMS.HAIN, msg: '🧛 Hainler kazandı!' };
+    }
+
     return { over: false };
   }
 
@@ -1282,9 +1327,10 @@ class GameEngine {
     const ro = this.ro(p.displayedRole || p.role);
     let teammates = [];
     if (p.actualTeam === TEAMS.HAIN) {
+      // Hainler birbirlerinin SADECE isim/avatarını bilir, rolünü değil
       teammates = [...this.players.values()]
         .filter(x => x.id !== pid && x.actualTeam === TEAMS.HAIN)
-        .map(x => ({ id: x.id, name: x.name, role: x.role, roleName: this.ro(x.role)?.name, emoji: this.ro(x.role)?.emoji, avatar: x.avatar }));
+        .map(x => ({ id: x.id, name: x.name, avatar: x.avatar }));
     }
 
     // History (deli "Sahte" yerine "Başarılı" göster)
@@ -1296,6 +1342,7 @@ class GameEngine {
     // Rol seçim ekranında sadece sıra gelen kişi seçenekleri görür
     let myRoleOptions = null;
     let myRoleForced = false;
+    let myRoleForcedTeam = null;
     if (this.phase === PHASES.ROLE_SELECTION) {
       const cur = this.roleSelectionOrder[this.roleSelectionIndex];
       if (cur === pid) {
@@ -1303,6 +1350,7 @@ class GameEngine {
         if (opts) {
           myRoleOptions = opts.options;
           myRoleForced = opts.forced;
+          myRoleForcedTeam = opts.forcedTeam || null;
         }
       }
     }
@@ -1335,6 +1383,8 @@ class GameEngine {
       team: p.actualTeam, isAlive: p.isAlive, isSilenced: p.isSilenced,
       teammates, hasNightAction: ro?.hasNightAction && p.isAlive,
       cellatTarget: p.role === 'cellat' ? this.pn(this.cellatTarget.get(pid)) : null,
+      cellatTargetId: p.role === 'cellat' ? this.cellatTarget.get(pid) : null,
+      cellatWon: p.role === 'cellat' ? this.cellatWon.has(pid) : false,
       gaziUsed: this.gaziUsed.has(pid), savciUsed: this.savciUsed.has(pid),
       serifUsed: this.serifUsed.has(pid),
       doktorSelfUsed: this.doktorSelfUsed.has(pid),
@@ -1348,6 +1398,7 @@ class GameEngine {
       yamyamAbilities: p.role === 'yamyam' ? (this.yamyamAbilities.get(pid) || []).map(r => this.ro(r)?.name) : [],
       myRoleOptions,
       myRoleForced,
+      myRoleForcedTeam,
       myPickInfo,
       isPresident: p.id === this.presidentId,
       presidentName: this.presidentId ? this.pn(this.presidentId) : null,
@@ -1372,19 +1423,14 @@ class GameEngine {
 
   getWinners() {
     const wc = this.checkWin();
-    // Bağımsız kazanma durumları için checkWin'in dışındaki kontrolleri de yap
     let winnerKey = wc.winner;
-    let manual = false;
-    if (!wc.over) {
-      // dodo/cellat kazanma yarış sonucu - bunlar resolveVote'ta tetiklenir, ama burada manuel destek yok
-      // Bu method endGame içinden çağrılır, o zaman checkWin yetmiyorsa boş dönmesin diye gameResult'a bak
-      return [];
-    }
+    if (!wc.over) return [];
     return [...this.players.values()].filter(p => {
+      if (p.role === 'cellat' && this.cellatWon.has(p.id)) return true;
+      if (p.role === 'yamyam' && (winnerKey === TEAMS.MASUM || winnerKey === TEAMS.HAIN)) return true;
       if (winnerKey === p.actualTeam) return true;
       if (winnerKey === 'seri_katil' && p.role === 'seri_katil') return true;
       if (winnerKey === 'dodo' && p.role === 'dodo') return true;
-      if (winnerKey === 'cellat' && p.role === 'cellat' && this.cellatWon.has(p.id)) return true;
       return false;
     }).map(p => p.username).filter(Boolean);
   }
