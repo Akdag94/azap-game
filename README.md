@@ -127,14 +127,32 @@ azap/
 `server/gameConstants.js` içindeki `DEFAULT_CONFIG`:
 - `MIN_PLAYERS: 4` / `MAX_PLAYERS: 20`
 - `NIGHT_DURATION: 20s`
-- `DISCUSSION_DURATION: 180s`
-- `VOTING_DURATION: 30s`
+- `DISCUSSION_DURATION: 20s` (oylama 20s sonra açılır)
+- `VOTING_DURATION: 90s`
 - `ROLE_SELECTION_DURATION: 20s`
 - `MVP_VOTE_DURATION: 30s`
 
 Lider lobide süre ayarlarını değiştirebilir.
 
 Port değiştirmek: `PORT=8080 npm start`
+
+## 👁️ Admin Hesabı
+
+Admin yetkisine sahip kullanıcılar oyun içinde sol altta 👁️ butonu görür. Tıkladığında **tüm oyuncuların rolleri** kendisine özel olarak gösterilir (diğerleri haberdar olmaz). Admin'in kendisi de oyunda normal bir oyuncu olarak rol alır — sadece ekstra bilgi avantajı vardır.
+
+**Bir kullanıcıyı admin yapmak**:
+
+```bash
+# Önce kullanıcı kayıt olsun (oyuna girip hesap açsın), sonra:
+node make-admin.js <kullanıcı_adı>
+```
+
+Örnek:
+```bash
+node make-admin.js azad
+```
+
+Kullanıcı tekrar giriş yaptığında 👁️ butonu görünür hale gelir. Admin yetkisi `data/users.json` içinde `isAdmin: true` olarak saklanır — manuel olarak da düzenlenebilir.
 
 ## 🐛 Geliştirme Notları
 

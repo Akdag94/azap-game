@@ -67,7 +67,7 @@ class GameEngine {
     this.suikastUsedThisRound = false;
   }
 
-  addPlayer(id, name, username, wins, avatar, mvp) {
+  addPlayer(id, name, username, wins, avatar, mvp, isAdmin) {
     if (this.players.size >= this.config.MAX_PLAYERS) return false;
     if (this.phase !== PHASES.LOBBY && this.phase !== PHASES.POST_GAME) return false;
     this.players.set(id, {
@@ -75,7 +75,7 @@ class GameEngine {
       role: null, actualTeam: null, displayedRole: null,
       isAlive: true, isInsane: false, isTempInsane: false,
       isShielded: false, isImmortal: false, isSilenced: false,
-      isReady: false
+      isReady: false, isAdmin: !!isAdmin
     });
     this.actionHistory.set(id, []);
     return true;
@@ -1378,6 +1378,21 @@ class GameEngine {
       });
     }
 
+    // ADMIN ÖZELLİĞİ: admin tüm oyuncuların rollerini görür (sadece admin'in kendi privateState'inde)
+    let adminAllRoles = null;
+    if (p.isAdmin) {
+      adminAllRoles = [...this.players.values()].map(pp => {
+        const r = this.ro(pp.role);
+        return {
+          id: pp.id, name: pp.name, isAlive: pp.isAlive,
+          roleId: pp.role, roleName: r?.name || '?', roleEmoji: r?.emoji || '?',
+          team: pp.actualTeam,
+          isInsane: pp.isInsane,
+          cellatTargetName: pp.role === 'cellat' ? this.pn(this.cellatTarget.get(pp.id)) : null
+        };
+      });
+    }
+
     return {
       role: p.role, roleName: ro?.name, roleEmoji: ro?.emoji, roleDesc: ro?.desc,
       team: p.actualTeam, isAlive: p.isAlive, isSilenced: p.isSilenced,
@@ -1403,7 +1418,9 @@ class GameEngine {
       isPresident: p.id === this.presidentId,
       presidentName: this.presidentId ? this.pn(this.presidentId) : null,
       avatar: p.avatar,
-      username: p.username
+      username: p.username,
+      isAdmin: !!p.isAdmin,
+      adminAllRoles
     };
   }
 

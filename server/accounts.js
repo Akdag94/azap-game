@@ -29,7 +29,7 @@ module.exports = {
     if (!bcrypt.compareSync(password, u.hash)) return { success: false, error: 'Şifre yanlış.' };
     ensureStats(u);
     write(db);
-    return { success: true, user: { username: u.username, avatar: u.avatar || null, stats: u.stats } };
+    return { success: true, user: { username: u.username, avatar: u.avatar || null, stats: u.stats, isAdmin: !!u.isAdmin } };
   },
   changePassword(username, oldPass, newPass) {
     const db = read(), key = username?.toLowerCase()?.trim();
@@ -52,7 +52,11 @@ module.exports = {
     const db = read(), u = db[username?.toLowerCase()?.trim()];
     if (!u) return null;
     ensureStats(u);
-    return { username: u.username, avatar: u.avatar || null, stats: u.stats };
+    return { username: u.username, avatar: u.avatar || null, stats: u.stats, isAdmin: !!u.isAdmin };
+  },
+  isAdmin(username) {
+    const db = read(), u = db[username?.toLowerCase()?.trim()];
+    return !!(u && u.isAdmin);
   },
   getAvatar(username) {
     const db = read(), u = db[username?.toLowerCase()?.trim()];

@@ -181,6 +181,17 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 /* Rol rehberi butonu */
 .role-guide-btn{position:fixed;bottom:60px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--dim);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .role-guide-btn.sh{display:flex}
+/* Admin bakış butonu (sadece admin görür) */
+.admin-btn{position:fixed;bottom:106px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#5d3a8e,#9b59b6);border:1.5px solid #9b59b6;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(155,89,182,.5)}
+.admin-btn.sh{display:flex}
+.admin-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px 8px;background:rgba(255,255,255,.03);border-left:3px solid;border-radius:4px;margin:3px 0;font-size:.82rem}
+.admin-row.t-masum{border-left-color:var(--safe)}
+.admin-row.t-hain{border-left-color:var(--hain)}
+.admin-row.t-tarafsız{border-left-color:var(--tarafsiz)}
+.admin-row.dead{opacity:.5}
+.admin-row .name{font-weight:600}
+.admin-row .role{font-size:.75rem;color:var(--dim)}
+.admin-row .insane{font-size:.65rem;background:var(--deli);color:#fff;padding:1px 4px;border-radius:2px}
 /* Modal genel */
 .role-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;padding:14px}
 .role-modal.sh{display:flex}
@@ -398,6 +409,19 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 
 <!-- Rol rehberi butonu (sol alt) -->
 <button class="role-guide-btn" id="ROLE_GUIDE_BTN" onclick="openRoleGuideModal()" title="Rol Rehberi">📖</button>
+
+<!-- Admin Bakış butonu (sadece admin için) -->
+<button class="admin-btn" id="ADMIN_BTN" onclick="openAdminModal()" title="🕵️ Admin Bakış">👁️</button>
+
+<!-- Admin Bakış modal -->
+<div class="role-modal" id="ADMIN_MODAL">
+<div class="role-modal-content">
+<button class="role-modal-close" onclick="Q('ADMIN_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title" style="color:#9b59b6">👁️ ADMİN BAKIŞ</div>
+<div style="font-size:.7rem;color:var(--dim);text-align:center;margin-bottom:10px;font-style:italic">Bu görünüm sadece sana özel — kimse haberdar değil.</div>
+<div id="ADMIN_BODY"></div>
+</div>
+</div>
 
 <!-- Kendi rolünün detayı modal -->
 <div class="role-modal" id="MY_ROLE_MODAL">
@@ -1661,6 +1685,7 @@ function updateSuikastFloatingBtn(){
 function updateRoleInfoBtn(){
   const btn=Q('ROLE_INFO_BTN');
   const guideBtn=Q('ROLE_GUIDE_BTN');
+  const adminBtn=Q('ADMIN_BTN');
   if(!btn||!guideBtn)return;
   const inGame = gs && gs.phase!=='lobby' && gs.phase!=='auth' && gs.phase!=='post_game' && gs.phase!=='game_over';
   // Rol info badge — sadece oyun içindeyken ve rolü olan oyuncular
@@ -1668,7 +1693,6 @@ function updateRoleInfoBtn(){
     btn.classList.add('sh');
     Q('ROLE_INFO_EMOJI').textContent = ps.roleEmoji || '🎭';
     Q('ROLE_INFO_NAME').textContent = ps.roleName || 'Rol';
-    // Takım rengine göre kenarlık
     const teamColor = ps.team==='hain' ? 'var(--hain)' : ps.team==='tarafsız' ? 'var(--tarafsiz)' : 'var(--safe)';
     btn.style.borderColor = teamColor;
   } else {
@@ -1680,6 +1704,50 @@ function updateRoleInfoBtn(){
   } else {
     guideBtn.classList.remove('sh');
   }
+  // Admin butonu — sadece admin oyuncular oyun içindeyken
+  if(adminBtn){
+    if(inGame && ps?.isAdmin){
+      adminBtn.classList.add('sh');
+    } else {
+      adminBtn.classList.remove('sh');
+    }
+  }
+}
+
+// Admin Bakış modal — tüm rolleri göster
+function openAdminModal(){
+  if(!ps?.isAdmin || !ps.adminAllRoles){
+    toast('Admin yetkin yok ya da veri henüz gelmedi.',1);
+    return;
+  }
+  const body=Q('ADMIN_BODY');
+  // Takım gruplarına ayır
+  const masum=ps.adminAllRoles.filter(p=>p.team==='masum');
+  const hain=ps.adminAllRoles.filter(p=>p.team==='hain');
+  const tarafsız=ps.adminAllRoles.filter(p=>p.team==='tarafsız');
+
+  const renderRow = (p) => `
+    <div class="admin-row t-${p.team}${!p.isAlive?' dead':''}">
+      <span style="font-size:1.1rem">${p.roleEmoji}</span>
+      <span><span class="name">${p.name}${p.id===me?' (SEN)':''}</span> ${!p.isAlive?'💀':''}</span>
+      <span class="role">${p.roleName}</span>
+      ${p.isInsane?'<span class="insane">DELİ</span>':''}
+    </div>
+  `;
+
+  let html='';
+  if(masum.length){html+=`<div style="font-size:.78rem;color:var(--safe);font-weight:600;margin:8px 0 4px">🌅 Masumlar (${masum.length})</div>`+masum.map(renderRow).join('');}
+  if(hain.length){html+=`<div style="font-size:.78rem;color:var(--hain);font-weight:600;margin:8px 0 4px">🧛 Hainler (${hain.length})</div>`+hain.map(renderRow).join('');}
+  if(tarafsız.length){html+=`<div style="font-size:.78rem;color:var(--tarafsiz);font-weight:600;margin:8px 0 4px">⚖️ Tarafsızlar (${tarafsız.length})</div>`+tarafsız.map(renderRow).join('');}
+
+  // Cellat hedefi gibi ek bilgiler
+  const cellat = ps.adminAllRoles.find(p=>p.roleId==='cellat' && p.cellatTargetName);
+  if(cellat){
+    html+=`<div style="margin-top:12px;padding:8px;background:rgba(41,128,185,.08);border-radius:4px;font-size:.78rem"><strong style="color:var(--tarafsiz)">⛓️ Cellat Hedefi:</strong> ${cellat.name} → <strong>${cellat.cellatTargetName}</strong></div>`;
+  }
+
+  body.innerHTML=html;
+  Q('ADMIN_MODAL').classList.add('sh');
 }
 
 function openMyRoleModal(){

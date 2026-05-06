@@ -271,7 +271,7 @@ io.on('connection', (socket) => {
     if (!u) return cb({ ok: false, err: 'Giriş yap!' });
     const stats = Accounts.getStats(u);
     const code = genCode(), g = new GameEngine(code, socket.id);
-    g.addPlayer(socket.id, playerName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0);
+    g.addPlayer(socket.id, playerName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin);
     rooms.set(code, g); prooms.set(socket.id, code); socket.join(code);
     cb({ ok: true, code }); emit(code);
   });
@@ -283,7 +283,7 @@ io.on('connection', (socket) => {
     if (!g) return cb({ ok: false, err: 'Oda yok!' });
     if (g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME) return cb({ ok: false, err: 'Oyun başlamış!' });
     const stats = Accounts.getStats(u);
-    if (!g.addPlayer(socket.id, playerName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0)) return cb({ ok: false, err: 'Oda dolu!' });
+    if (!g.addPlayer(socket.id, playerName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin)) return cb({ ok: false, err: 'Oda dolu!' });
     prooms.set(socket.id, code); socket.join(code);
     cb({ ok: true, code }); emit(code);
   });

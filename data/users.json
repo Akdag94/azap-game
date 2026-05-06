@@ -1,1 +1,51 @@
-{}
+{
+  "azadakdag": {
+    "username": "azadakdag",
+    "hash": "$2a$08$r/oSeheRexlegE6RV2EP..ht8vEqclnip.nh0lE3Lsy8jAVOaieBa",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "created": 1778066674763,
+    "isAdmin": true
+  },
+  "deneme1": {
+    "username": "deneme1",
+    "hash": "$2a$08$i2WoB1Db.T3oApX3oPJ/ku1PtuaTU54jjGXzNmmd29cldVWAUIxyG",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "created": 1778066725737
+  },
+  "deneme2": {
+    "username": "deneme2",
+    "hash": "$2a$08$dPO4ZbU7W5/wLuDjjb4hOOhD9VD8epjBq9kdAKlnckYznXcwdGbOe",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "created": 1778066735063
+  },
+  "deneme3": {
+    "username": "deneme3",
+    "hash": "$2a$08$L6CWAvmO0rpiME5Srh01V.mu98BFN/RRzBPUhB.a3/hGSypmYIzqO",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "created": 1778066745881
+  }
+}
