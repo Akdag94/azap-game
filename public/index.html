@@ -955,14 +955,7 @@ function doAuth(){
       setTimeout(()=>tryStartMusicNow(), 1500);
       setTimeout(()=>tryStartMusicNow(), 3000);
       // Sürükleme ipucu (sadece ilk giriş)
-      try{
-        if(!localStorage.getItem('azap_drag_hint_shown')){
-          setTimeout(()=>{
-            toast('💡 İpucu: Yan butonları basılı tutarak istediğin yere taşıyabilirsin!');
-            localStorage.setItem('azap_drag_hint_shown','1');
-          }, 1500);
-        }
-      }catch{}
+      
       updateRoleInfoBtn();
     }else toast(r.error,1);
   });
