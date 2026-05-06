@@ -136,34 +136,4 @@ Lider lobide süre ayarlarını değiştirebilir.
 
 Port değiştirmek: `PORT=8080 npm start`
 
-## 👁️ Admin Hesabı
-
-Admin yetkisine sahip kullanıcılar oyun içinde sol altta 👁️ butonu görür. Tıkladığında **tüm oyuncuların rolleri** kendisine özel olarak gösterilir (diğerleri haberdar olmaz). Admin'in kendisi de oyunda normal bir oyuncu olarak rol alır — sadece ekstra bilgi avantajı vardır.
-
-**Bir kullanıcıyı admin yapmak**:
-
-```bash
-# Önce kullanıcı kayıt olsun (oyuna girip hesap açsın), sonra:
-node make-admin.js <kullanıcı_adı>
-```
-
-Örnek:
-```bash
-node make-admin.js azad
-```
-
-Kullanıcı tekrar giriş yaptığında 👁️ butonu görünür hale gelir. Admin yetkisi `data/users.json` içinde `isAdmin: true` olarak saklanır — manuel olarak da düzenlenebilir.
-
-## 🐛 Geliştirme Notları
-
-**Yeni rol eklemek için**:
-1. `server/gameConstants.js` → `ROLES` objesine ekle
-2. `server/gameEngine.js` → `resolveNight()` içine aksiyon mantığını ekle
-3. `public/index.html` → `RDEF` objesine ekle (rehber/modal için)
-4. Gerekirse `renderTL()` ve `conf()` içine UI mantığı ekle
-
-**State debug**: Sunucu konsolunda her oyun adımı loglanıyor (`g.log()`).
-
----
-
-⛧ AZAP — sosyal dedüksiyon, ölüler, hayaletler ve ihanetler.
+#
