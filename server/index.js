@@ -13,7 +13,16 @@ const { PHASES } = require('./gameConstants');
 const app = express();
 const server = http.createServer(app);
 // 8MB buffer (screenshot için)
-const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 8e6 });
+const io = new Server(server, {
+  cors: { origin: '*' },
+  maxHttpBufferSize: 8e6,
+  // Bağlantı dayanıklılığı — mobil ekranı kilitleme/sekme geçişi için
+  pingTimeout: 60000,    // 60 sn yanıt gelmezse kopuk say (default 20s)
+  pingInterval: 25000,   // 25 sn'de bir ping (default 25s)
+  upgradeTimeout: 30000, // upgrade için 30 sn
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
+});
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Report screenshot endpoint - sadece admin authentication ile bakılabilir
@@ -108,7 +117,32 @@ function startTimer(rc, dur, cb) {
     if (rem <= 0) { clearTimer(rc); cb(); }
   }, 1000));
 }
-function clearTimer(rc) { if (timers.has(rc)) { clearInterval(timers.get(rc)); timers.delete(rc); } }
+// Aynı kullanıcının başka socket'lerini kapat (çift bağlantı sorununu engelle)
+function kickOldSessions(username, currentSocketId) {
+  if (!username) return;
+  const uname = username.toLowerCase().trim();
+  const toKick = [];
+  authed.forEach((u, sid) => {
+    if (sid !== currentSocketId && u && u.toLowerCase().trim() === uname) {
+      toKick.push(sid);
+    }
+  });
+  toKick.forEach(sid => {
+    const s = io.sockets.sockets.get(sid);
+    if (s) {
+      s.emit('forceLogout', { reason: 'Başka bir cihazda giriş yapıldı.' });
+      s.disconnect(true);
+    }
+    authed.delete(sid);
+  });
+}
+
+function clearTimer(rc) {
+  if (timers.has(rc)) { clearInterval(timers.get(rc)); timers.delete(rc); }
+  // Emit throttle timer'ı da temizle (oda silinirken)
+  if (_emitTimers.has(rc)) { clearTimeout(_emitTimers.get(rc)); _emitTimers.delete(rc); }
+  _emitPending.delete(rc);
+}
 
 // Faz akışı
 function afterStart(rc) {
@@ -157,6 +191,12 @@ function resolveNight(rc) {
   // Bomba patladıysa tüm odaya bildir (efekt için)
   if (g.bombExplosions && g.bombExplosions.length > 0) {
     io.to(rc).emit('bombExplosion', { victims: g.bombExplosions });
+  }
+  // ÖNEMLİ: Gece bittikten sonra oyun bitti mi kontrol et
+  const wc = g.checkWin();
+  if (wc.over) {
+    setTimeout(() => endGame(rc, wc, null), g.config.REPORT_DURATION * 1000);
+    return;
   }
   startTimer(rc, g.config.REPORT_DURATION, () => toDay(rc));
 }
@@ -283,19 +323,45 @@ function resolveMvp(rc) {
   });
 }
 
+// Emit throttling - aynı odaya kısa süre içinde birden fazla emit gelirse birleştir
+const _emitTimers = new Map(); // rc -> timeout id
+const _emitPending = new Set(); // rc set
+
 function emit(rc) {
+  // Aynı oda için 50ms içinde tekrarlanan emit'leri tek bir gerçek emit'e indir
+  if (_emitTimers.has(rc)) {
+    _emitPending.add(rc);
+    return;
+  }
+  _emitImmediate(rc);
+  _emitTimers.set(rc, setTimeout(() => {
+    _emitTimers.delete(rc);
+    if (_emitPending.has(rc)) {
+      _emitPending.delete(rc);
+      _emitImmediate(rc);
+    }
+  }, 50));
+}
+
+function _emitImmediate(rc) {
   const g = rooms.get(rc); if (!g) return;
   const pub = g.publicState();
   io.to(rc).emit('state', pub);
-  const spec = g.spectatorState();
+  // Sadece odadaki canlı/ölü oyunculara priv gönder (not: spec data sadece ölülere gönderiliyor)
+  let spec = null;
   g.players.forEach((p, pid) => {
     const sock = io.sockets.sockets.get(pid);
     if (!sock) return;
     sock.emit('priv', g.privateState(pid));
-    // Ölü oyuncular da izleyici verisini alsın (tüm roller, oyun logu vs.)
-    if (!p.isAlive) sock.emit('spec', spec);
+    if (!p.isAlive) {
+      if (!spec) spec = g.spectatorState(); // lazy compute
+      sock.emit('spec', spec);
+    }
   });
-  g.spectators.forEach((_, sid) => io.sockets.sockets.get(sid)?.emit('spec', spec));
+  if (g.spectators.size > 0) {
+    if (!spec) spec = g.spectatorState();
+    g.spectators.forEach((_, sid) => io.sockets.sockets.get(sid)?.emit('spec', spec));
+  }
 }
 
 function emitVoteTally(rc) {
@@ -321,19 +387,19 @@ io.on('connection', (socket) => {
   });
 
   socket.on('auth:register', (d, cb) => { /* ... */ });
-  socket.on('auth:register', (d, cb) => { const r = Accounts.register(d.username, d.password); if (r.success) authed.set(socket.id, d.username.trim()); cb(r); });
+  socket.on('auth:register', (d, cb) => { const r = Accounts.register(d.username, d.password); if (r.success) { kickOldSessions(d.username.trim(), socket.id); authed.set(socket.id, d.username.trim()); } cb(r); });
   socket.on('auth:login', (d, cb) => {
     const r = Accounts.login(d.username, d.password, !!d.rememberMe);
-    if (r.success) authed.set(socket.id, d.username.trim());
+    if (r.success) { kickOldSessions(d.username.trim(), socket.id); authed.set(socket.id, d.username.trim()); }
     cb(r);
   });
   // Token ile otomatik giriş
   socket.on('auth:loginByToken', ({ token }, cb) => {
     const r = Accounts.loginByToken(token);
-    if (r.success) authed.set(socket.id, r.user.username);
+    if (r.success) { kickOldSessions(r.user.username, socket.id); authed.set(socket.id, r.user.username); }
     cb(r);
   });
-  // Çıkış yap (hem socket auth'unu sil hem token'ı kaldır)
+  // Çıkış yap
   socket.on('auth:logout', ({ token }, cb) => {
     if (token) Accounts.logoutToken(token);
     authed.delete(socket.id);
@@ -443,6 +509,7 @@ io.on('connection', (socket) => {
         g.setTeamCounts(d.hainCount, d.tarafsizCount);
       }
     }
+    // Throttle ile emit (lider slider'ı çok hızlı değiştirirse her değişimde state göndermesin)
     emit(rc);
   });
 
@@ -493,16 +560,22 @@ io.on('connection', (socket) => {
   });
 
   socket.on('nightAction', (a, cb) => {
-    const rc = prooms.get(socket.id), g = rooms.get(rc);
-    if (!g) return; cb?.({ ok: g.submitAction(socket.id, a) });
-    const p = g.players.get(socket.id);
-    if (p?.actualTeam === 'hain') {
-      // Eğer kill action ise canlı oyları yayınla
-      emitHainKillVotes(rc);
-      g.players.forEach((pp, pid) => {
-        if (pid !== socket.id && pp.actualTeam === 'hain')
-          io.sockets.sockets.get(pid)?.emit('hainAction', { from: p.name, action: a.action || 'seçim' });
-      });
+    try {
+      const rc = prooms.get(socket.id), g = rooms.get(rc);
+      if (!g) { cb?.({ ok: false, err: 'Oda bulunamadı' }); return; }
+      const ok = g.submitAction(socket.id, a);
+      cb?.({ ok });
+      const p = g.players.get(socket.id);
+      if (ok && p?.actualTeam === 'hain') {
+        emitHainKillVotes(rc);
+        g.players.forEach((pp, pid) => {
+          if (pid !== socket.id && pp.actualTeam === 'hain')
+            io.sockets.sockets.get(pid)?.emit('hainAction', { from: p.name, action: a.action || 'seçim' });
+        });
+      }
+    } catch (e) {
+      console.error('nightAction error:', e);
+      cb?.({ ok: false, err: 'Sunucu hatası' });
     }
   });
 
@@ -678,6 +751,14 @@ io.on('connection', (socket) => {
     }
     authed.delete(socket.id);
   });
+});
+
+// Beklenmedik hatalar sunucuyu çökertmesin (donma yerine devam etsin)
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled rejection:', reason);
 });
 
 const PORT = process.env.PORT || 3000;

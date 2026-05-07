@@ -162,7 +162,8 @@ class GameEngine {
     pick(hains, hC); pick(trs, tC); pick(masums, mC);
 
     const final = this.shuf(sel);
-    const pids = [...this.players.keys()];
+    // ÖNEMLİ: hem rolleri hem oyuncu sırasını karıştır (eski oyuncuya hep aynı rol gelmesin)
+    const pids = this.shuf([...this.players.keys()]);
 
     // Deli atama
     const masumIdx = [];
@@ -176,7 +177,7 @@ class GameEngine {
       p.role = r.id;
       p.actualTeam = r.team;
       p.isInsane = deliSet.has(i);
-      p.displayedRole = r.id; // Deli bile kendi gerçek rol adını görür
+      p.displayedRole = r.id;
     });
 
     this._setupCellat();
@@ -573,6 +574,12 @@ class GameEngine {
     eff.filter(a => a.role === 'hipnotizmaci' && a.abilityTargetId).forEach(a => {
       const t = this.players.get(a.abilityTargetId);
       if (t?.isAlive) {
+        // Çilingir kilitlediyse etki etmez
+        if (this.locked.has(a.abilityTargetId)) {
+          rep.get(a.pid)?.push({ i: '🌀', t: `${t.name} korunuyordu, hipnotize edemedin.` });
+          this.hist(a.pid, 'Hipnotize', t.name, 'Engellendi (korunma)');
+          return;
+        }
         t.isTempInsane = true;
         rep.get(a.pid)?.push({ i: '🌀', t: `${t.name} bu gece deli yapıldı.` });
         this.hist(a.pid, 'Hipnotize', t.name, 'Başarılı');
@@ -581,6 +588,12 @@ class GameEngine {
     eff.filter(a => a.role === 'golge' && a.abilityTargetId).forEach(a => {
       const t = this.players.get(a.abilityTargetId);
       if (t?.isAlive) {
+        // Çilingir kilitlediyse etki etmez
+        if (this.locked.has(a.abilityTargetId)) {
+          rep.get(a.pid)?.push({ i: '👤', t: `${t.name} korunuyordu, susturamadın.` });
+          this.hist(a.pid, 'Susturma', t.name, 'Engellendi (korunma)');
+          return;
+        }
         t.isSilenced = true;
         this.silenced.set(a.abilityTargetId, a.pid);
         rep.get(a.pid)?.push({ i: '👤', t: `${t.name} yarın konuşamayacak.` });
@@ -1108,15 +1121,36 @@ class GameEngine {
       if (v > max) { max = v; elim = this.players.get(pid); tied = false; }
       else if (v === max && max > 0) tied = true;
     });
-    const result = { eliminated: null, message: '', dodoWins: false, cellatWins: null, voteTally: Object.fromEntries(this.voteTally) };
-    if (tied || max <= 0) { result.message = 'Berabere! Kimse elenmiyor.'; this.log('⚖️ Berabere'); }
+    // Skip oylarını da say (toplam oy sayısı için)
+    let skipCount = 0;
+    this.votes.forEach(tid => { if (tid === 'skip') skipCount++; });
+
+    // Çoğunluk gerekli: en yüksek oyun, canlı oyuncu sayısının yarısından FAZLA olması lazım
+    const aliveCount = this.alive().length;
+    const majority = Math.floor(aliveCount / 2) + 1; // 6 oyuncu → 4, 5 oyuncu → 3, 4 oyuncu → 3
+
+    const result = { eliminated: null, message: '', dodoWins: false, cellatWins: null, voteTally: Object.fromEntries(this.voteTally), skipCount };
+
+    if (max < majority || tied || max <= 0) {
+      // Çoğunluk yok ya da beraberlik
+      if (skipCount >= majority) {
+        result.message = `${skipCount} kişi oy kullanmadı. Kimse asılmıyor.`;
+        this.log(`⏭️ ${skipCount} skip — kimse asılmadı`);
+      } else if (tied) {
+        result.message = 'Berabere! Kimse elenmiyor.';
+        this.log('⚖️ Berabere');
+      } else {
+        result.message = `Çoğunluk yok (${max}/${majority} gerekli). Kimse asılmıyor.`;
+        this.log(`⚖️ Çoğunluk sağlanamadı: ${max}/${majority}`);
+      }
+    }
     else if (elim) {
       elim.isAlive = false;
       result.eliminated = { id: elim.id, name: elim.name };
       result.message = `${elim.name} mahalle dışına itildi!`;
       if (elim.role === 'dodo') result.dodoWins = true;
       this.cellatTarget.forEach((tid, cid) => { if (tid === elim.id && !this.cellatWon.has(cid)) { result.cellatWins = cid; this.cellatWon.add(cid); } });
-      this.log(`🪦 ${elim.name} asıldı`);
+      this.log(`🪦 ${elim.name} asıldı (${max} oy)`);
     }
     this.phase = PHASES.VOTE_RESULT;
     return result;
@@ -1173,42 +1207,39 @@ class GameEngine {
     const masums = al.filter(p => p.actualTeam === TEAMS.MASUM);
     const tarafsizlar = al.filter(p => p.actualTeam === TEAMS.TARAFSIZ);
     const sk = al.find(p => p.role === 'seri_katil');
+    const muhtar = al.find(p => p.role === 'muhtar');
 
-    // Seri Katil son 1 kalırsa kazanır (son 2'de değil — muhtar/oylama şansı tanı)
+    // Seri Katil son 1 kalırsa kazanır
     if (al.length === 1 && sk) {
       return { over: true, winner: 'seri_katil', msg: '🔪 Seri Katil son kişi olarak kazandı!' };
     }
 
-    // Yamyam dual win: oyun bittikten sonra "yamyam ne yaptıysa kazanır" mantığı
-    // Yamyam tarafsız ama "hainlerle de masumlarla da" kazanabilir.
-    // Hangi takım kazanırsa, yamyam da o takımla beraber kazansın diye getWinners'da elle ekleyeceğiz.
+    // Seri Katil son 2'de: eğer karşısı Muhtar ise → oyun devam (oylama şansı, muhtarın 2 oyu var)
+    // Karşısı muhtar değilse → SK kazanır (oylama eşit oy ile berabere → kimse asılmaz → SK öldürür)
+    if (al.length === 2 && sk) {
+      if (muhtar) {
+        return { over: false }; // muhtarla oylama şansı var
+      }
+      return { over: true, winner: 'seri_katil', msg: '🔪 Seri Katil kazandı! Karşı koyacak kimse kalmadı.' };
+    }
 
-    // Hainler yok + SK yok → masumlar kazandı (yamyam masum olmadığı için ayrı)
+    // Hainler yok + SK yok → masumlar kazanır
     if (hains.length === 0 && !sk) {
-      // Eğer hayatta yamyam varsa, masum + yamyam kazanır
       return { over: true, winner: TEAMS.MASUM, msg: '🌅 Masumlar kazandı!' };
     }
 
-    // Masum yok + SK yok → hainler kazandı
+    // Masum yok + SK yok + Hain var → hainler kazanır
     if (masums.length === 0 && !sk && hains.length > 0) {
       return { over: true, winner: TEAMS.HAIN, msg: '🧛 Hainler kazandı!' };
     }
 
-    // Hain >= Masum (SK yokken) → hainler kazandı
-    // Ama tarafsız kalıyorsa (yamyam vs.) ve sayıca dengelenebiliyorsa ihtimal düşür
-    if (!sk && hains.length > 0 && hains.length >= masums.length && masums.length === 0) {
-      return { over: true, winner: TEAMS.HAIN, msg: '🧛 Hainler kazandı!' };
-    }
-
-    // 3'lü stalemate (1H/1M/1T): oyun devam etsin, biri ölene kadar bekle
-    // Buradaki amaç: 1H 1M 1T (sk değil) → over=false
+    // 3'lü stalemate (1H/1M/1T): oyun devam etsin
     if (al.length === 3 && hains.length === 1 && masums.length === 1 && tarafsizlar.length === 1 && !sk) {
       return { over: false };
     }
 
-    // 2 kişi (1 hain 1 masum, SK değil): oyun devam etsin oylama ile çözülsün
-    // Aslında bu durumda hain >= masum → hain kazanır mantığı tetiklenir, ki doğru.
-    if (!sk && hains.length >= masums.length && masums.length > 0) {
+    // Hain >= masum (SK yok): hainler kazanır
+    if (!sk && hains.length > 0 && hains.length >= masums.length && masums.length > 0) {
       return { over: true, winner: TEAMS.HAIN, msg: '🧛 Hainler kazandı!' };
     }
 

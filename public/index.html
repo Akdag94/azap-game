@@ -767,7 +767,15 @@ Hoş geldin, <strong id="WN"></strong>
 
 <script>
 let ytStartSeconds = 0;
-const io2=io();
+const io2=io({
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  randomizationFactor: 0.5,
+  timeout: 20000,
+  transports: ['websocket', 'polling']
+});
 let me,gs,ps,sel1,sel2,selG,voted,nsent,isSpec=false,isDead=false,AM='login',user=null,deathOk=false,lastDead=new Set(),_lastSpec=null;
 let mvpVoted=null;
 const Q=id=>document.getElementById(id);
@@ -775,53 +783,96 @@ const Q=id=>document.getElementById(id);
 // Music state
 let ytPlayer=null, ytReady=false, musicPlaying=false, userMusicPref=true; // user wants music on by default
 
-const RDEF={
-  DOKTOR:{e:'🩺',n:'Doktor',t:'masum',d:'Birini saldırıdan korur. Kendini sadece 1 kez koruyabilir.',
-    full:'Her gece bir kişi seçersin ve o gecelik onu hain saldırısı, seri katil veya şerif kurşunundan korursun. Korunan kişi saldırıya uğradıysa ve kurtardıysan rapor alırsın. Kendini sadece 1 kez koruyabilirsin (tüm oyun boyunca).'},
-  POLIS:{e:'🔦',n:'Polis',t:'masum',d:'Birinin gece rol kullanımını engeller.',
-    full:'Her gece bir kişiyi seçerek o gecelik tüm yetenek kullanımını engellersin. Engellenen kişi yapamaz: ne saldırabilir ne bilgi toplayabilir. Engellediğin kişiye "Polis seni engelledi!" bildirimi gider. Seri katili engelleyemezsin.'},
-  SAVCI:{e:'⚖️',n:'Savcı',t:'masum',d:'Sadece 1 defa birinin rolünü kesin olarak öğrenir.',
-    full:'Oyun boyunca sadece 1 kez kullanabilirsin. Bir kişi seçersin ve o kişinin rolünü ve takımını kesin olarak öğrenirsin. Hain/Hipnotizmacı seni deli yaparsa sahte bilgi alırsın ama hak harcanır.'},
-  MUHTAR:{e:'🏛️',n:'Muhtar',t:'masum',d:'Oyu 2 sayılır. Gece aksiyonu yok.',
-    full:'Gece aksiyonun yok. Asılma oylamalarında oyun 2 sayılır — hain/tarafsız oyunculara karşı güçlü bir tartı. Deli olduğunda oyun rastgele etki eder.'},
-  GAZETECI:{e:'📰',n:'Gazeteci',t:'masum',d:'Birinin rol kullanıp kullanmadığını öğrenir.',
-    full:'Gece bir kişi seçer ve o kişinin rol kullanıp kullanmadığını öğrenirsin. Sonuç: "Rol kullandı" veya "Rol kullanmadı". Pasif roller (Muhtar, Kurban, Dodo, Cellat, Yamyam) her zaman pasif görünür. Seri Katil iz bırakmaz, hep "kullanmadı" çıkar.'},
-  PSIKOLOG:{e:'🧠',n:'Psikolog',t:'masum',d:'Birinin deli olup olmadığını öğrenir.',
-    full:'Gece bir kişi seçersin ve o kişinin deli olup olmadığını öğrenirsin. Hem kalıcı deli (oyun başında atanan) hem geçici deli (Hipnotizmacı etkisi) tespit eder.'},
-  GAZI:{e:'🛡️',n:'Gazi',t:'masum',d:'Bir gece kendini ölümsüz yapar (tek kullanım).',
-    full:'Oyun boyunca 1 kez aktifleştirebilirsin. Aktifleştirdiğin gece hiçbir saldırı seni öldüremez (hain saldırısı, seri katil, şerif kurşunu, bomba — hepsi etkisiz).'},
-  DEDIKODUCU:{e:'🗣️',n:'Dedikocucu',t:'masum',d:'İki kişinin aynı takımda olup olmadığını öğrenir.',
-    full:'Gece iki kişi seçersin ve aynı takımda olup olmadıklarını öğrenirsin: "Aynı takım" veya "Farklı takım". Tarafsızlar kendi başına bir takımdır. Seçtiğin kişilerden biri Polis/Çilingir tarafından engellenmişse yeteneğin başarısız olur.'},
-  AJAN:{e:'🕵️',n:'Ajan',t:'masum',d:'Birinin rolünü 3 seçenek arasından görür.',
-    full:'Gece bir kişi seçersin. Onun gerçek rolü ile birlikte 2 yanlış seçenek alırsın — toplam 3. Doğru olanı bulmak senin işin. Takımlar doğru gösterilir. Oyunda tarafsız hiç yoksa, seçenekler sadece masum/hain rollerinden gelir.'},
-  SERIF:{e:'🤠',n:'Şerif',t:'masum',d:'1 kez birini vurabilir.',
-    full:'Oyun boyunca 1 kez birini vurabilirsin. Hain/tarafsız vurursan kahraman olursun. Masum vurursan o ölür VE sen ertesi gece otomatik intihar edersin. Hedef korumalıysa (Doktor/Çilingir/Gazi) kurşun etkisiz, hak harcanır.'},
-  KURBAN:{e:'🩸',n:'Kurban',t:'masum',d:'Öldürülürse katilinin adını söyler.',
-    full:'Pasif rol — gece aksiyonun yok. Öldürülürsen vasiyet bırakırsın: tüm oyuncular katilini öğrenir. Tek-kill modunda oyu veren hainlerden biri rastgele duyurulur, çoklu-kill modunda direkt katil. Seri Katil öldürdüyse "Bir Seri Katil tarafından öldürüldü" der (ismini vermez).'},
-  CILINGIR:{e:'🔑',n:'Çilingir',t:'masum',d:'Birini evine kilitler: korunur ama yetenek kullanamaz.',
-    full:'Gece bir kişiyi evine kilitlersin. O gece hem yetenek kullanamaz HEM saldırılardan korunur. Polis + Doktor karışımı gibi düşün. Hain kilitlerse öldüremez ama korunur.'},
-  TAKIPCI:{e:'👣',n:'Takipçi',t:'masum',d:'Birini takip eder, kime rol kullandığını öğrenir.',
-    full:'Gece birini takip edersin. O kişinin kime gece aksiyonu yaptığını öğrenirsin: "X, Y kişisine rol kullandı" veya "Hiçbir şey yapmadı". Ne yaptığını söylemez, sadece kime yaptığını. Seri Katil iz bırakmaz, hep "yapmadı" çıkar.'},
-  SUIKASTCI:{e:'🗡️',n:'Suikastçı',t:'hain',d:'Gündüz birinin rolünü tahmin eder. Doğruysa öldürür.',
-    full:'Gündüz (tartışma veya oylama fazında) birini hedef seçip rolünü tahmin edersin. Doğru tahmin → hedef ANINDA ölür. Yanlış tahmin → SEN anında ölürsün. Her tur 1 deneme hakkın var. Gece sadece hain sohbetine katılırsın, kill yapmazsın (kill diğer hainlerin işi).'},
-  HIPNOTIZMACI:{e:'🌀',n:'Hipnotizmacı',t:'hain',d:'Birini o gece deli yapar (geçici).',
-    full:'Gece bir kişi seçersin ve o kişiyi o gecelik deli yaparsın. Hedefin gece aksiyonları sahte sonuç verir, raporu yanlış olur. Geçici delilik 1 gecelik — sonra normale döner. Doktor/Savcı/Psikolog gibi bilgi rollerini yanıltmak için ideal.'},
-  BOMBACI:{e:'💣',n:'Bombacı',t:'hain',d:'Bomba koyar/patlatır. Öldürme yetkisi yok.',
-    full:'Hain takımı içinde özel rol — kill oylamasına katılmazsın. İki ayrı buton: 💣 Bomba Koy ve 💥 Patlat. Bombayı koyduktan sonra biriktirebilirsin (üst üste birden çok kişiye), Patlat dediğinde önceki turlardan kalan TÜM bombaların aynı anda patlar. Aynı gece koyup patlatamazsın.'},
-  GOLGE:{e:'👤',n:'Gölge',t:'hain',d:'Ertesi gün birini susturur.',
-    full:'Gece bir kişi seçersin ve o ertesi gündüz konuşamaz. Sadece sen ve hedef bilir kim susturuldu. Stratejik avantaj: bilgi paylaşacak kişiyi susturmak.'},
-  DODO:{e:'🦤',n:'Dodo',t:'tarafsız',d:'Kendini astırırsa kazanır.',
-    full:'Bağımsız kazanma koşulu: gündüz oylamasında en çok oyu alıp asılırsan, sen TEK BAŞINA kazanırsın, herkes kaybeder. Gece öldürülürsen kazanamazsın. Stratejin: şüpheli davranıp aslana yem olmak.'},
-  SERI_KATIL:{e:'🔪',n:'Seri Katil',t:'tarafsız',d:'Engellenemez, iz bırakmaz, sona kalırsa kazanır.',
-    full:'Her gece dilediğin birini öldürebilirsin (atlama da olur). HİÇBİR şey seni engelleyemez (Polis bile). Gazeteci/Takipçi seni gözlerse "rol kullanmadı" görür. Bağımsız kazanma: son 2 kişi içinde olursan kazanırsın. Hedeflerin korunabilir (Doktor/Gazi/Çilingir).'},
-  CELLAT:{e:'⛓️',n:'Cellat',t:'tarafsız',d:'Otomatik hedefi astırırsa kazanır.',
-    full:'Oyun başında sana rastgele bir masum hedef atanır (sadece sen bilirsin). O hedefi gündüz oylamasında astırtırsan bağımsız kazanırsın. Hedef gece öldürülürse kazanamazsın. Hainlerle/masumlarla geçici işbirliği yapabilirsin.'},
-  YAMYAM:{e:'🍖',n:'Yamyam',t:'tarafsız',d:'Gece ölenlerin rollerini toplar (pasif).',
-    full:'Pasif rol — gece aksiyonun yok. Biri gecede öldüğünde otomatik olarak o kişinin rolünü öğrenirsin ve listesine eklersin. Sadece bilgi toplarsın, yetenek kullanamazsın. Tarafsız takımdasın, masumlarla beraber kazanırsın eğer hainler/SK elenirse.'},
-  DELI:{e:'🤡',n:'Deli',t:'deli',d:'Bir masum rol gibi görünür ama tüm sonuçları sahtedir.',
-    full:'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'}
+const RDEF = {
+  DOKTOR: {
+    e: '🩺', n: 'Doktor', t: 'masum',
+    d: 'Her gece bir kişi seçersin ve o gecelik onu hain saldırısı, seri katil veya şerif kurşunundan korursun. Korunan kişi saldırıya uğradıysa ve kurtardıysan rapor alırsın. Kendini sadece 1 kez koruyabilirsin (tüm oyun boyunca).'
+  },
+  POLIS: {
+    e: '🔦', n: 'Polis', t: 'masum',
+    d: 'Her gece bir kişiyi seçerek o gecelik tüm yetenek kullanımını engellersin. Engellenen kişi yapamaz: ne saldırabilir ne bilgi toplayabilir. Engellediğin kişiye "Polis seni engelledi!" bildirimi gider. Seri katili engelleyemezsin.'
+  },
+  SAVCI: {
+    e: '⚖️', n: 'Savcı', t: 'masum',
+    d: 'Oyun boyunca sadece 1 kez kullanabilirsin. Bir kişi seçersin ve o kişinin rolünü ve takımını kesin olarak öğrenirsin. Hain/Hipnotizmacı seni deli yaparsa sahte bilgi alırsın ama hak harcanır.'
+  },
+  MUHTAR: {
+    e: '🏛️', n: 'Muhtar', t: 'masum',
+    d: 'Gece aksiyonun yok. Asılma oylamalarında oyun 2 sayılır — hain/tarafsız oyunculara karşı güçlü bir tartı. Deli olduğunda oyun rastgele etki eder.'
+  },
+  GAZETECI: {
+    e: '📰', n: 'Gazeteci', t: 'masum',
+    d: 'Gece bir kişi seçer ve o kişinin rol kullanıp kullanmadığını öğrenirsin. Sonuç: "Rol kullandı" veya "Rol kullanmadı". Pasif roller (Muhtar, Kurban, Dodo, Cellat, Yamyam) her zaman pasif görünür. Seri Katil iz bırakmaz, hep "kullanmadı" çıkar.'
+  },
+  PSIKOLOG: {
+    e: '🧠', n: 'Psikolog', t: 'masum',
+    d: 'Gece bir kişi seçersin ve o kişinin deli olup olmadığını öğrenirsin. Hem kalıcı deli (oyun başında atanan) hem geçici deli (Hipnotizmacı etkisi) tespit eder.'
+  },
+  GAZI: {
+    e: '🛡️', n: 'Gazi', t: 'masum',
+    d: 'Oyun boyunca 1 kez aktifleştirebilirsin. Aktifleştirdiğin gece hiçbir saldırı seni öldüremez (hain saldırısı, seri katil, şerif kurşunu, bomba — hepsi etkisiz).'
+  },
+  DEDIKODUCU: {
+    e: '🗣️', n: 'Dedikoducu', t: 'masum',
+    d: 'Gece iki kişi seçersin ve aynı takımda olup olmadıklarını öğrenirsin: "Aynı takım" veya "Farklı takım". Tarafsızlar kendi başına bir takımdır. Seçtiğin kişilerden biri Polis/Çilingir tarafından engellenmişse yeteneğin başarısız olur.'
+  },
+  AJAN: {
+    e: '🕵️', n: 'Ajan', t: 'masum',
+    d: 'Gece bir kişi seçersin. Onun gerçek rolü ile birlikte 2 yanlış seçenek alırsın — toplam 3. Doğru olanı bulmak senin işin. Takımlar doğru gösterilir. Oyunda tarafsız hiç yoksa, seçenekler sadece masum/hain rollerinden gelir.'
+  },
+  SERIF: {
+    e: '🤠', n: 'Şerif', t: 'masum',
+    d: 'Oyun boyunca 1 kez birini vurabilirsin. Hain/tarafsız vurursan kahraman olursun. Masum vurursan o ölür VE sen ertesi gece otomatik intihar edersin. Hedef korumalıysa (Doktor/Çilingir/Gazi) kurşun etkisiz, hak harcanır.'
+  },
+  KURBAN: {
+    e: '🩸', n: 'Kurban', t: 'masum',
+    d: 'Pasif rol — gece aksiyonun yok. Öldürülürsen vasiyet bırakırsın: tüm oyuncular katilini öğrenir. Tek-kill modunda oyu veren hainlerden biri rastgele duyurulur, çoklu-kill modunda direkt katil. Seri Katil öldürdüyse "Bir Seri Katil tarafından öldürüldü" der (ismini vermez).'
+  },
+  CILINGIR: {
+    e: '🔑', n: 'Çilingir', t: 'masum',
+    d: 'Gece bir kişiyi evine kilitlersin. O gece hem yetenek kullanamaz HEM saldırılardan korunur. Polis + Doktor karışımı gibi düşün. Hain kilitlerse öldüremez ama korunur.'
+  },
+  TAKIPCI: {
+    e: '👣', n: 'Takipçi', t: 'masum',
+    d: 'Gece birini takip edersin. O kişinin kime gece aksiyonu yaptığını öğrenirsin: "X, Y kişisine rol kullandı" veya "Hiçbir şey yapmadı". Ne yaptığını söylemez, sadece kime yaptığını. Seri Katil iz bırakmaz, hep "yapmadı" çıkar.'
+  },
+  SUIKASTCI: {
+    e: '🗡️', n: 'Suikastçı', t: 'hain',
+    d: 'Gündüz (tartışma veya oylama fazında) birini hedef seçip rolünü tahmin edersin. Doğru tahmin → hedef ANINDA ölür. Yanlış tahmin → SEN anında ölürsün. Her tur 1 deneme hakkın var. Gece sadece hain sohbetine katılırsın, kill yapmazsın (kill diğer hainlerin işi).'
+  },
+  HIPNOTIZMACI: {
+    e: '🌀', n: 'Hipnotizmacı', t: 'hain',
+    d: 'Gece bir kişi seçersin ve o kişiyi o gecelik deli yaparsın. Hedefin gece aksiyonları sahte sonuç verir, raporu yanlış olur. Geçici delilik 1 gecelik — sonra normale döner. Doktor/Savcı/Psikolog gibi bilgi rollerini yanıltmak için ideal.'
+  },
+  BOMBACI: {
+    e: '💣', n: 'Bombacı', t: 'hain',
+    d: 'Hain takımı içinde özel rol — kill oylamasına katılmazsın. İki ayrı buton: 💣 Bomba Koy ve 💥 Patlat. Bombayı koyduktan sonra biriktirebilirsin (üst üste birden çok kişiye), Patlat dediğinde önceki turlardan kalan TÜM bombaların aynı anda patlar. Aynı gece koyup patlatamazsın.'
+  },
+  GOLGE: {
+    e: '👤', n: 'Gölge', t: 'hain',
+    d: 'Gece bir kişi seçersin ve o ertesi gündüz konuşamaz. Sadece sen ve hedef bilir kim susturuldu. Stratejik avantaj: bilgi paylaşacak kişiyi susturmak.'
+  },
+  DODO: {
+    e: '🦤', n: 'Dodo', t: 'tarafsız',
+    d: 'Bağımsız kazanma koşulu: gündüz oylamasında en çok oyu alıp asılırsan, sen TEK BAŞINA kazanırsın, herkes kaybeder. Gece öldürülürsen kazanamazsın. Stratejin: şüpheli davranıp aslana yem olmak.'
+  },
+  SERI_KATIL: {
+    e: '🔪', n: 'Seri Katil', t: 'tarafsız',
+    d: 'Her gece dilediğin birini öldürebilirsin (atlama da olur). HİÇBİR şey seni engelleyemez (Polis bile). Gazeteci/Takipçi seni gözlerse "rol kullanmadı" görür. Bağımsız kazanma: son 2 kişi içinde olursan kazanırsın. Hedeflerin korunabilir (Doktor/Gazi/Çilingir).'
+  },
+  CELLAT: {
+    e: '⛓️', n: 'Cellat', t: 'tarafsız',
+    d: 'Oyun başında sana rastgele bir masum hedef atanır (sadece sen bilirsin). O hedefi gündüz oylamasında astırtırsan bağımsız kazanırsın. Hedef gece öldürülürse kazanamazsın. Hainlerle/masumlarla geçici işbirliği yapabilirsin.'
+  },
+  YAMYAM: {
+    e: '🍖', n: 'Yamyam', t: 'tarafsız',
+    d: 'Pasif rol — gece aksiyonun yok. Biri gecede öldüğünde otomatik olarak o kişinin rolünü öğrenirsin ve listesine eklersin. Sadece bilgi toplarsın, yetenek kullanamazsın. Tarafsız takımdasın, masumlarla beraber kazanırsın eğer hainler/SK elenirse.'
+  },
+  DELI: {
+    e: '🤡', n: 'Deli', t: 'deli',
+    d: 'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'
+  }
 };
-
 // id -> emoji+name lookup
 const ID_MAP={};
 Object.entries(RDEF).forEach(([k,v])=>{
@@ -923,7 +974,11 @@ function updateMusicUI(){
 }
 function applyMusicForCurrentScreen(){
   if(!userMusicPref) return;
-  if(shouldPlayMusic()){ startMusic(); }
+  const should = shouldPlayMusic();
+  // Sadece durum değiştiyse harekete geç (gereksiz YouTube API çağrılarını önle)
+  if(should === window._lastMusicState) return;
+  window._lastMusicState = should;
+  if(should){ startMusic(); }
   else { stopMusic(); }
 }
 
@@ -954,8 +1009,6 @@ function doAuth(){
       setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); tryStartMusicNow(); setupDraggableButtons(); }, 300);
       setTimeout(()=>tryStartMusicNow(), 1500);
       setTimeout(()=>tryStartMusicNow(), 3000);
-      // Sürükleme ipucu (sadece ilk giriş)
-      
       updateRoleInfoBtn();
     }else toast(r.error,1);
   });
@@ -1184,12 +1237,16 @@ function uSet(){
   const hkm=document.querySelector('input[name=hkm]:checked')?.value||'multi';
   const rsm=document.querySelector('input[name=rsm]:checked')?.value||'auto';
   const er=[...document.querySelectorAll('.rchip.on')].map(c=>c.dataset.key);
-  io2.emit('settings',{
-    enabledRoles:er,insanityRate:+ins,
-    config:{nightDuration:+ni,discussionDuration:+di,votingDuration:+vo},
-    hainKillMode:hkm,roleSelectionMode:rsm,
-    manualCounts:mc,hainCount:mc?+Q('HC2').value:undefined,tarafsizCount:mc?+Q('TC2').value:undefined
-  });
+  // Debounce: slider sürüklenirken sürekli emit yapılmasın, son değer 200ms sonra gönderilsin
+  if(window._uSetTimer)clearTimeout(window._uSetTimer);
+  window._uSetTimer=setTimeout(()=>{
+    io2.emit('settings',{
+      enabledRoles:er,insanityRate:+ins,
+      config:{nightDuration:+ni,discussionDuration:+di,votingDuration:+vo},
+      hainKillMode:hkm,roleSelectionMode:rsm,
+      manualCounts:mc,hainCount:mc?+Q('HC2').value:undefined,tarafsizCount:mc?+Q('TC2').value:undefined
+    });
+  },200);
 }
 
 // ── ROLE SELECTION (PICK MODE) ──
@@ -1401,9 +1458,11 @@ function conf(type){
   else if(r==='seri_katil'){a={action:'kill',targetId:sel1};}
   else a={targetId:sel1};
   io2.emit('nightAction',a,r2=>{
-    if(r2.ok){
+    if(r2?.ok){
       if(!isHain){nsent=true;document.querySelectorAll('.abtn .b,#BSA').forEach(b=>{b.disabled=true;b.textContent='✓';});}
       else{toast('Aksiyon güncellendi!');}
+    } else if(r2 && r2.ok===false){
+      toast(r2.err||'Aksiyon reddedildi.',1);
     }
   });
 }
@@ -2199,7 +2258,7 @@ function openSuikastModal(){
   });
   const roles=[['doktor','Doktor','🩺'],['polis','Polis','🔦'],['savci','Savcı','⚖️'],
     ['muhtar','Muhtar','🏛️'],['gazeteci','Gazeteci','📰'],['psikolog','Psikolog','🧠'],['gazi','Gazi','🛡️'],
-    ['dedikoducu','Dedikocucu','🗣️'],['ajan','Ajan','🕵️'],['serif','Şerif','🤠'],['kurban','Kurban','🩸'],
+    ['dedikoducu','Dedikoducu','🗣️'],['ajan','Ajan','🕵️'],['serif','Şerif','🤠'],['kurban','Kurban','🩸'],
     ['cilingir','Çilingir','🔑'],['takipci','Takipçi','👣']];
   Q('SUIKAST_ROLES').innerHTML=roles.map(([id,n,e])=>`<div class="rgb" data-rid="${id}" onclick="selSuikastRole('${id}')">${e} ${n}</div>`).join('');
   Q('SUIKAST_DO_BTN').disabled=true;
@@ -2468,11 +2527,55 @@ function setupDraggableButtons(){
   });
 }
 
+// Sekme arkaya atılıp geri gelince bağlantı durumunu kontrol et
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (!io2.connected) {
+      console.log('[visibility] Sekme aktif, bağlantı yok — yeniden bağlanılıyor');
+      io2.connect();
+    } else {
+      // Bağlantı varsa ama state eski olabilir — token ile yenile
+      let token = null;
+      try{ token = localStorage.getItem('azap_token'); }catch{}
+      if(token && user){
+        io2.emit('auth:loginByToken',{token},()=>{});
+      }
+    }
+  }
+});
+
 // ── SOCKET ──
 io2.on('connect',()=>{
   me=io2.id;
-  // Sayfa yüklendiğinde token varsa otomatik giriş
-  if(!user)tryAutoLogin();
+  // HER bağlantıda (ilk + reconnect) token varsa server'da authed map'e kayıt ettir
+  // Aksi halde room:create gibi auth gerektiren işlemler başarısız olur
+  let token = null;
+  try{ token = localStorage.getItem('azap_token'); }catch{}
+  if(token){
+    io2.emit('auth:loginByToken',{token},r=>{
+      if(r?.success){
+        if(!user){
+          // İlk yükleme — UI'yı kur
+          user = r.user;
+          updateUserUI();
+          userMusicPref = true;
+          loadYouTubeAPI();
+          setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); setupDraggableButtons(); }, 300);
+          updateRoleInfoBtn();
+        }
+        // user zaten doluysa sadece sunucu authed map'i tazelendi (sessizce)
+      } else {
+        // Token geçersiz - sil ve user'ı sıfırla
+        try{ localStorage.removeItem('azap_token'); }catch{}
+        if(user){
+          user = null;
+          updateUserUI();
+          show('S0');
+          toast('Oturumun sona erdi, tekrar giriş yap.',1);
+        }
+      }
+    });
+  }
   // Sürüklenebilir butonları kur (DOM hazır olduktan sonra)
   setTimeout(setupDraggableButtons, 100);
 });
@@ -2533,10 +2636,14 @@ io2.on('state',s=>{
   if(s.phase==='voting'&&phaseChanged)renderVote();
   if(s.phase==='mvp_vote'&&phaseChanged)renderMV();
   if(s.phase==='mvp_result' && s.mvpResult)renderMvpResult(s.mvpResult);
-  // Suikast butonu her state güncellemesinde kontrol edilsin
-  updateSuikastFloatingBtn();updateRoleInfoBtn();
-  Q('HT').classList.toggle('sh',['night','morning_report','day_discussion','voting','vote_result'].includes(s.phase));
-  applyMusicForCurrentScreen();
+  // Suikast butonu her state güncellemesinde kontrol edilsin (suikastUsedThisRound değişebilir)
+  updateSuikastFloatingBtn();
+  // Bu işlemler sadece phase değişiminde gereklidir — gereksiz DOM mutasyonu önlemek için
+  if(phaseChanged){
+    updateRoleInfoBtn();
+    Q('HT').classList.toggle('sh',['night','morning_report','day_discussion','voting','vote_result'].includes(s.phase));
+    applyMusicForCurrentScreen();
+  }
 });
 
 // Gündüz oyuncu listesini sadece güncelle (re-render olmadan)
@@ -2688,7 +2795,35 @@ io2.on('suikastPrivate',(res)=>{
   }
 });
 
-io2.on('disconnect',()=>toast('Bağlantı koptu!',1));
+io2.on('disconnect',(reason)=>{
+  // Sadece kalıcı kopuş durumlarında bildir (geçici disconnect'lerde sessiz kal)
+  // 'transport close', 'ping timeout' otomatik yeniden bağlanır - bildirim verme
+  console.log('[socket] disconnect:', reason);
+  if(reason==='io server disconnect'){
+    // Sunucu kasıtlı kapattı
+    toast('Sunucudan ayrıldın.',1);
+  }
+});
+
+io2.on('reconnect_attempt',(n)=>{
+  if(n>2)Q('TN').textContent='⟳ bağlanıyor...';
+});
+
+io2.on('reconnect',()=>{
+  toast('Bağlantı kuruldu!');
+  // Yeniden bağlandıktan sonra token varsa otomatik giriş dene
+  if(!user)tryAutoLogin();
+});
+
+io2.on('connect_error',(err)=>{
+  console.log('[socket] connect_error:', err.message);
+});
+
+io2.on('forceLogout',({reason})=>{
+  toast(reason||'Oturumun başka bir cihazda açıldı.',1);
+  try{ localStorage.removeItem('azap_token'); }catch{}
+  setTimeout(()=>location.reload(),2500);
+});
 
 Q('IC').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'')});
 Q('AU').addEventListener('keypress',e=>{if(e.key==='Enter')Q('AP').focus()});
