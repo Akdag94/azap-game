@@ -3,7 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>AZAP</title>
+<meta name="theme-color" content="#c0392b">
+<meta name="description" content="AZAP - Türkçe sosyal dedüksiyon oyunu. 33 farklı rolle hain bul, masum kal. Mobil ve web'de oynanabilir.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AZAP">
+<!-- Open Graph (sosyal paylaşım) -->
+<meta property="og:title" content="AZAP - Sosyal Dedüksiyon">
+<meta property="og:description" content="Türkçe sosyal dedüksiyon oyunu. Hain bul, masum kal.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/favicon.svg">
+<title>AZAP - Sosyal Dedüksiyon</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
 <style>
@@ -21,14 +34,18 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden}
-body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:var(--txt);transition:background .8s,color .6s}
+body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:var(--txt);transition:background .8s,color .6s;position:relative}
+/* Subtle modern radial gradient — gece teması daha derin görünür */
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(192,57,43,.04),transparent 60%),radial-gradient(ellipse 80% 60% at 50% 100%,rgba(94,58,135,.03),transparent 60%);pointer-events:none;z-index:0;transition:opacity .8s}
+body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,134,11,.06),transparent 60%),radial-gradient(ellipse 80% 60% at 50% 100%,rgba(212,196,160,.04),transparent 60%)}
 .app{max-width:460px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;padding:0 14px;position:relative;z-index:1}
 .scr{display:none;flex-direction:column;flex:1;overflow:hidden}
 .scr.on{display:flex}
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px}
 
 .hdr{text-align:center;padding:12px 0 6px;flex-shrink:0;position:relative}
-.logo{font-family:'Cinzel Decorative',serif;font-size:2.4rem;font-weight:900;color:var(--acc);text-shadow:0 0 30px var(--accG),0 2px 4px rgba(0,0,0,.6);letter-spacing:9px}
+.logo{font-family:'Cinzel Decorative',serif;font-size:2.4rem;font-weight:900;color:var(--acc);text-shadow:0 0 30px var(--accG),0 2px 4px rgba(0,0,0,.6);letter-spacing:9px;animation:logoBreath 4s ease-in-out infinite}
+@keyframes logoBreath{0%,100%{text-shadow:0 0 30px var(--accG),0 2px 4px rgba(0,0,0,.6)}50%{text-shadow:0 0 40px var(--accG),0 0 60px var(--accG),0 2px 4px rgba(0,0,0,.6)}}
 .logo-s{font-size:.65rem;color:var(--dim);letter-spacing:6px;text-transform:uppercase}
 .signature{position:absolute;bottom:-2px;right:6px;font-size:.55rem;color:var(--dim);font-family:'Fira Code',monospace;letter-spacing:1px;opacity:.6}
 
@@ -37,7 +54,9 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 .tab-btn:hover{border-color:var(--acc)}
 .tab-btn.music-on{border-color:var(--gold);color:var(--gold)}
 
-.b{font-family:'Cinzel Decorative',serif;font-weight:700;border:none;padding:11px 20px;border-radius:3px;cursor:pointer;font-size:.82rem;letter-spacing:2px;text-transform:uppercase;transition:all .3s}
+.b{font-family:'Cinzel Decorative',serif;font-weight:700;border:none;padding:11px 20px;border-radius:5px;cursor:pointer;font-size:.82rem;letter-spacing:2px;text-transform:uppercase;transition:all .25s;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.b:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.25)}
+.b:active{transform:translateY(0);box-shadow:0 1px 2px rgba(0,0,0,.15)}
 .b1{background:linear-gradient(135deg,var(--acc),var(--accL));color:#f5f0e8;box-shadow:0 0 14px var(--accG)}
 .b1:hover{transform:translateY(-1px);box-shadow:0 0 20px var(--accG)}
 .b2{background:transparent;color:var(--txt);border:1px solid var(--brd)}
@@ -45,7 +64,8 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 .bw{width:100%}.bs{padding:6px 11px;font-size:.7rem;letter-spacing:1px}
 .b:disabled{opacity:.3;cursor:not-allowed;transform:none!important}
 
-.inp{font-family:'Cormorant Garamond',serif;background:var(--bg2);border:1px solid var(--brd);color:var(--txt);padding:10px 13px;font-size:.95rem;border-radius:3px;width:100%;transition:border-color .3s}
+.inp{font-family:'Cormorant Garamond',serif;background:var(--bg2);border:1px solid var(--brd);color:var(--txt);padding:11px 14px;font-size:.95rem;border-radius:6px;width:100%;transition:all .2s}
+.inp:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 2px var(--accG)}
 .inp:focus{outline:none;border-color:var(--acc);box-shadow:0 0 5px var(--accG)}
 .inp::placeholder{color:var(--dim);opacity:.5}
 
@@ -83,7 +103,8 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 .rlbl{font-size:.65rem;color:var(--dim);letter-spacing:4px;text-transform:uppercase}
 
 .pl{list-style:none;display:flex;flex-direction:column;gap:5px;margin-top:10px}
-.pi{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg2);border-radius:4px;font-size:.88rem;border:1px solid rgba(255,255,255,.02)}
+.pi{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg2);border-radius:6px;font-size:.88rem;border:1px solid rgba(255,255,255,.04);transition:all .2s}
+.pi:hover{border-color:rgba(255,255,255,.08)}
 .pi.dead{opacity:.3;text-decoration:line-through}
 .pi.president{border-color:var(--hi);background:rgba(201,169,110,.05)}
 .pi-name{flex:1;display:flex;align-items:center;gap:5px;min-width:0}
@@ -95,8 +116,8 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 .heart{color:#ff5577}
 
 .sbox{margin-top:10px;padding:11px;background:var(--bg3);border-radius:6px;border:1px solid var(--brd)}
-.st{font-family:'Cinzel Decorative',serif;font-size:.78rem;margin-bottom:7px;color:var(--acc);letter-spacing:2px}
-.srow{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:.8rem}
+.st{font-family:'Cinzel Decorative',serif;font-size:.78rem;margin-bottom:8px;margin-top:2px;color:var(--acc);letter-spacing:2px}
+.srow{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:.8rem}
 .srow input[type=range]{flex:1;accent-color:var(--acc)}
 .sval{font-family:'Fira Code',monospace;color:var(--accL);min-width:42px;text-align:right;font-size:.78rem}
 .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:140px;overflow-y:auto}
@@ -124,7 +145,7 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 .pb .ps{color:var(--dim);font-size:.78rem;margin-top:1px}
 
 .tl{display:flex;flex-direction:column;gap:5px}
-.tb{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--bg2);border:1px solid var(--brd);border-radius:4px;color:var(--txt);cursor:pointer;font-family:'Cormorant Garamond',serif;font-size:.88rem;transition:all .2s}
+.tb{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);cursor:pointer;font-family:'Cormorant Garamond',serif;font-size:.88rem;transition:all .2s}
 .tb:hover{border-color:var(--acc);background:rgba(139,0,0,.05)}
 .tb.sel{border-color:var(--accL);background:rgba(139,0,0,.1);box-shadow:0 0 8px var(--accG)}
 .tb-name{flex:1;display:flex;align-items:center;gap:5px;min-width:0}
@@ -266,10 +287,11 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 
 .mdl-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;display:none;align-items:center;justify-content:center;padding:14px}
 .mdl-bg.sh{display:flex}
-.mdl{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:16px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto}
+.mdl{background:var(--bg);border:1px solid var(--brd);border-radius:12px;padding:18px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.2)}
 .mdl-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .mdl-h h2{font-family:'Cinzel Decorative',serif;font-size:1rem;letter-spacing:2px;color:var(--acc)}
-.mdl-cl{background:none;border:none;color:var(--dim);font-size:1.4rem;cursor:pointer}
+.mdl-cl{background:none;border:none;color:var(--dim);font-size:1.4rem;cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.mdl-cl:hover{background:rgba(255,255,255,.06);color:var(--txt)}
 
 .role-guide-item{padding:10px;background:var(--bg2);border:1px solid var(--brd);border-radius:5px;margin-bottom:6px;border-left:3px solid var(--acc)}
 .role-guide-item.team-masum{border-left-color:var(--masum)}
@@ -359,10 +381,119 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 .entry-footer{text-align:center;padding:6px 0;color:var(--dim);font-family:'Fira Code',monospace;font-size:.6rem;letter-spacing:2px;flex-shrink:0}
 
 /* Music player */
-.music-player{position:fixed;bottom:14px;right:14px;z-index:90;display:none;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--gold);border-radius:20px;padding:5px 10px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-size:.7rem;color:var(--gold)}
-.music-player.sh{display:flex}
-.music-toggle{background:none;border:none;color:var(--gold);cursor:pointer;font-size:.95rem;padding:0 4px}
-.yt-hidden{position:absolute;top:-9999px;left:-9999px;width:1px;height:1px;visibility:hidden}
+.music-player,.music-toggle,.yt-hidden,.tab-btn.music-on{display:none}
+
+/* ════════════ MODERN UI MODU ════════════ */
+/* body.modern-ui aktifken: oyuncu listeleri 2-sütunlu grid kart şeklinde */
+body.modern-ui .pl{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;list-style:none;margin-top:10px}
+body.modern-ui .pi{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:16px 8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1px solid var(--brd);border-radius:8px;font-size:.85rem;min-height:150px;justify-content:center;position:relative;transition:all .2s}
+body.modern-ui .pi .av{width:78px !important;height:78px !important;font-size:2.2rem !important;border-radius:14px !important}
+body.modern-ui .pi .pi-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
+body.modern-ui .pi .pi-name span:first-child{font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body.modern-ui .pi.dead{opacity:.4;filter:grayscale(.7)}
+body.modern-ui .pi.president{border-color:var(--gold);box-shadow:0 0 8px rgba(255,215,0,.3)}
+body.modern-ui .pi .crown{position:absolute;top:6px;right:8px}
+body.modern-ui .pi .badge{font-size:.6rem;padding:1px 5px}
+body.modern-ui .pi .wins-badge{font-size:.7rem;color:var(--dim);position:absolute;bottom:5px;left:0;right:0;text-align:center}
+
+/* Gece hedef seçimi (.tb): kart grid */
+body.modern-ui #NTL{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+body.modern-ui .tb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:16px 8px;min-height:150px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3))}
+body.modern-ui .tb .av{width:78px !important;height:78px !important;font-size:2.2rem !important;border-radius:14px !important;margin-bottom:8px}
+body.modern-ui .tb .tb-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
+body.modern-ui .tb .tb-name span:first-child{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body.modern-ui .tb.sel{border-color:var(--hi);box-shadow:0 0 12px rgba(255,255,255,.15);transform:scale(1.03)}
+
+/* Oylama (.vb): kart grid */
+body.modern-ui #VG,body.modern-ui #PV_GRID,body.modern-ui #MV_GRID{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+body.modern-ui .vb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:16px 8px;min-height:170px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1.5px solid var(--brd)}
+body.modern-ui .vb .av{width:78px !important;height:78px !important;font-size:2.2rem !important;border-radius:14px !important;margin-bottom:8px}
+body.modern-ui .vb .vb-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
+body.modern-ui .vb .vb-name span:first-child{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body.modern-ui .vb .vc{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.4);padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.2)}
+body.modern-ui .vb .tk{position:absolute;bottom:6px;right:8px;font-size:.7rem;color:var(--safe);opacity:0;transition:opacity .2s}
+body.modern-ui .vb.vd .tk{opacity:1}
+body.modern-ui .vb.vd{border-color:var(--hi);box-shadow:0 0 12px rgba(255,255,255,.2);background:linear-gradient(180deg,var(--hiG),var(--bg3))}
+body.modern-ui .vb .crown{position:absolute;top:6px;left:8px}
+/* GÜNDÜZ TEMASINDA modern UI kartlar için kontrast - gündüz kartlar çok açık olduğundan */
+body.day.modern-ui .vb{background:linear-gradient(180deg,#fff8e8,#f4ead0);border:1.5px solid #c4a877;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+body.day.modern-ui .vb.vd{border-color:var(--hi);background:linear-gradient(180deg,#ffefb8,#f9e4a3);box-shadow:0 0 14px rgba(184,134,11,.35)}
+body.day.modern-ui .vb .vc{background:rgba(184,134,11,.85);color:#fff;border:1px solid #b8860b}
+body.day.modern-ui .vb .tk{color:#1e7c3f;font-weight:700}
+body.day.modern-ui .pi{background:linear-gradient(180deg,#fff8e8,#f4ead0);border:1.5px solid #c4a877}
+body.day.modern-ui .pi.president{border-color:var(--gold);background:linear-gradient(180deg,#fff5d4,#fde9a8);box-shadow:0 0 12px rgba(255,215,0,.4)}
+body.day.modern-ui .tb{background:linear-gradient(180deg,#fff8e8,#f4ead0);border:1.5px solid #c4a877}
+body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180deg,#ffefb8,#f9e4a3);box-shadow:0 0 14px rgba(184,134,11,.4)}
+
+/* UI seçim radio'ları (profil modalı) */
+.ui-mode-row{display:flex;gap:8px;margin-top:6px}
+.ui-mode-row label{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 4px;background:var(--bg2);border:1px solid var(--brd);border-radius:5px;cursor:pointer;font-size:.78rem;text-align:center;transition:all .15s}
+.ui-mode-row label.active{background:rgba(255,255,255,.06);border-color:var(--hi);color:var(--hi)}
+.ui-mode-row input[type=radio]{display:none}
+.shop-cat-btn{flex:1;padding:6px 8px;background:var(--bg2);border:1px solid var(--brd);color:var(--dim);font-size:.74rem;cursor:pointer;border-radius:4px;transition:all .15s}
+.shop-cat-btn.active{background:rgba(255,215,0,.1);border-color:var(--gold);color:var(--gold)}
+/* Mağaza üst banner */
+.shop-status{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:10px;background:linear-gradient(135deg,rgba(255,215,0,.06),rgba(184,134,11,.04));border:1px solid rgba(255,215,0,.2);border-radius:6px}
+.shop-balance{display:flex;flex-direction:column;gap:2px}
+.shop-premium{display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:4px 10px;background:rgba(187,143,206,.1);border:1px solid rgba(187,143,206,.3);border-radius:5px}
+/* Sekmeler */
+.shop-tabs{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.shop-tab{flex:1;min-width:75px;padding:8px 4px;background:var(--bg2);border:1px solid var(--brd);color:var(--dim);font-size:.74rem;cursor:pointer;border-radius:5px;transition:all .15s;white-space:nowrap}
+.shop-tab.active{background:rgba(255,215,0,.08);border-color:var(--gold);color:var(--gold);font-weight:600}
+.shop-pane{animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* Paket kartları */
+.shop-pkg{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--brd);border-radius:6px;margin-bottom:6px;transition:all .15s}
+.shop-pkg:hover{border-color:var(--hi);background:var(--bg3)}
+.shop-pkg-emoji{font-size:1.8rem;flex-shrink:0}
+.shop-pkg-info{flex:1;min-width:0}
+.shop-pkg-label{font-weight:600;font-size:.88rem;color:var(--txt)}
+.shop-pkg-bonus{font-size:.7rem;color:var(--safe);margin-top:1px}
+.shop-pkg-price{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.shop-pkg-price strong{color:var(--gold);font-size:.95rem;font-weight:700}
+.shop-pkg-buy{padding:5px 10px;background:linear-gradient(135deg,#1e7c3f,#155a2c);color:#fff;border:none;border-radius:4px;font-size:.74rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.shop-pkg-buy:hover{filter:brightness(1.1)}
+.shop-pkg-buy.premium-buy{background:linear-gradient(135deg,#8e44ad,#5e3a87)}
+.shop-pkg-buy.donate-buy{background:linear-gradient(135deg,#e91e63,#ad1457)}
+/* Bağış preset */
+.donate-preset{padding:10px 4px;background:var(--bg2);border:1px solid var(--brd);border-radius:5px;cursor:pointer;text-align:center;font-weight:600;color:var(--txt);transition:all .15s;font-size:.85rem}
+.donate-preset:hover{background:rgba(233,30,99,.1);border-color:#e91e63;color:#e91e63}
+
+/* SABOTAJ MİNİ OYUN OVERLAY */
+.sabo-overlay{position:fixed;inset:0;background:rgba(20,5,5,.95);backdrop-filter:blur(8px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;animation:saboFade .3s}
+.sabo-overlay.sh{display:flex}
+@keyframes saboFade{from{opacity:0}to{opacity:1}}
+.sabo-content{background:var(--bg2);border:2px solid var(--hain);border-radius:12px;padding:20px;max-width:420px;width:100%;box-shadow:0 0 60px rgba(192,57,43,.4)}
+.sabo-header{text-align:center;margin-bottom:16px}
+.sabo-icon{font-size:3rem;animation:saboPulse 1.2s ease-in-out infinite}
+@keyframes saboPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.sabo-title{font-family:'Cinzel Decorative',serif;font-size:1.6rem;color:var(--hain);letter-spacing:4px;margin:6px 0;font-weight:900}
+.sabo-sub{font-size:.85rem;color:var(--dim)}
+
+/* XOX */
+.xox-board{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px auto;max-width:280px}
+.xox-cell{aspect-ratio:1;background:var(--bg3);border:1px solid var(--brd);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:2.4rem;cursor:pointer;font-weight:700;transition:all .15s}
+.xox-cell:hover:not(.taken){background:rgba(255,255,255,.08);border-color:var(--acc)}
+.xox-cell.taken{cursor:default}
+.xox-cell.x{color:#3498db}
+.xox-cell.o{color:var(--hain)}
+.xox-status{text-align:center;font-size:.95rem;color:var(--hi);margin:8px 0;font-weight:600}
+
+/* Taş Kağıt Makas */
+.rps-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.rps-btn{aspect-ratio:1;background:var(--bg3);border:2px solid var(--brd);border-radius:10px;font-size:2.5rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.rps-btn:hover{border-color:var(--acc);transform:scale(1.04)}
+.rps-result{text-align:center;font-size:1.05rem;margin-top:10px;font-weight:600}
+.rps-vs{display:flex;align-items:center;justify-content:center;gap:14px;margin:14px 0;font-size:2.5rem}
+.rps-vs .vs{font-size:1rem;color:var(--dim);font-weight:700;letter-spacing:2px}
+
+/* Renk Yaz */
+.cw-display{text-align:center;padding:24px;font-size:3rem;font-weight:900;font-family:Arial,sans-serif;letter-spacing:3px;margin:14px 0;border-radius:8px;background:rgba(0,0,0,.3)}
+.cw-options{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.cw-opt{padding:14px;background:var(--bg3);border:1px solid var(--brd);border-radius:6px;cursor:pointer;font-weight:700;font-size:.95rem;transition:all .15s;font-family:Arial,sans-serif}
+.cw-opt:hover{border-color:var(--acc);transform:scale(1.04)}
+.cw-timer{text-align:center;font-size:1.2rem;color:var(--hain);font-weight:700;margin:8px 0}
+.cw-score{text-align:center;font-size:.9rem;color:var(--hi);margin:6px 0}
 </style>
 </head>
 <body>
@@ -370,13 +501,6 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 <div class="tnum" id="TN"></div>
 <div class="specbar" id="SB">👁️ İZLEYİCİ</div>
 <div class="dawn-overlay" id="DAWN"><div class="dawn-gradient"></div></div>
-
-<!-- YouTube hidden player -->
-<div class="yt-hidden"><div id="YT_PLAYER"></div></div>
-<div class="music-player" id="MP">
-<span>♪ Waxy - Darlana</span>
-<button class="music-toggle" id="MT" onclick="toggleMusic()">⏸</button>
-</div>
 
 <!-- Modals -->
 <div class="mdl-bg" id="MDL_GUIDE"><div class="mdl">
@@ -399,7 +523,19 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 <div class="sr"><span>Kazanılan 🏆</span><span class="sv" id="MOD_SW">0</span></div>
 <div class="sr"><span>Kaybedilen</span><span class="sv" id="MOD_SL">0</span></div>
 <div class="sr"><span>İyi Oyuncu Ödülleri ❤️</span><span class="sv mvp" id="MOD_MV">0</span></div>
+<div class="sr"><span>💰 Altın</span><span class="sv" id="MOD_COINS" style="color:var(--gold);font-weight:600">0</span></div>
+<div class="sr" id="MOD_PREMIUM_ROW" style="display:none"><span>👑 Premium</span><span class="sv" id="MOD_PREMIUM" style="color:#bb8fce;font-weight:600">-</span></div>
+<div class="sr" id="MOD_DONATED_ROW" style="display:none"><span>💝 Toplam Bağış</span><span class="sv" id="MOD_DONATED" style="color:#e91e63;font-weight:600">₺0</span></div>
 </div>
+<div class="st mt12">Mağaza</div>
+<button class="b b2 bs" style="width:100%" onclick="openShopModal()">🛒 Mağazaya Git</button>
+<div class="st mt12">Arayüz</div>
+<div class="ui-mode-row" id="UI_MODE_ROW">
+<label data-mode="classic" onclick="setUIMode('classic')"><input type="radio" name="uimode" value="classic"> 📋 Klasik</label>
+<label data-mode="modern" onclick="setUIMode('modern')"><input type="radio" name="uimode" value="modern"> 🎴 Modern</label>
+</div>
+<div style="font-size:.7rem;color:var(--dim);margin-top:4px">Modern: oyuncular kart şeklinde 2'li grid'de gösterilir.</div>
+
 <div class="st mt12">Şifre Değiştir</div>
 <div style="display:flex;flex-direction:column;gap:6px">
 <input class="inp" id="OLD_PW" type="password" placeholder="Eski şifre">
@@ -408,6 +544,100 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 </div>
 <div class="st mt12" style="color:var(--hain)">Hesap</div>
 <button class="b bs" style="border:1px solid var(--hain);color:var(--hain);background:transparent;width:100%" onclick="doLogout()">🚪 Çıkış Yap</button>
+</div></div>
+
+<!-- Mağaza Modal -->
+<div class="mdl-bg" id="MDL_SHOP"><div class="mdl">
+<div class="mdl-h"><h2>🛒 AZAP Mağaza</h2><button class="mdl-cl" onclick="closeModal('MDL_SHOP')">✕</button></div>
+
+<!-- Bakiye + Premium durumu üst banner -->
+<div class="shop-status">
+  <div class="shop-balance">
+    <span style="font-size:.78rem;color:var(--dim)">Bakiyen</span>
+    <span id="SHOP_COINS" style="color:var(--gold);font-weight:700;font-size:1.1rem">0 💰</span>
+  </div>
+  <div class="shop-premium" id="SHOP_PREMIUM_BADGE" style="display:none">
+    <span style="color:#bb8fce;font-weight:700;font-size:.82rem">👑 PREMIUM</span>
+    <span id="SHOP_PREMIUM_DAYS" style="font-size:.7rem;color:var(--dim)"></span>
+  </div>
+</div>
+
+<!-- Sekme butonları -->
+<div class="shop-tabs">
+  <button class="shop-tab active" data-tab="gold" onclick="shopSwitchTab('gold')">💰 Altın</button>
+  <button class="shop-tab" data-tab="premium" onclick="shopSwitchTab('premium')">👑 Premium</button>
+  <button class="shop-tab" data-tab="donate" onclick="shopSwitchTab('donate')">💝 Bağış</button>
+  <button class="shop-tab" data-tab="items" onclick="shopSwitchTab('items')">🎨 Eşyalar</button>
+</div>
+
+<!-- Sekme içerikleri -->
+<div id="SHOP_BODY">
+
+  <!-- ALTIN SEKMESİ -->
+  <div class="shop-pane" id="SHOP_PANE_gold">
+    <div style="font-size:.78rem;color:var(--dim);margin-bottom:10px;line-height:1.4">
+      💡 Altın paketleri, bahis ve ileride gelecek mağaza eşyaları için kullanılır.
+    </div>
+    <div id="SHOP_GOLD_PACKAGES"></div>
+  </div>
+
+  <!-- PREMIUM SEKMESİ -->
+  <div class="shop-pane" id="SHOP_PANE_premium" style="display:none">
+    <div style="background:linear-gradient(135deg,rgba(187,143,206,.1),rgba(94,58,135,.1));border:1px solid rgba(187,143,206,.3);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:1.05rem;font-weight:700;color:#bb8fce;margin-bottom:6px">👑 AZAP Premium Avantajları</div>
+      <div style="font-size:.78rem;line-height:1.6;color:var(--txt)">
+        ✨ <strong>+%50 Altın</strong> kazanımı (her oyun)<br>
+        🎨 <strong>Özel premium çerçeve</strong> avatarına<br>
+        🌟 İsmin <strong>mor renkte</strong> + premium rozet<br>
+        💬 <strong>Reklamsız</strong> deneyim (gelecekte)<br>
+        🚀 <strong>Yeni roller</strong> ve özelliklere erken erişim<br>
+        💎 Aylık <strong>200 bonus altın</strong>
+      </div>
+    </div>
+    <div id="SHOP_PREMIUM_PACKAGES"></div>
+  </div>
+
+  <!-- BAĞIŞ SEKMESİ -->
+  <div class="shop-pane" id="SHOP_PANE_donate" style="display:none">
+    <div style="text-align:center;padding:10px 0 14px">
+      <div style="font-size:2.5rem;margin-bottom:6px">💝</div>
+      <div style="font-size:1.05rem;font-weight:700;color:#e91e63;margin-bottom:6px">AZAP'ı Destekle</div>
+      <div style="font-size:.78rem;color:var(--dim);line-height:1.5">
+        Sunucu maliyetleri ve yeni özellikler için<br>desteğin çok değerli! ❤️
+      </div>
+    </div>
+    <div class="lbl">Önerilen Miktar</div>
+    <div id="SHOP_DONATE_PRESETS" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+    <div class="lbl">Veya Kendi Miktarın</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input class="inp" id="SHOP_DONATE_AMOUNT" type="number" min="5" max="5000" placeholder="₺ Miktar" style="flex:1;padding:8px">
+      <button class="b bs" style="background:linear-gradient(135deg,#e91e63,#ad1457);color:#fff;border:none;font-weight:600" onclick="shopDonate()">💝 Bağış Yap</button>
+    </div>
+    <div style="font-size:.7rem;color:var(--dim);text-align:center;margin-top:8px">
+      Bağış yapanlar profillerinde 💝 destekçi rozeti alır.
+    </div>
+  </div>
+
+  <!-- EŞYALAR SEKMESİ -->
+  <div class="shop-pane" id="SHOP_PANE_items" style="display:none">
+    <div style="text-align:center;padding:30px 10px">
+      <div style="font-size:3rem;margin-bottom:10px">🚧</div>
+      <div style="font-size:1.05rem;color:var(--gold);font-weight:600">YAKINDA</div>
+      <div style="font-size:.78rem;color:var(--dim);margin-top:8px;line-height:1.5">
+        🖼️ Özel avatar çerçeveleri (altın, neon, alev)<br>
+        ✒️ Premium yazı tipleri (gotik, italik, kaligrafik)<br>
+        🎨 İsim renkleri (kırmızı, altın, gradient)<br>
+        ✨ Özel emojiler ve efektler<br><br>
+        Hazır olduğunda altınlarınla satın alabilirsin.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:5px;font-size:.7rem;color:var(--dim);text-align:center;line-height:1.5">
+🔒 Tüm ödemeler <strong>İyzico</strong> güvencesiyle. Kart bilgilerin AZAP'ta saklanmaz.
+</div>
 </div></div>
 
 <div class="dov" id="DOV">
@@ -526,6 +756,40 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 <!-- Floating Suikast butonu (sadece suikastçı için, gündüz/oylama fazında) -->
 <button class="suikast-btn" id="SUIKAST_BTN_FLOAT" onclick="openSuikastModal()" title="Suikast">🗡️</button>
 
+<!-- Floating Sabotaj butonu (sadece hain takım için, gece fazında) -->
+<button class="suikast-btn" id="SABOTAJ_BTN_FLOAT" onclick="toggleSabotage()" title="Sabotaj Oyu" style="background:linear-gradient(135deg,#5e2c1c,#8e3a1a);border-color:#a04020;display:none;bottom:14px;left:14px;right:auto">🚨</button>
+
+<!-- Floating Engizitör butonu (sadece engizitör için, tartışma fazında) -->
+<button class="suikast-btn" id="ENGIZITOR_BTN_FLOAT" onclick="openEngizitorModal()" title="Engizitör İnfaz" style="background:linear-gradient(135deg,#5e3a87,#8e44ad);border-color:#8e44ad;display:none">⚖️</button>
+
+<!-- Engizitör Modal -->
+<div class="suikast-modal" id="ENGIZITOR_MODAL">
+<div class="suikast-modal-content" style="position:relative">
+<button class="suikast-modal-close" onclick="Q('ENGIZITOR_MODAL').classList.remove('sh')">✕</button>
+<div class="suikast-modal-title" style="color:#bb8fce">⚖️ ENGİZİTÖR İNFAZI</div>
+<div style="font-size:.78rem;color:var(--dim);margin-bottom:8px;text-align:center">
+Bu butona basıp infaz edersen herkes Engizitör olduğunu öğrenir.<br>
+Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
+</div>
+<div class="lbl">Hedef seç:</div>
+<div id="ENGIZITOR_TARGETS" style="display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto"></div>
+<button class="b b1 bs bw mt12" id="ENGIZITOR_CONFIRM" onclick="confirmEngizitor()" disabled>⚖️ İNFAZ ET (GERİ ALINAMAZ!)</button>
+</div>
+</div>
+
+<!-- Sabotaj Mini Oyun Overlay -->
+<div class="sabo-overlay" id="SABO_OV">
+  <div class="sabo-content">
+    <div class="sabo-header">
+      <div class="sabo-icon">🚨</div>
+      <div class="sabo-title">SABOTAJ!</div>
+      <div class="sabo-sub" id="SABO_SUB">Mini oyunu çöz, kazanırsan +5 altın!</div>
+    </div>
+    <div id="SABO_BODY"></div>
+    <button class="b bs mt8" id="SABO_SKIP" onclick="sabotageSkip()" style="background:rgba(255,255,255,.05);color:var(--dim);border:1px solid var(--brd);width:100%">Geç (kaybet)</button>
+  </div>
+</div>
+
 <!-- Hata Bildir floating buton (giriş yapmış herkese, sağ alt) -->
 <button class="report-btn" id="REPORT_BTN" onclick="openReportModal()" title="Hata Bildir">🐛</button>
 
@@ -579,7 +843,6 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--bg);color:v
 <!-- Entry -->
 <div class="scr" id="S1">
 <div class="top-actions">
-<button class="tab-btn" id="MUSIC_BTN" onclick="toggleMusic()">🎵</button>
 <button class="tab-btn" onclick="openProfile()">👤</button>
 <button class="tab-btn" onclick="openModal('MDL_GUIDE');renderGuide()">📜</button>
 </div>
@@ -636,6 +899,25 @@ Hoş geldin, <strong id="WN"></strong>
 
 <div class="st mt8">Roller</div>
 <div class="rgrid" id="RG"></div>
+
+<!-- BAHİS PANELİ -->
+<div class="st mt12" style="color:var(--gold)">💰 Bahis (opsiyonel)</div>
+<div id="BET_PANEL" style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:6px;padding:10px;margin-bottom:10px">
+  <div style="font-size:.74rem;color:var(--dim);margin-bottom:6px;line-height:1.4">
+    Coin yatır. Oyunu kazanırsan tüm bahis havuzunu kazananlarla paylaşırsın (yatırdığın oran kadar pay alırsın). Kaybedersen kaybolur. Min 5, max 1000.
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+    <input class="inp" id="BET_AMOUNT" type="number" min="5" max="1000" placeholder="Miktar" style="flex:1;padding:6px 8px;font-size:.85rem">
+    <button class="b bs" style="background:var(--gold);color:#000;border:none;font-weight:600" onclick="placeBet()">💰 Yatır</button>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:.78rem">
+    <span>Bahsim: <strong id="MY_BET" style="color:var(--gold)">0</strong></span>
+    <span>Toplam havuz: <strong id="BET_POOL" style="color:var(--gold)">0</strong></span>
+  </div>
+  <button class="b bs mt8" style="width:100%;border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem" id="BET_CANCEL_BTN" onclick="cancelBet()" style="display:none">Bahsi Geri Çek</button>
+  <div id="BET_LIST" style="margin-top:8px;font-size:.72rem;color:var(--dim)"></div>
+</div>
+
 <button class="b b1 bw mt12" id="BS" onclick="startGame()">Oyunu Başlat</button>
 </div>
 </div></div>
@@ -766,7 +1048,7 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="toast" id="T"></div>
 
 <script>
-let ytStartSeconds = 0;
+// (müzik sistemi kaldırıldı)
 const io2=io({
   reconnection: true,
   reconnectionAttempts: Infinity,
@@ -780,99 +1062,77 @@ let me,gs,ps,sel1,sel2,selG,voted,nsent,isSpec=false,isDead=false,AM='login',use
 let mvpVoted=null;
 const Q=id=>document.getElementById(id);
 
-// Music state
-let ytPlayer=null, ytReady=false, musicPlaying=false, userMusicPref=true; // user wants music on by default
-
-const RDEF = {
-  DOKTOR: {
-    e: '🩺', n: 'Doktor', t: 'masum',
-    d: 'Her gece bir kişi seçersin ve o gecelik onu hain saldırısı, seri katil veya şerif kurşunundan korursun. Korunan kişi saldırıya uğradıysa ve kurtardıysan rapor alırsın. Kendini sadece 1 kez koruyabilirsin (tüm oyun boyunca).'
-  },
-  POLIS: {
-    e: '🔦', n: 'Polis', t: 'masum',
-    d: 'Her gece bir kişiyi seçerek o gecelik tüm yetenek kullanımını engellersin. Engellenen kişi yapamaz: ne saldırabilir ne bilgi toplayabilir. Engellediğin kişiye "Polis seni engelledi!" bildirimi gider. Seri katili engelleyemezsin.'
-  },
-  SAVCI: {
-    e: '⚖️', n: 'Savcı', t: 'masum',
-    d: 'Oyun boyunca sadece 1 kez kullanabilirsin. Bir kişi seçersin ve o kişinin rolünü ve takımını kesin olarak öğrenirsin. Hain/Hipnotizmacı seni deli yaparsa sahte bilgi alırsın ama hak harcanır.'
-  },
-  MUHTAR: {
-    e: '🏛️', n: 'Muhtar', t: 'masum',
-    d: 'Gece aksiyonun yok. Asılma oylamalarında oyun 2 sayılır — hain/tarafsız oyunculara karşı güçlü bir tartı. Deli olduğunda oyun rastgele etki eder.'
-  },
-  GAZETECI: {
-    e: '📰', n: 'Gazeteci', t: 'masum',
-    d: 'Gece bir kişi seçer ve o kişinin rol kullanıp kullanmadığını öğrenirsin. Sonuç: "Rol kullandı" veya "Rol kullanmadı". Pasif roller (Muhtar, Kurban, Dodo, Cellat, Yamyam) her zaman pasif görünür. Seri Katil iz bırakmaz, hep "kullanmadı" çıkar.'
-  },
-  PSIKOLOG: {
-    e: '🧠', n: 'Psikolog', t: 'masum',
-    d: 'Gece bir kişi seçersin ve o kişinin deli olup olmadığını öğrenirsin. Hem kalıcı deli (oyun başında atanan) hem geçici deli (Hipnotizmacı etkisi) tespit eder.'
-  },
-  GAZI: {
-    e: '🛡️', n: 'Gazi', t: 'masum',
-    d: 'Oyun boyunca 1 kez aktifleştirebilirsin. Aktifleştirdiğin gece hiçbir saldırı seni öldüremez (hain saldırısı, seri katil, şerif kurşunu, bomba — hepsi etkisiz).'
-  },
-  DEDIKODUCU: {
-    e: '🗣️', n: 'Dedikoducu', t: 'masum',
-    d: 'Gece iki kişi seçersin ve aynı takımda olup olmadıklarını öğrenirsin: "Aynı takım" veya "Farklı takım". Tarafsızlar kendi başına bir takımdır. Seçtiğin kişilerden biri Polis/Çilingir tarafından engellenmişse yeteneğin başarısız olur.'
-  },
-  AJAN: {
-    e: '🕵️', n: 'Ajan', t: 'masum',
-    d: 'Gece bir kişi seçersin. Onun gerçek rolü ile birlikte 2 yanlış seçenek alırsın — toplam 3. Doğru olanı bulmak senin işin. Takımlar doğru gösterilir. Oyunda tarafsız hiç yoksa, seçenekler sadece masum/hain rollerinden gelir.'
-  },
-  SERIF: {
-    e: '🤠', n: 'Şerif', t: 'masum',
-    d: 'Oyun boyunca 1 kez birini vurabilirsin. Hain/tarafsız vurursan kahraman olursun. Masum vurursan o ölür VE sen ertesi gece otomatik intihar edersin. Hedef korumalıysa (Doktor/Çilingir/Gazi) kurşun etkisiz, hak harcanır.'
-  },
-  KURBAN: {
-    e: '🩸', n: 'Kurban', t: 'masum',
-    d: 'Pasif rol — gece aksiyonun yok. Öldürülürsen vasiyet bırakırsın: tüm oyuncular katilini öğrenir. Tek-kill modunda oyu veren hainlerden biri rastgele duyurulur, çoklu-kill modunda direkt katil. Seri Katil öldürdüyse "Bir Seri Katil tarafından öldürüldü" der (ismini vermez).'
-  },
-  CILINGIR: {
-    e: '🔑', n: 'Çilingir', t: 'masum',
-    d: 'Gece bir kişiyi evine kilitlersin. O gece hem yetenek kullanamaz HEM saldırılardan korunur. Polis + Doktor karışımı gibi düşün. Hain kilitlerse öldüremez ama korunur.'
-  },
-  TAKIPCI: {
-    e: '👣', n: 'Takipçi', t: 'masum',
-    d: 'Gece birini takip edersin. O kişinin kime gece aksiyonu yaptığını öğrenirsin: "X, Y kişisine rol kullandı" veya "Hiçbir şey yapmadı". Ne yaptığını söylemez, sadece kime yaptığını. Seri Katil iz bırakmaz, hep "yapmadı" çıkar.'
-  },
-  SUIKASTCI: {
-    e: '🗡️', n: 'Suikastçı', t: 'hain',
-    d: 'Gündüz (tartışma veya oylama fazında) birini hedef seçip rolünü tahmin edersin. Doğru tahmin → hedef ANINDA ölür. Yanlış tahmin → SEN anında ölürsün. Her tur 1 deneme hakkın var. Gece sadece hain sohbetine katılırsın, kill yapmazsın (kill diğer hainlerin işi).'
-  },
-  HIPNOTIZMACI: {
-    e: '🌀', n: 'Hipnotizmacı', t: 'hain',
-    d: 'Gece bir kişi seçersin ve o kişiyi o gecelik deli yaparsın. Hedefin gece aksiyonları sahte sonuç verir, raporu yanlış olur. Geçici delilik 1 gecelik — sonra normale döner. Doktor/Savcı/Psikolog gibi bilgi rollerini yanıltmak için ideal.'
-  },
-  BOMBACI: {
-    e: '💣', n: 'Bombacı', t: 'hain',
-    d: 'Hain takımı içinde özel rol — kill oylamasına katılmazsın. İki ayrı buton: 💣 Bomba Koy ve 💥 Patlat. Bombayı koyduktan sonra biriktirebilirsin (üst üste birden çok kişiye), Patlat dediğinde önceki turlardan kalan TÜM bombaların aynı anda patlar. Aynı gece koyup patlatamazsın.'
-  },
-  GOLGE: {
-    e: '👤', n: 'Gölge', t: 'hain',
-    d: 'Gece bir kişi seçersin ve o ertesi gündüz konuşamaz. Sadece sen ve hedef bilir kim susturuldu. Stratejik avantaj: bilgi paylaşacak kişiyi susturmak.'
-  },
-  DODO: {
-    e: '🦤', n: 'Dodo', t: 'tarafsız',
-    d: 'Bağımsız kazanma koşulu: gündüz oylamasında en çok oyu alıp asılırsan, sen TEK BAŞINA kazanırsın, herkes kaybeder. Gece öldürülürsen kazanamazsın. Stratejin: şüpheli davranıp aslana yem olmak.'
-  },
-  SERI_KATIL: {
-    e: '🔪', n: 'Seri Katil', t: 'tarafsız',
-    d: 'Her gece dilediğin birini öldürebilirsin (atlama da olur). HİÇBİR şey seni engelleyemez (Polis bile). Gazeteci/Takipçi seni gözlerse "rol kullanmadı" görür. Bağımsız kazanma: son 2 kişi içinde olursan kazanırsın. Hedeflerin korunabilir (Doktor/Gazi/Çilingir).'
-  },
-  CELLAT: {
-    e: '⛓️', n: 'Cellat', t: 'tarafsız',
-    d: 'Oyun başında sana rastgele bir masum hedef atanır (sadece sen bilirsin). O hedefi gündüz oylamasında astırtırsan bağımsız kazanırsın. Hedef gece öldürülürse kazanamazsın. Hainlerle/masumlarla geçici işbirliği yapabilirsin.'
-  },
-  YAMYAM: {
-    e: '🍖', n: 'Yamyam', t: 'tarafsız',
-    d: 'Pasif rol — gece aksiyonun yok. Biri gecede öldüğünde otomatik olarak o kişinin rolünü öğrenirsin ve listesine eklersin. Sadece bilgi toplarsın, yetenek kullanamazsın. Tarafsız takımdasın, masumlarla beraber kazanırsın eğer hainler/SK elenirse.'
-  },
-  DELI: {
-    e: '🤡', n: 'Deli', t: 'deli',
-    d: 'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'
-  }
+const RDEF={
+  DOKTOR:{e:'🩺',n:'Doktor',t:'masum',d:'Birini saldırıdan korur. Kendini sadece 1 kez koruyabilir.',
+    full:'Her gece bir kişi seçersin ve o gecelik onu hain saldırısı, seri katil veya şerif kurşunundan korursun. Korunan kişi saldırıya uğradıysa ve kurtardıysan rapor alırsın. Kendini sadece 1 kez koruyabilirsin (tüm oyun boyunca).'},
+  POLIS:{e:'🔦',n:'Polis',t:'masum',d:'Birinin gece rol kullanımını engeller.',
+    full:'Her gece bir kişiyi seçerek o gecelik tüm yetenek kullanımını engellersin. Engellenen kişi yapamaz: ne saldırabilir ne bilgi toplayabilir. Engellediğin kişiye "Polis seni engelledi!" bildirimi gider. Seri katili engelleyemezsin.'},
+  SAVCI:{e:'⚖️',n:'Savcı',t:'masum',d:'Sadece 1 defa birinin rolünü kesin olarak öğrenir.',
+    full:'Oyun boyunca sadece 1 kez kullanabilirsin. Bir kişi seçersin ve o kişinin rolünü ve takımını kesin olarak öğrenirsin. Hain/Hipnotizmacı seni deli yaparsa sahte bilgi alırsın ama hak harcanır.'},
+  MUHTAR:{e:'🏛️',n:'Muhtar',t:'masum',d:'Oyu 2 sayılır. Gece aksiyonu yok.',
+    full:'Gece aksiyonun yok. Asılma oylamalarında oyun 2 sayılır — hain/tarafsız oyunculara karşı güçlü bir tartı. Deli olduğunda oyun rastgele etki eder.'},
+  GAZETECI:{e:'📰',n:'Gazeteci',t:'masum',d:'Birinin rol kullanıp kullanmadığını öğrenir.',
+    full:'Gece bir kişi seçer ve o kişinin rol kullanıp kullanmadığını öğrenirsin. Sonuç: "Rol kullandı" veya "Rol kullanmadı". Pasif roller (Muhtar, Kurban, Dodo, Cellat, Yamyam) her zaman pasif görünür. Seri Katil iz bırakmaz, hep "kullanmadı" çıkar.'},
+  PSIKOLOG:{e:'🧠',n:'Psikolog',t:'masum',d:'Birinin deli olup olmadığını öğrenir.',
+    full:'Gece bir kişi seçersin ve o kişinin deli olup olmadığını öğrenirsin. Hem kalıcı deli (oyun başında atanan) hem geçici deli (Hipnotizmacı etkisi) tespit eder.'},
+  GAZI:{e:'🛡️',n:'Gazi',t:'masum',d:'Bir gece kendini ölümsüz yapar (tek kullanım).',
+    full:'Oyun boyunca 1 kez aktifleştirebilirsin. Aktifleştirdiğin gece hiçbir saldırı seni öldüremez (hain saldırısı, seri katil, şerif kurşunu, bomba — hepsi etkisiz).'},
+  DEDIKODUCU:{e:'🗣️',n:'Dedikocucu',t:'masum',d:'İki kişinin aynı takımda olup olmadığını öğrenir.',
+    full:'Gece iki kişi seçersin ve aynı takımda olup olmadıklarını öğrenirsin: "Aynı takım" veya "Farklı takım". Tarafsızlar kendi başına bir takımdır. Seçtiğin kişilerden biri Polis/Çilingir tarafından engellenmişse yeteneğin başarısız olur.'},
+  AJAN:{e:'🕵️',n:'Ajan',t:'masum',d:'Birinin rolünü 3 seçenek arasından görür.',
+    full:'Gece bir kişi seçersin. Onun gerçek rolü ile birlikte 2 yanlış seçenek alırsın — toplam 3. Doğru olanı bulmak senin işin. Takımlar doğru gösterilir. Oyunda tarafsız hiç yoksa, seçenekler sadece masum/hain rollerinden gelir.'},
+  SERIF:{e:'🤠',n:'Şerif',t:'masum',d:'1 kez birini vurabilir.',
+    full:'Oyun boyunca 1 kez birini vurabilirsin. Hain/tarafsız vurursan kahraman olursun. Masum vurursan o ölür VE sen ertesi gece otomatik intihar edersin. Hedef korumalıysa (Doktor/Çilingir/Gazi) kurşun etkisiz, hak harcanır.'},
+  KURBAN:{e:'🩸',n:'Kurban',t:'masum',d:'Öldürülürse katilinin adını söyler.',
+    full:'Pasif rol — gece aksiyonun yok. Öldürülürsen vasiyet bırakırsın: tüm oyuncular katilini öğrenir. Tek-kill modunda oyu veren hainlerden biri rastgele duyurulur, çoklu-kill modunda direkt katil. Seri Katil öldürdüyse "Bir Seri Katil tarafından öldürüldü" der (ismini vermez).'},
+  CILINGIR:{e:'🔑',n:'Çilingir',t:'masum',d:'Birini evine kilitler: korunur ama yetenek kullanamaz.',
+    full:'Gece bir kişiyi evine kilitlersin. O gece hem yetenek kullanamaz HEM saldırılardan korunur. Polis + Doktor karışımı gibi düşün. Hain kilitlerse öldüremez ama korunur.'},
+  TAKIPCI:{e:'👣',n:'Takipçi',t:'masum',d:'Birini takip eder, kime rol kullandığını öğrenir.',
+    full:'Gece birini takip edersin. O kişinin kime gece aksiyonu yaptığını öğrenirsin: "X, Y kişisine rol kullandı" veya "Hiçbir şey yapmadı". Ne yaptığını söylemez, sadece kime yaptığını. Seri Katil iz bırakmaz, hep "yapmadı" çıkar.'},
+  SUIKASTCI:{e:'🗡️',n:'Suikastçı',t:'hain',d:'Gündüz birinin rolünü tahmin eder. Doğruysa öldürür.',
+    full:'Gündüz (tartışma veya oylama fazında) birini hedef seçip rolünü tahmin edersin. Doğru tahmin → hedef ANINDA ölür. Yanlış tahmin → SEN anında ölürsün. Her tur 1 deneme hakkın var. Gece sadece hain sohbetine katılırsın, kill yapmazsın (kill diğer hainlerin işi).'},
+  HIPNOTIZMACI:{e:'🌀',n:'Hipnotizmacı',t:'hain',d:'Birini o gece deli yapar (geçici).',
+    full:'Gece bir kişi seçersin ve o kişiyi o gecelik deli yaparsın. Hedefin gece aksiyonları sahte sonuç verir, raporu yanlış olur. Geçici delilik 1 gecelik — sonra normale döner. Doktor/Savcı/Psikolog gibi bilgi rollerini yanıltmak için ideal.'},
+  BOMBACI:{e:'💣',n:'Bombacı',t:'hain',d:'Bomba koyar/patlatır. Öldürme yetkisi yok.',
+    full:'Hain takımı içinde özel rol — kill oylamasına katılmazsın. İki ayrı buton: 💣 Bomba Koy ve 💥 Patlat. Bombayı koyduktan sonra biriktirebilirsin (üst üste birden çok kişiye), Patlat dediğinde önceki turlardan kalan TÜM bombaların aynı anda patlar. Aynı gece koyup patlatamazsın.'},
+  GOLGE:{e:'👤',n:'Gölge',t:'hain',d:'Ertesi gün birini susturur.',
+    full:'Gece bir kişi seçersin ve o ertesi gündüz konuşamaz. Sadece sen ve hedef bilir kim susturuldu. Stratejik avantaj: bilgi paylaşacak kişiyi susturmak.'},
+  DODO:{e:'🦤',n:'Dodo',t:'tarafsız',d:'Kendini astırırsa kazanır.',
+    full:'Bağımsız kazanma koşulu: gündüz oylamasında en çok oyu alıp asılırsan, sen TEK BAŞINA kazanırsın, herkes kaybeder. Gece öldürülürsen kazanamazsın. Stratejin: şüpheli davranıp aslana yem olmak.'},
+  SERI_KATIL:{e:'🔪',n:'Seri Katil',t:'tarafsız',d:'Engellenemez, iz bırakmaz, sona kalırsa kazanır.',
+    full:'Her gece dilediğin birini öldürebilirsin (atlama da olur). HİÇBİR şey seni engelleyemez (Polis bile). Gazeteci/Takipçi seni gözlerse "rol kullanmadı" görür. Bağımsız kazanma: son 2 kişi içinde olursan kazanırsın. Hedeflerin korunabilir (Doktor/Gazi/Çilingir).'},
+  CELLAT:{e:'⛓️',n:'Cellat',t:'tarafsız',d:'Otomatik hedefi astırırsa kazanır.',
+    full:'Oyun başında sana rastgele bir masum hedef atanır (sadece sen bilirsin). O hedefi gündüz oylamasında astırtırsan bağımsız kazanırsın. Hedef gece öldürülürse kazanamazsın. Hainlerle/masumlarla geçici işbirliği yapabilirsin.'},
+  YAMYAM:{e:'🍖',n:'Yamyam',t:'tarafsız',d:'Gece ölenlerin rollerini toplar (pasif).',
+    full:'Pasif rol — gece aksiyonun yok. Biri gecede öldüğünde otomatik olarak o kişinin rolünü öğrenirsin ve listesine eklersin. Sadece bilgi toplarsın, yetenek kullanamazsın. Tarafsız takımdasın, masumlarla beraber kazanırsın eğer hainler/SK elenirse.'},
+  KORUYUCU:{e:'😇',n:'Koruyucu',t:'tarafsız',d:'Sistem rastgele birini emanet eder; o yaşıyorsa kazanırsın.',
+    full:'Tarafsız rol — Cellat\'ın TAM ZITTIDIR. Pasif rol, gece aksiyonun yok. Oyun başında sistem sana rastgele BİR oyuncu emanet eder (Hain, Masum, hatta Seri Katil bile olabilir; kendin hariç). O kişinin oyun sonuna kadar hayatta kalmasını sağlamak senin amacın. Eğer hayatta kalırsa, oyunun gerçek kazananı kim olursa olsun, sen de kazanırsın. Korunan kişi gece veya gündüz ölürse kazanamazsın.'},
+  DEMIRCI:{e:'⚒️',n:'Demirci',t:'masum',d:'Gece birine kalıcı çelik zırh giydirir.',
+    full:'Gece bir kişi seçersin ve ona Çelik Zırh giydirirsin. Doktor\'un şifası sadece o gece geçerlidir; Demirci\'nin zırhı ise hedef SALDIRIYA UĞRAYANA kadar (kaç gün geçerse geçsin) üstünde kalır. Vurulduğunda zırh kırılır ve kişi kurtulur. Kötü yanı: zırhın ne zaman kırıldığını bilemezsin. Kendine zırh yapamazsın.'},
+  BUZCU:{e:'❄️',n:'Buzcu',t:'masum',d:'2 kez birini karantinaya alır.',
+    full:'Oyun boyunca 2 kullanım hakkın var. Karantinaya aldığın oyuncu: ertesi gündüz oylamaya katılamaz, kendisine kimse oy veremez, gece hiçbir saldırıdan etkilenmez VE yetenek kullanamaz. Çok şüphelendiğin ama astırmaya korktuğun birini güvenli şekilde izole etmek için ideal.'},
+  INFAZCI:{e:'🔨',n:'İnfazcı',t:'masum',d:'Birini zindana kapatır + 1 infaz hakkı.',
+    full:'Gece bir kişiyi zindana kapatırsın. Zindandaki kişi yetenek kullanamaz, dışarıdan saldırılamaz. Ayrıca oyun boyunca 1 kez zindandakini direkt infaz edebilirsin. Aksiyon ekranında zindana atma seçeneğine ek olarak "İdam et" butonu çıkar.'},
+  GARDIYAN:{e:'🛡️',n:'Gardiyan',t:'masum',d:'1 kez tüm köyü gece korur.',
+    full:'Oyun boyunca 1 kez "Sokağa Çıkma Yasağı" ilan edersin. O gece HİÇBİR ölüm gerçekleşemez — hain saldırısı, seri katil, bomba bile etkisiz. Ertesi sabah herkes yasağın olduğunu öğrenir. Kritik gecede masumlara büyük avantaj.'},
+  ENGIZITOR:{e:'⚖️',n:'Engizitör',t:'masum',d:'Gündüz infaz hakkı (oyun boyunca 1 kez).',
+    full:'Tartışma fazında butona basıp ANINDA birini infaz edersin (oylama yapılmaz). Hain veya tarafsız ise hedef ölür. Masum ise SEN ölürsün. Kullanmadan önce çok emin olmalısın. Tartışma sırasında çıkan butonla aktif edersin.'},
+  OLUMSUZ:{e:'🪦',n:'Ölümsüz',t:'masum',d:'1 kez canlanır.',
+    full:'Pasif rol. İlk öldürüldüğünde herkes öldü sanır (sabah raporunda ölü görünür) ama ertesi gece geri dönersin. Sadece 1 kez canlanırsın. İkinci ölümünde gerçekten ölürsün. Diriliş diğer oyuncuları şoke eder.'},
+  KOSTEBEK:{e:'🦔',n:'Köstebek',t:'hain',d:'Hain Savcı (her gece kullanılabilir).',
+    full:'Her gece birini incelersin. 2 rol seçeneği gösterilir, biri kesinlikle doğru (hain rolleri seçenek olarak gelmez). Hain sohbetinde paylaşıp suikastçıya hedef gösterir veya tehlikeli polisin kim olduğunu tespit edersin.'},
+  VIRUS:{e:'🦠',n:'Virüs',t:'hain',d:'Bulaştırma + ölüm.',
+    full:'Bir oyuncuya virüs bulaştırırsın. O ertesi gece rol kullanırsa, kullandığı kişi ölür. Kendine bulaştıramazsın. 2 gece üst üste aksiyon yapmazsan kendin ölürsün — pasif kalamazsın!'},
+  PUSUCU:{e:'🪤',n:'Pusucu',t:'hain',d:'Pusu kurar; gelenler ölür.',
+    full:'O gece evine gelen oyunculardan biri rastgele ölür (hain takım arkadaşların bile dahil — dikkat!). Diğer hainler ana cinayeti yaparken sen arkayı kollarsın. Gazeteci/Takipçi/Polis seni hedef alırsa pusuya düşer.'},
+  HACKER:{e:'💻',n:'Hacker',t:'hain',d:'Bilgi rolünü engeller.',
+    full:'Bir bilgi toplayan masum (Polis, Savcı, Psikolog, Gazeteci, Takipçi, Dedikoducu, Ajan, Çilingir) hacklersin. Rolünü kullanırsa o gece raporu silinir, "İletişim ağı bozuldu!" mesajı alır. Saldırı/koruma raporları etkilenmez (sadece bilgi rolleri).'},
+  VEBA:{e:'☠️',n:'Veba',t:'tarafsız',d:'Hastalık yayar; herkes hastayken kazanır.',
+    full:'Her gece bir kişiye hastalık bulaştırırsın (haberi olmaz). Hayattaki HERKES hastalandığında, tüm hastalar anında ölür ve sen TEK BAŞINA kazanırsın. Çok gizli oynamak ve şüphe çekmemek kritik. Sadece sen kazanırsın — kimseyle paylaşmazsın.'},
+  DELI:{e:'🤡',n:'Deli',t:'deli',d:'Bir masum rol gibi görünür ama tüm sonuçları sahtedir.',
+    full:'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'}
 };
+
 // id -> emoji+name lookup
 const ID_MAP={};
 Object.entries(RDEF).forEach(([k,v])=>{
@@ -898,89 +1158,15 @@ function avHTML(avatar, size, fallbackEmoji, extraStyle){
   return '<div class="av ' + cls + '"' + styleAttr + '>' + (fallbackEmoji||'👤') + '</div>';
 }
 
-// ── MUSIC (YouTube IFrame API) ──
-function loadYouTubeAPI(){
-  if(window.YT){ initYT(); return; }
-  const tag=document.createElement('script');
-  tag.src='https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
-}
-window.onYouTubeIframeAPIReady=function(){ initYT(); };
-function initYT(){
-  if(ytPlayer)return;
-  ytPlayer=new YT.Player('YT_PLAYER',{
-    videoId:'73t-wQGijqU', 
-    width:'1', height:'1',
-    playerVars:{autoplay:0,controls:0,loop:1,playlist:'73t-wQGijqU'},
-    events:{
-      onReady:()=>{ 
-        ytReady=true; 
-        // YouTube yüklendiğinde sunucudan gelen saniyeye (ileri) sar
-        if(ytStartSeconds > 0 && typeof ytPlayer.getDuration === 'function') {
-            const dur = ytPlayer.getDuration();
-            if(dur > 0) ytStartSeconds = ytStartSeconds % dur;
-            ytPlayer.seekTo(ytStartSeconds, true);
-        }
-        if(userMusicPref && shouldPlayMusic()) startMusic(); 
-      },
-      onStateChange:(e)=>{
-        if(e.data===0 && userMusicPref){ try{ ytPlayer.playVideo(); }catch(_){} }
-      }
-    }
-  });
-}
-
-// Socket ile sunucunun radyo zamanını alıp ping'i (gecikmeyi) hesaplayarak eşitleme
-io2.on('sync_radio', (data) => {
-  const localTime = Date.now();
-  const pingOffset = data.serverTime - localTime; 
-  const adjustedStartTime = data.startTime - pingOffset;
-  ytStartSeconds = (localTime - adjustedStartTime) / 1000;
-  
-  // Eğer YouTube önceden hazırsa, beklemeden anında ileri sar
-  if(ytReady && ytPlayer && typeof ytPlayer.getDuration === 'function') {
-    const dur = ytPlayer.getDuration();
-    if(dur > 0) ytStartSeconds = ytStartSeconds % dur;
-    ytPlayer.seekTo(ytStartSeconds, true);
-  }
-});
-function shouldPlayMusic(){
-  // Sadece Auth/Entry/Lobby ekranında çalsın
-  const allowed=['S0','S1','S2'];
-  return allowed.some(id=>Q(id)?.classList.contains('on'));
-}
-function startMusic(){
-  if(!ytReady||!ytPlayer)return;
-  try{ ytPlayer.unMute(); ytPlayer.setVolume(35); ytPlayer.playVideo(); musicPlaying=true; updateMusicUI(); }catch(_){}
-}
-function stopMusic(){
-  if(!ytPlayer)return;
-  try{ ytPlayer.pauseVideo(); musicPlaying=false; updateMusicUI(); }catch(_){}
-}
-function toggleMusic(){
-  userMusicPref=!userMusicPref;
-  if(userMusicPref){
-    if(shouldPlayMusic()) startMusic();
-  } else {
-    stopMusic();
-  }
-  updateMusicUI();
-}
-function updateMusicUI(){
-  const b=Q('MUSIC_BTN'); if(b){ b.textContent=userMusicPref?'🎵':'🔇'; b.classList.toggle('music-on',musicPlaying); }
-  const mp=Q('MP'), mt=Q('MT');
-  if(musicPlaying){ mp.classList.add('sh'); mt.textContent=userMusicPref?'⏸':'▶'; }
-  else { mp.classList.remove('sh'); }
-}
-function applyMusicForCurrentScreen(){
-  if(!userMusicPref) return;
-  const should = shouldPlayMusic();
-  // Sadece durum değiştiyse harekete geç (gereksiz YouTube API çağrılarını önle)
-  if(should === window._lastMusicState) return;
-  window._lastMusicState = should;
-  if(should){ startMusic(); }
-  else { stopMusic(); }
-}
+// ── MUSIC (kaldırıldı — fonksiyonlar no-op stub olarak duruyor, geri kalan kod hata vermesin) ──
+function loadYouTubeAPI(){}
+function tryStartMusicNow(){}
+function applyMusicForCurrentScreen(){}
+function shouldPlayMusic(){return false;}
+function startMusic(){}
+function stopMusic(){}
+function toggleMusic(){}
+function updateMusicUI(){}
 
 // ── AUTH ──
 function setAM(m){
@@ -1002,32 +1188,14 @@ function doAuth(){
       }
       updateUserUI();
       toast(AM==='login'?'Giriş başarılı!':'Hesap oluşturuldu!');
-      // Müzik yükle ve başlat - HEMEN (user gesture aktif)
-      userMusicPref = true;
-      loadYouTubeAPI();
-      tryStartMusicNow();
-      setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); tryStartMusicNow(); setupDraggableButtons(); }, 300);
-      setTimeout(()=>tryStartMusicNow(), 1500);
-      setTimeout(()=>tryStartMusicNow(), 3000);
+      setTimeout(()=>{ show('S1'); setupDraggableButtons(); }, 300);
       updateRoleInfoBtn();
     }else toast(r.error,1);
   });
 }
 
-// Müziği başlat — user-gesture içinde çağrılmalı (mobil autoplay engeli için kritik)
-function tryStartMusicNow(){
-  if(!userMusicPref)return;
-  if(!shouldPlayMusic())return;
-  if(ytReady && ytPlayer){
-    try{
-      ytPlayer.unMute();
-      ytPlayer.setVolume(35);
-      ytPlayer.playVideo();
-      musicPlaying=true;
-      updateMusicUI();
-    }catch(_){}
-  }
-}
+// Müzik fonksiyonu artık no-op
+function tryStartMusicNow(){}
 
 // Otomatik token girişi (sayfa yüklendiğinde)
 function tryAutoLogin(){
@@ -1039,18 +1207,8 @@ function tryAutoLogin(){
       user=r.user;
       updateUserUI();
       toast('Hoş geldin '+user.username+'!');
-      userMusicPref = true;
-      loadYouTubeAPI();
-      setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); setupDraggableButtons(); }, 300);
+      setTimeout(()=>{ show('S1'); setupDraggableButtons(); }, 300);
       updateRoleInfoBtn();
-      // Mobilde otomatik müzik için: ilk dokunmada başlat
-      const firstTouchHandler = ()=>{
-        tryStartMusicNow();
-        document.removeEventListener('click', firstTouchHandler);
-        document.removeEventListener('touchstart', firstTouchHandler);
-      };
-      document.addEventListener('click', firstTouchHandler, {once:true});
-      document.addEventListener('touchstart', firstTouchHandler, {once:true});
     } else {
       // Token geçersiz - sil
       try{ localStorage.removeItem('azap_token'); }catch{}
@@ -1058,6 +1216,258 @@ function tryAutoLogin(){
   });
   return true;
 }
+
+// Çıkış yap
+// ── UI MODE (Klasik / Modern) ──
+function setUIMode(mode){
+  if(mode!=='modern')mode='classic';
+  try{ localStorage.setItem('azap_ui_mode', mode); }catch{}
+  applyUIMode(mode);
+}
+function applyUIMode(mode){
+  document.body.classList.toggle('modern-ui', mode==='modern');
+  // Profil modalındaki radio'ları güncelle
+  document.querySelectorAll('#UI_MODE_ROW label').forEach(l=>{
+    l.classList.toggle('active', l.dataset.mode===mode);
+    const radio = l.querySelector('input[type=radio]');
+    if(radio) radio.checked = l.dataset.mode===mode;
+  });
+}
+// Sayfa yüklendiğinde tercihi uygula
+(function initUIMode(){
+  let mode = 'classic';
+  try{ mode = localStorage.getItem('azap_ui_mode') || 'classic'; }catch{}
+  applyUIMode(mode);
+})();
+
+// ── MAĞAZA ──
+let _shopPackages = null;
+let _shopDonationPresets = null;
+
+async function loadShopCatalog(){
+  if(_shopPackages) return;
+  try{
+    const r = await fetch('/api/shop/packages');
+    const d = await r.json();
+    _shopPackages = d.packages;
+    _shopDonationPresets = d.donationPresets;
+    _shopPaymentEnabled = d.paymentEnabled;
+  }catch(e){
+    console.error('Mağaza yüklenemedi:', e);
+  }
+}
+
+function renderShopGoldPackages(){
+  if(!_shopPackages) return;
+  const goldPacks = Object.entries(_shopPackages).filter(([k,p])=>p.type==='coins');
+  Q('SHOP_GOLD_PACKAGES').innerHTML = goldPacks.map(([id,p])=>`
+    <div class="shop-pkg">
+      <div class="shop-pkg-emoji">${p.emoji}</div>
+      <div class="shop-pkg-info">
+        <div class="shop-pkg-label">${p.label}</div>
+        ${p.bonus ? `<div class="shop-pkg-bonus">🎁 +${p.bonus} bonus</div>` : ''}
+      </div>
+      <div class="shop-pkg-price">
+        <strong>₺${p.price.toFixed(2)}</strong>
+        <button class="shop-pkg-buy" onclick="shopBuy('${id}')">Satın Al</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderShopPremiumPackages(){
+  if(!_shopPackages) return;
+  const prems = Object.entries(_shopPackages).filter(([k,p])=>p.type==='premium');
+  Q('SHOP_PREMIUM_PACKAGES').innerHTML = prems.map(([id,p])=>`
+    <div class="shop-pkg">
+      <div class="shop-pkg-emoji">${p.emoji}</div>
+      <div class="shop-pkg-info">
+        <div class="shop-pkg-label">${p.label}</div>
+        ${p.bonus ? `<div class="shop-pkg-bonus">✨ ${p.bonus}</div>` : ''}
+      </div>
+      <div class="shop-pkg-price">
+        <strong>₺${p.price.toFixed(2)}</strong>
+        <button class="shop-pkg-buy premium-buy" onclick="shopBuy('${id}')">Satın Al</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderShopDonatePresets(){
+  if(!_shopDonationPresets) return;
+  Q('SHOP_DONATE_PRESETS').innerHTML = _shopDonationPresets.map(amt=>
+    `<div class="donate-preset" onclick="Q('SHOP_DONATE_AMOUNT').value=${amt}">₺${amt}</div>`
+  ).join('');
+}
+
+function shopSwitchTab(tab){
+  document.querySelectorAll('.shop-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  document.querySelectorAll('.shop-pane').forEach(p => {
+    p.style.display = p.id === 'SHOP_PANE_'+tab ? 'block' : 'none';
+  });
+  if(tab === 'gold') renderShopGoldPackages();
+  if(tab === 'premium') renderShopPremiumPackages();
+  if(tab === 'donate') renderShopDonatePresets();
+}
+
+async function shopBuy(packageId){
+  if(!user){toast('Giriş yap!',1);return;}
+  const pkg = _shopPackages?.[packageId];
+  if(!pkg){toast('Paket yok',1);return;}
+  if(!confirm(`${pkg.label} satın alacaksın.\nFiyat: ₺${pkg.price.toFixed(2)}\nDevam?`))return;
+  try{
+    const r = await fetch('/api/payment/create',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: user.username, packageId })
+    });
+    const d = await r.json();
+    if(d.devMode){
+      // İyzico bağlanmadığında dev modu
+      if(confirm('🚧 DEV MODU\nİyzico henüz bağlı değil. Test için ödeme tamamlanmış sayılsın mı?')){
+        const r2 = await fetch('/api/payment/dev-complete',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ username: user.username, packageId })
+        });
+        if((await r2.json()).ok){
+          toast('✅ Ödeme tamamlandı (dev)!');
+          // Stats yenile
+          io2.emit('auth:stats',null,r=>{
+            if(r){user=r;updateUserUI();updateShopHeader();}
+          });
+        }
+      }
+    } else if(d.checkoutFormContent){
+      // Gerçek İyzico Checkout Form
+      const w = window.open('','iyzico','width=500,height=700');
+      w.document.write(d.checkoutFormContent);
+    } else {
+      toast(d.error || 'Ödeme başlatılamadı',1);
+    }
+  }catch(e){
+    toast('Ödeme hatası: '+e.message,1);
+  }
+}
+
+async function shopDonate(){
+  if(!user){toast('Giriş yap!',1);return;}
+  const amt = parseFloat(Q('SHOP_DONATE_AMOUNT').value);
+  if(!amt || amt < 5){toast('Min 5 TL!',1);return;}
+  if(amt > 5000){toast('Max 5000 TL!',1);return;}
+  if(!confirm(`₺${amt} bağış yapacaksın. ❤️\nDestek için teşekkürler!`))return;
+  try{
+    const r = await fetch('/api/payment/create',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt })
+    });
+    const d = await r.json();
+    if(d.devMode){
+      if(confirm('🚧 DEV MODU\nİyzico bağlı değil. Test için bağış tamamlanmış sayılsın mı?')){
+        const r2 = await fetch('/api/payment/dev-complete',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt })
+        });
+        if((await r2.json()).ok){
+          toast('💝 Bağış için teşekkürler!');
+          Q('SHOP_DONATE_AMOUNT').value = '';
+          io2.emit('auth:stats',null,r=>{
+            if(r){user=r;updateUserUI();}
+          });
+        }
+      }
+    } else if(d.checkoutFormContent){
+      const w = window.open('','iyzico','width=500,height=700');
+      w.document.write(d.checkoutFormContent);
+    } else {
+      toast(d.error || 'Ödeme başlatılamadı',1);
+    }
+  }catch(e){
+    toast('Bağış hatası: '+e.message,1);
+  }
+}
+
+function updateShopHeader(){
+  if(!user) return;
+  const sc=Q('SHOP_COINS');if(sc)sc.textContent = (user.coins ?? 0) + ' 💰';
+  const pb=Q('SHOP_PREMIUM_BADGE');
+  const pd=Q('SHOP_PREMIUM_DAYS');
+  if(user.premium?.active){
+    if(pb) pb.style.display='flex';
+    if(pd) pd.textContent = `${user.premium.daysLeft} gün kaldı`;
+  } else {
+    if(pb) pb.style.display='none';
+  }
+}
+
+async function openShopModal(){
+  await loadShopCatalog();
+  io2.emit('auth:stats',null,r=>{
+    if(r){user=r;}
+    updateShopHeader();
+    closeModal('MDL_PROFILE');
+    openModal('MDL_SHOP');
+    shopSwitchTab('gold'); // Default sekme
+  });
+}
+
+// ── BAHİS ──
+function placeBet(){
+  const amt = parseInt(Q('BET_AMOUNT').value);
+  if(!amt || amt < 5){toast('Min 5 coin!',1);return;}
+  if(amt > 1000){toast('Max 1000 coin!',1);return;}
+  io2.emit('bet:place', {amount: amt}, r => {
+    if(r?.ok){
+      toast(`💰 ${amt} altın bahis yatırıldı!`);
+      Q('MY_BET').textContent = amt;
+      Q('BET_AMOUNT').value = '';
+      Q('BET_CANCEL_BTN').style.display = 'block';
+      // user'ın coinlerini güncelle
+      if(user) user.coins = r.coins;
+    } else {
+      toast(r?.err || 'Bahis başarısız.',1);
+    }
+  });
+}
+
+function cancelBet(){
+  if(!confirm('Bahsi geri çekmek istediğine emin misin?'))return;
+  io2.emit('bet:cancel', null, r => {
+    if(r?.ok){
+      toast('Bahis iade edildi.');
+      Q('MY_BET').textContent = '0';
+      Q('BET_CANCEL_BTN').style.display = 'none';
+    }
+  });
+}
+
+// betUpdate event handler — tüm odadaki bahis durumu
+io2.on('betUpdate', d => {
+  Q('BET_POOL').textContent = d.total || 0;
+  // Kim ne kadar koymuş listesi
+  const list = Q('BET_LIST');
+  const entries = Object.entries(d.bets || {});
+  if(entries.length === 0){
+    list.innerHTML = '<em>Henüz bahis yok.</em>';
+  } else {
+    list.innerHTML = entries.sort((a,b)=>b[1]-a[1]).map(([uname, amt]) =>
+      `<span style="display:inline-block;margin:2px 4px;padding:2px 6px;background:rgba(255,215,0,.1);border-radius:3px"><strong>${uname}</strong>: ${amt}</span>`
+    ).join('');
+  }
+  // Kendi bahsim
+  const myUname = user?.username;
+  if(myUname && d.bets[myUname]){
+    Q('MY_BET').textContent = d.bets[myUname];
+    Q('BET_CANCEL_BTN').style.display = 'block';
+  } else {
+    Q('MY_BET').textContent = '0';
+    Q('BET_CANCEL_BTN').style.display = 'none';
+  }
+});
 
 // Çıkış yap
 function doLogout(){
@@ -1087,6 +1497,25 @@ function openProfile(){
     Q('MOD_SW').textContent=r.stats.won;
     Q('MOD_SL').textContent=r.stats.lost;
     Q('MOD_MV').textContent=r.stats.mvp||0;
+    Q('MOD_COINS').textContent=r.coins??0;
+    // Premium gösterimi
+    if(r.premium?.active){
+      Q('MOD_PREMIUM_ROW').style.display='flex';
+      Q('MOD_PREMIUM').textContent = `${r.premium.daysLeft} gün`;
+    } else {
+      Q('MOD_PREMIUM_ROW').style.display='none';
+    }
+    // Bağış gösterimi
+    if(r.totalDonated > 0){
+      Q('MOD_DONATED_ROW').style.display='flex';
+      Q('MOD_DONATED').textContent = `₺${r.totalDonated.toFixed(0)}`;
+    } else {
+      Q('MOD_DONATED_ROW').style.display='none';
+    }
+    // UI mode radio'larını güncelle
+    let curMode = 'classic';
+    try{ curMode = localStorage.getItem('azap_ui_mode') || 'classic'; }catch{}
+    applyUIMode(curMode);
     openModal('MDL_PROFILE');
   });
 }
@@ -1308,7 +1737,7 @@ function renderRS(){
     const ol=Q('RS_OPT_LIST');ol.innerHTML='';
 
     if(ps.myRoleForced){
-      // Zorla atanmış takım — kalan rollerden seçim yapılabilir (rastgele yok)
+      // Zorla atanmış takım — kalan rollerden seçim yapılabilir + rastgele de aynı takımdan
       const teamLabel = ps.myRoleForcedTeam ? ` (${ps.myRoleForcedTeam.toUpperCase()})` : '';
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
@@ -1319,7 +1748,15 @@ function renderRS(){
         d.onclick=()=>pickRole(roleId);
         ol.appendChild(d);
       });
-      Q('RS_SUB').textContent=`Takım dengelemesi: bir ${ps.myRoleForcedTeam||'rol'} seçmelisin!`;
+      // Forced durumda da rastgele opsiyonu (forced takım içinden seçer)
+      const rd=document.createElement('div');
+      rd.className='rs-opt rs-opt-rnd';
+      rd.style.borderColor='var(--danger)';
+      const teamColor = ps.myRoleForcedTeam==='hain'?'var(--hain)':ps.myRoleForcedTeam==='tarafsız'?'var(--tarafsiz)':'var(--safe)';
+      rd.innerHTML=`<span class="rs-opt-em">🎲</span><div style="flex:1"><div class="rs-opt-name">Rastgele <span style="color:${teamColor};font-size:.72rem">(${ps.myRoleForcedTeam||'?'})</span></div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${ps.myRoleForcedTeam} havuzundan rastgele rol gelir.</div></div>`;
+      rd.onclick=()=>pickRole('random');
+      ol.appendChild(rd);
+      Q('RS_SUB').textContent=`Takım dengelemesi: bir ${ps.myRoleForcedTeam||'rol'} seçmelisin (rastgele de bu takımdan gelir)!`;
     } else {
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
@@ -1433,9 +1870,17 @@ function conf(type){
   if(!isHain && nsent)return;
 
   if(r==='gazi')a={action:'activate'};
+  else if(r==='gardiyan')a={action:'shield'};
+  else if(r==='pusucu')a={targetId:me};  // pusu kurmak için kendine target = aktivasyon
   else if(r==='dedikoducu')a={target1Id:sel1,target2Id:sel2};
   else if(r==='serif')a={action:'shoot',targetId:sel1};
   else if(r==='cilingir')a={targetId:sel1};
+  else if(r==='demirci')a={targetId:sel1};
+  else if(r==='buzcu')a={targetId:sel1};
+  else if(r==='infazci'){
+    // İnfazcı: zindana atma + opsiyonel idam (window._infazExecute flag)
+    a={targetId:sel1, execute: !!window._infazExecute};
+  }
   else if(r==='bombaci'){
     const mode=window._bombMode||'place';
     if(mode==='place'){
@@ -1452,10 +1897,13 @@ function conf(type){
     else{
       // Suikastçı gecede ability kullanmaz (gündüz kullanır)
       if(r==='suikastci') return;
-      a={action:'ability',abilityTargetId:sel1};
+      // Köstebek, Virüs, Pusucu, Hacker hain ability sayılır
+      if(['kostebek','virus','hacker'].includes(r))a={abilityTargetId:sel1};
+      else a={action:'ability',abilityTargetId:sel1};
     }
   }
   else if(r==='seri_katil'){a={action:'kill',targetId:sel1};}
+  else if(r==='veba')a={targetId:sel1};
   else a={targetId:sel1};
   io2.emit('nightAction',a,r2=>{
     if(r2?.ok){
@@ -1499,9 +1947,14 @@ function doSuikast(){
 }
 // ── VOTE ──
 function doVote(tid){
+  if(voted){toast('Oyun verildi, değiştirilemez.',1);return;}
   io2.emit('vote',{targetId:tid},r=>{
-    if(r.ok){voted=tid;
-      document.querySelectorAll('#VG .vb').forEach(b=>{b.classList.toggle('vd',b.dataset.id===tid);});}
+    if(r?.ok){
+      voted=tid;
+      document.querySelectorAll('#VG .vb').forEach(b=>{b.classList.toggle('vd',b.dataset.id===tid);});
+    } else {
+      toast('Oy verilemedi.',1);
+    }
   });
 }
 
@@ -1634,6 +2087,12 @@ function renderLobby(){
   sp.innerHTML=gs.spectators?.length?`<div class="lbl mt8">👁️ İzleyiciler</div>`+gs.spectators.map(s=>`<div class="pi" style="opacity:.5">${avHTML(s.avatar,'sm','👁️')}<span class="pi-name"><span>${s.name}</span></span></div>`).join(''):'';
   Q('SP2').style.display=io2.id===gs.leaderId?'block':'none';
   Q('BS').disabled=gs.players.length<4;
+  // Bahis paneli sadece login olmuş ve oyuncu olarak katılmış kişiye görünür
+  const bp=Q('BET_PANEL');
+  if(bp){
+    const isPlayer = gs.players.some(p=>p.id===me);
+    bp.style.display = (user && isPlayer) ? 'block' : 'none';
+  }
 }
 
 function renderRole(){
@@ -1665,6 +2124,18 @@ function renderNight(){
     serif:ps.serifUsed?'Silahını zaten kullandın':'Kimi vurmak istiyorsun? (TEK KULLANIM!)',
     kurban:'Pasif rol. Aksiyonun yok.',
     cilingir:'Kimi evine kilitlemek istiyorsun?',
+    demirci:'Kime Çelik Zırh giydirmek istiyorsun? (kendine yapamazsın)',
+    buzcu: (ps.buzcuLeft!==undefined && ps.buzcuLeft<=0) ? 'Karantina hakkın bitti.' : `Karantinaya almak istediğin kişiyi seç (kalan: ${ps.buzcuLeft??2})`,
+    koruyucu:'Pasif rol. Birinin koruyucususun.',
+    infazci: (ps.infazExecutionsLeft??1) > 0 ? 'Zindana kapatmak istediğin kişiyi seç. İdam etmek istersen "İdam et" seçeneğini işaretle.' : 'Zindana kapatmak istediğin kişiyi seç (idam hakkın bitti).',
+    gardiyan: ps.gardiyanUsed ? 'Sokağa Çıkma Yasağı hakkını kullandın.' : '🛡️ Bu gece Sokağa Çıkma Yasağı ilan etmek için butona bas (TEK KULLANIM!)',
+    engizitor:'Pasif rol. Gündüz infaz et.',
+    olumsuz:'Pasif rol. 1 kez canlanırsın.',
+    kostebek:'İncelemek istediğin kişiyi seç (her gece)',
+    virus:'Virüs bulaştırmak istediğin kişiyi seç (kendine yapamazsın)',
+    pusucu:'Pusu kuracak mısın? Butona bas.',
+    hacker:'Hacklemek istediğin bilgi rolünü seç',
+    veba:'Hastalık bulaştırmak istediğin kişiyi seç',
     suikastci:'Hedef seç ve rol tahmin et',hipnotizmaci:'Kimi hipnotize etmek istiyorsun?',
     bombaci:'Bomba koy veya patlatma',golge:'Kimi susturmak istiyorsun?',
     seri_katil:'Kimi öldürmek istiyorsun?',muhtar:'Gece aksiyonun yok.',
@@ -1678,7 +2149,7 @@ function renderNight(){
   } else if(isH||isSK){Q('AB2').style.display='flex';Q('SAA').style.display='none';
     if(isSK){Q('BA').style.display='none';Q('BK').style.display='block';}
     else{Q('BA').style.display='block';Q('BK').style.display='block';}
-  }else if(ps.hasNightAction&&!['muhtar','dodo','cellat','yamyam','kurban'].includes(r)){
+  }else if(ps.hasNightAction&&!['muhtar','dodo','cellat','yamyam','kurban','koruyucu','engizitor','olumsuz'].includes(r)){
     Q('AB2').style.display='none';Q('SAA').style.display='block';
   }else{Q('AB2').style.display='none';Q('SAA').style.display='none';}
 
@@ -1703,7 +2174,7 @@ function renderNight(){
 function renderTL(){
   const list=Q('NTL');if(!gs||!ps)return;
   const r=ps.role;
-  if(['muhtar','dodo','cellat','yamyam','kurban'].includes(r)){
+  if(['muhtar','dodo','cellat','yamyam','kurban','koruyucu','engizitor','olumsuz'].includes(r)){
     list.innerHTML=`<div class="tc" style="padding:16px;color:var(--dim)">${r==='yamyam'&&ps.yamyamAbilities?.length?'Toplanan: '+ps.yamyamAbilities.join(', '):'Bu gece aksiyonun yok.'}</div>`;return;}
   if(r==='gazi'){
     list.innerHTML=ps.gaziUsed?'<div class="tc" style="padding:16px;color:var(--dim)">Hakkını kullandın.</div>'
@@ -1712,6 +2183,30 @@ function renderTL(){
     Q('SAA').style.display='none';return;}
   if(r==='serif'&&ps.serifUsed){list.innerHTML='<div class="tc" style="padding:16px;color:var(--dim)">Silahını zaten kullandın.</div>';
     Q('SAA').style.display='none';return;}
+
+  // Gardiyan özel UI: tek butonla aktivasyon
+  if(r==='gardiyan'){
+    if(ps.gardiyanUsed){
+      list.innerHTML='<div class="tc" style="padding:16px;color:var(--dim)">Sokağa Çıkma Yasağı hakkını kullandın.</div>';
+      Q('SAA').style.display='none';
+      return;
+    }
+    list.innerHTML=`<div class="tc" style="padding:16px">
+      <div style="font-size:2rem">🛡️</div>
+      <div class="mt8" style="color:var(--dim);font-size:.85rem">Bu gece SOKAĞA ÇIKMA YASAĞI ilan etmek için onayla.<br>Hiç kimse zarar görmez (TEK KULLANIM).</div>
+    </div>`;
+    return;
+  }
+  // Pusucu özel UI: tek butonla pusu kur
+  if(r==='pusucu'){
+    list.innerHTML=`<div class="tc" style="padding:16px">
+      <div style="font-size:2rem">🪤</div>
+      <div class="mt8" style="color:var(--dim);font-size:.85rem">Pusu kurmak için onayla.<br>Bu gece evine gelen oyunculardan biri rastgele ölür.</div>
+    </div>`;
+    // sel1'i kendi id'ye set et ki onay aktif olsun
+    sel1 = me;
+    return;
+  }
 
   // Bombacı özel UI: 2 ayrı buton (Bomba Koy / Patlat)
   if(r==='bombaci'){
@@ -1775,6 +2270,39 @@ function renderTL(){
       }
     }
     return;
+  }
+
+  // İnfazcı: hedef listesi + idam et seçeneği
+  if(r==='infazci'){
+    // Önce hedef listesi normal şekilde render edilir (sonra altta idam checkbox)
+    // bu özel UI buton'ın altına idam checkbox koyacağız
+    // sel1 set edildikten sonra idam onay kutusu görünür
+    setTimeout(()=>{
+      const saa = Q('SAA');
+      if(!saa) return;
+      const left = ps.infazExecutionsLeft ?? 1;
+      // Idam checkbox HTML
+      let infazUI = Q('INFAZ_UI');
+      if(!infazUI){
+        infazUI = document.createElement('div');
+        infazUI.id = 'INFAZ_UI';
+        infazUI.style.cssText = 'margin:8px 0;padding:8px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.3);border-radius:5px;font-size:.78rem';
+        saa.parentNode.insertBefore(infazUI, saa);
+      }
+      if(left > 0){
+        infazUI.innerHTML = `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--hain)">
+          <input type="checkbox" id="INFAZ_EXEC" onchange="window._infazExecute=this.checked;updAB()"> 
+          🔨 İdam et (kalan: ${left}, GERİ ALINAMAZ!)
+        </label>`;
+      } else {
+        infazUI.innerHTML = '<span style="color:var(--dim)">İdam hakkın bitti — sadece zindana atabilirsin.</span>';
+      }
+    }, 50);
+  } else {
+    // İnfazcı dışı: temizle
+    const u = Q('INFAZ_UI');
+    if(u) u.remove();
+    window._infazExecute = false;
   }
 
   // Doktor kendini koruyabilir (1 kez), bu yüzden kendi de listede olsun
@@ -1898,6 +2426,347 @@ function updateSuikastFloatingBtn(){
   } else {
     btn.classList.remove('sh');
   }
+  // Engizitör butonu (sadece tartışma fazında, kullanılmadıysa)
+  const ebtn = Q('ENGIZITOR_BTN_FLOAT');
+  if(ebtn){
+    const isEngizitor = ps?.role==='engizitor' && ps?.isAlive && !ps?.engizitorUsed;
+    if(isEngizitor && gs?.phase==='day_discussion'){
+      ebtn.style.display='flex';
+    } else {
+      ebtn.style.display='none';
+    }
+  }
+  // Sabotaj butonu (hain takım, gece fazında)
+  const sbtn = Q('SABOTAJ_BTN_FLOAT');
+  if(sbtn){
+    const isHain = ps?.team === 'hain' && ps?.isAlive;
+    if(isHain && gs?.phase === 'night'){
+      sbtn.style.display='flex';
+      // Oy durumu göster
+      if(ps?.sabotageVoted){
+        sbtn.style.background='linear-gradient(135deg,#a04020,#c25030)';
+        sbtn.style.boxShadow='0 0 20px rgba(192,80,40,.6)';
+        sbtn.title=`Sabotaj OY VERDIN (${ps.sabotageVoteCount} hain)`;
+      } else {
+        sbtn.style.background='linear-gradient(135deg,#5e2c1c,#8e3a1a)';
+        sbtn.style.boxShadow='0 2px 14px rgba(0,0,0,.5)';
+        sbtn.title='Sabotaj oy ver';
+      }
+    } else {
+      sbtn.style.display='none';
+    }
+  }
+}
+
+function toggleSabotage(){
+  if(!confirm('🚨 SABOTAJ\nDiğer hainlerle birlikte sabotaj başlatmak için oy verirsin. Çoğunluk kabul ederse ertesi gündüz rastgele 1-2 masuma mini oyun gelir. Devam?'))return;
+  io2.emit('sabotage:vote', null, r => {
+    if(r?.ok){
+      const msg = r.voted
+        ? `✅ Sabotaj oyu verildi (${r.totalVotes} hain)`
+        : `⏪ Sabotaj oyun geri alındı (${r.totalVotes} hain)`;
+      toast(msg);
+    }
+  });
+}
+
+// Sabotaj durum güncellemesi (hain takımına özel)
+io2.on('sabotage:update', d => {
+  const sbtn = Q('SABOTAJ_BTN_FLOAT');
+  if(sbtn){
+    sbtn.title = `Sabotaj: ${d.totalVotes}/${d.neededVotes} hain oy verdi`;
+  }
+});
+
+// Genel toast event (server tarafından gönderilen)
+io2.on('toast', d => {
+  if(d?.msg) toast(d.msg, d.type === 'error' ? 1 : 0);
+});
+
+// ── SABOTAJ MİNİ OYUNLAR ──
+let _saboGame = null; // mevcut oyun durumu
+let _saboShown = false; // bu sabotaj turunda gösterildi mi (tekrar açma)
+
+function sabotageCheck(){
+  // ps.sabotageGame varsa overlay aç
+  if(!ps?.sabotageGame || ps.sabotageGame.completed){
+    Q('SABO_OV').classList.remove('sh');
+    _saboShown = false;
+    return;
+  }
+  // Sadece gündüz fazlarında göster (gece bitti, sabah/tartışma)
+  if(gs?.phase !== 'morning_report' && gs?.phase !== 'day_discussion') return;
+  if(_saboShown) return;
+  _saboShown = true;
+  startSabotageGame(ps.sabotageGame.gameType);
+}
+
+function startSabotageGame(gameType){
+  Q('SABO_OV').classList.add('sh');
+  const sub = Q('SABO_SUB');
+  if(gameType === 'xox'){
+    sub.textContent = 'XOX — Bilgisayara karşı kazanmaya çalış!';
+    initXOX();
+  } else if(gameType === 'rps'){
+    sub.textContent = 'Taş Kağıt Makas — Üst üste 2 raunt kazan!';
+    initRPS();
+  } else if(gameType === 'colorword'){
+    sub.textContent = 'Renk Yaz — Yazıdaki RENGE bas, kelimeye değil!';
+    initColorWord();
+  }
+}
+
+function sabotageSkip(){
+  if(!confirm('Mini oyunu geçmek istiyor musun? (kaybetmiş sayılırsın)'))return;
+  io2.emit('sabotage:result', { won: false }, ()=>{
+    Q('SABO_OV').classList.remove('sh');
+    _saboShown = false;
+  });
+}
+
+function sabotageEnd(won){
+  io2.emit('sabotage:result', { won }, ()=>{
+    setTimeout(()=>{
+      Q('SABO_OV').classList.remove('sh');
+      _saboShown = false;
+    }, 1500);
+  });
+}
+
+// ── XOX (Tic Tac Toe) ──
+function initXOX(){
+  _saboGame = { board: Array(9).fill(null), playerSymbol: 'X', aiSymbol: 'O', turn: 'player' };
+  renderXOX();
+}
+
+function renderXOX(){
+  const g = _saboGame;
+  const status = g.winner === 'player' ? '🎉 Kazandın!' : g.winner === 'ai' ? '💀 Kaybettin!' : g.winner === 'draw' ? '🤝 Berabere!' : (g.turn === 'player' ? 'Senin sıran (X)' : 'Bilgisayar düşünüyor...');
+  let html = `<div class="xox-status">${status}</div><div class="xox-board">`;
+  g.board.forEach((cell, i) => {
+    const cls = cell ? `taken ${cell.toLowerCase()}` : '';
+    html += `<div class="xox-cell ${cls}" onclick="xoxClick(${i})">${cell || ''}</div>`;
+  });
+  html += '</div>';
+  Q('SABO_BODY').innerHTML = html;
+}
+
+function xoxClick(i){
+  const g = _saboGame;
+  if(g.winner || g.turn !== 'player' || g.board[i]) return;
+  g.board[i] = g.playerSymbol;
+  const w = xoxCheckWin();
+  if(w){ g.winner = w; renderXOX(); sabotageEnd(w === 'player'); return; }
+  g.turn = 'ai';
+  renderXOX();
+  setTimeout(xoxAI, 600);
+}
+
+function xoxAI(){
+  const g = _saboGame;
+  if(g.winner) return;
+  // Basit AI: kazanma → blokla → ortaya/köşeye
+  let move = xoxBestMove(g.aiSymbol) || xoxBestMove(g.playerSymbol);
+  if(move === null){
+    // Orta varsa orta, yoksa rastgele boş köşe
+    if(g.board[4] === null) move = 4;
+    else {
+      const corners = [0,2,6,8].filter(i => g.board[i] === null);
+      if(corners.length) move = corners[Math.floor(Math.random()*corners.length)];
+      else {
+        const empty = g.board.map((v,i)=>v===null?i:-1).filter(i=>i>=0);
+        move = empty[Math.floor(Math.random()*empty.length)];
+      }
+    }
+  }
+  if(move !== null){
+    g.board[move] = g.aiSymbol;
+    const w = xoxCheckWin();
+    if(w){ g.winner = w; renderXOX(); sabotageEnd(w === 'player'); return; }
+    g.turn = 'player';
+    renderXOX();
+  }
+}
+
+function xoxBestMove(symbol){
+  const g = _saboGame;
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const [a,b,c] of lines){
+    const cells = [g.board[a], g.board[b], g.board[c]];
+    const symCount = cells.filter(x => x === symbol).length;
+    const emptyIdx = [a,b,c][cells.findIndex(x => x === null)];
+    if(symCount === 2 && emptyIdx !== undefined && cells.filter(x=>x===null).length === 1) return emptyIdx;
+  }
+  return null;
+}
+
+function xoxCheckWin(){
+  const g = _saboGame;
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const [a,b,c] of lines){
+    if(g.board[a] && g.board[a]===g.board[b] && g.board[b]===g.board[c]){
+      return g.board[a] === g.playerSymbol ? 'player' : 'ai';
+    }
+  }
+  if(!g.board.includes(null)) return 'draw';
+  return null;
+}
+
+// ── TAŞ KAĞIT MAKAS ──
+function initRPS(){
+  _saboGame = { playerScore: 0, aiScore: 0, round: 1, maxRound: 3 };
+  renderRPS();
+}
+
+function renderRPS(){
+  const g = _saboGame;
+  const html = `
+    <div class="cw-score">Round ${g.round}/${g.maxRound} · Sen: ${g.playerScore} | AI: ${g.aiScore}</div>
+    ${g.lastResult ? `<div class="rps-vs">${g.lastPlayerEmoji}<span class="vs">VS</span>${g.lastAiEmoji}</div>` : ''}
+    ${g.lastResult ? `<div class="rps-result" style="color:${g.lastResult==='win'?'var(--safe)':g.lastResult==='lose'?'var(--hain)':'var(--dim)'}">${g.lastResult==='win'?'🎉 Kazandın!':g.lastResult==='lose'?'💀 Kaybettin!':'🤝 Berabere!'}</div>` : ''}
+    <div class="rps-buttons">
+      <button class="rps-btn" onclick="rpsPlay('rock')">🪨</button>
+      <button class="rps-btn" onclick="rpsPlay('paper')">📄</button>
+      <button class="rps-btn" onclick="rpsPlay('scissors')">✂️</button>
+    </div>
+  `;
+  Q('SABO_BODY').innerHTML = html;
+}
+
+function rpsPlay(playerChoice){
+  const g = _saboGame;
+  if(g.gameOver) return;
+  const choices = ['rock','paper','scissors'];
+  const aiChoice = choices[Math.floor(Math.random()*3)];
+  const emoji = { rock:'🪨', paper:'📄', scissors:'✂️' };
+  g.lastPlayerEmoji = emoji[playerChoice];
+  g.lastAiEmoji = emoji[aiChoice];
+  if(playerChoice === aiChoice){ g.lastResult = 'draw'; }
+  else if(
+    (playerChoice==='rock' && aiChoice==='scissors') ||
+    (playerChoice==='paper' && aiChoice==='rock') ||
+    (playerChoice==='scissors' && aiChoice==='paper')
+  ){ g.playerScore++; g.lastResult = 'win'; }
+  else { g.aiScore++; g.lastResult = 'lose'; }
+  g.round++;
+  if(g.round > g.maxRound){
+    g.gameOver = true;
+    renderRPS();
+    sabotageEnd(g.playerScore > g.aiScore);
+    return;
+  }
+  renderRPS();
+}
+
+// ── RENK YAZ (Stroop test) ──
+function initColorWord(){
+  _saboGame = {
+    score: 0,
+    target: 5, // kazanmak için doğru cevap
+    timeLeft: 30,
+    timerInterval: null
+  };
+  cwNextRound();
+  _saboGame.timerInterval = setInterval(() => {
+    _saboGame.timeLeft--;
+    if(_saboGame.timeLeft <= 0){
+      clearInterval(_saboGame.timerInterval);
+      sabotageEnd(_saboGame.score >= _saboGame.target);
+      Q('SABO_BODY').innerHTML = `<div class="xox-status">${_saboGame.score >= _saboGame.target ? '🎉 Tamam!' : '⏰ Süre doldu'}</div>`;
+      return;
+    }
+    cwUpdateTimer();
+  }, 1000);
+}
+
+function cwNextRound(){
+  const colors = [
+    {name:'KIRMIZI', color:'#e74c3c'},
+    {name:'MAVİ', color:'#3498db'},
+    {name:'YEŞİL', color:'#27ae60'},
+    {name:'SARI', color:'#f1c40f'},
+    {name:'MOR', color:'#9b59b6'},
+    {name:'PEMBE', color:'#e91e63'}
+  ];
+  const wordObj = colors[Math.floor(Math.random()*colors.length)];
+  // Renk yazı renginden farklı olsun
+  let colorObj;
+  do { colorObj = colors[Math.floor(Math.random()*colors.length)]; } while(colorObj.name === wordObj.name);
+
+  // 3 seçenek: doğru cevap (renk) + 2 yanlış
+  const wrongOptions = colors.filter(c => c.name !== colorObj.name);
+  const options = [colorObj, ...wrongOptions.slice(0,2).sort(()=>Math.random()-0.5)].sort(()=>Math.random()-0.5);
+
+  _saboGame.correctAnswer = colorObj.name;
+
+  Q('SABO_BODY').innerHTML = `
+    <div class="cw-timer">⏱️ ${_saboGame.timeLeft} saniye</div>
+    <div class="cw-score">Doğru: ${_saboGame.score} / ${_saboGame.target}</div>
+    <div class="cw-display" style="color:${colorObj.color}">${wordObj.name}</div>
+    <div style="font-size:.78rem;color:var(--dim);text-align:center;margin-bottom:6px">YAZIDAKI RENGE bas, kelimeye değil!</div>
+    <div class="cw-options">
+      ${options.map(o => `<div class="cw-opt" style="color:${o.color};border-color:${o.color}" onclick="cwAnswer('${o.name}')">${o.name}</div>`).join('')}
+    </div>
+  `;
+}
+
+function cwUpdateTimer(){
+  const t = document.querySelector('.cw-timer');
+  if(t) t.textContent = `⏱️ ${_saboGame.timeLeft} saniye`;
+}
+
+function cwAnswer(answer){
+  if(answer === _saboGame.correctAnswer){
+    _saboGame.score++;
+    if(_saboGame.score >= _saboGame.target){
+      clearInterval(_saboGame.timerInterval);
+      Q('SABO_BODY').innerHTML = `<div class="xox-status">🎉 Tamam, başardın!</div>`;
+      sabotageEnd(true);
+      return;
+    }
+  } else {
+    // Yanlış cevap: 2 saniye ceza
+    _saboGame.timeLeft = Math.max(0, _saboGame.timeLeft - 2);
+  }
+  cwNextRound();
+}
+
+// Engizitör modal — tartışma fazında infaz
+window._engizitorTarget = null;
+function openEngizitorModal(){
+  if(ps?.engizitorUsed){
+    toast('Yeteneğini zaten kullandın!',1);
+    return;
+  }
+  window._engizitorTarget = null;
+  const list = Q('ENGIZITOR_TARGETS');
+  list.innerHTML = '';
+  gs.players.filter(p => p.isAlive && p.id !== me).forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'tb';
+    d.innerHTML = `${avHTML(p.avatar,'sm')}<span class="tb-name">${p.name}</span>`;
+    d.onclick = () => {
+      window._engizitorTarget = p.id;
+      document.querySelectorAll('#ENGIZITOR_TARGETS .tb').forEach(el => el.classList.remove('sel'));
+      d.classList.add('sel');
+      Q('ENGIZITOR_CONFIRM').disabled = false;
+    };
+    list.appendChild(d);
+  });
+  Q('ENGIZITOR_CONFIRM').disabled = true;
+  Q('ENGIZITOR_MODAL').classList.add('sh');
+}
+function confirmEngizitor(){
+  if(!window._engizitorTarget){toast('Hedef seç!',1);return;}
+  if(!confirm('Bu eylem GERİ ALINAMAZ! Hain/tarafsız değilse SEN ölürsün. Devam?'))return;
+  io2.emit('engizitor', { targetId: window._engizitorTarget }, (r) => {
+    if(r?.ok){
+      Q('ENGIZITOR_MODAL').classList.remove('sh');
+      toast('İnfaz gerçekleşti!');
+    } else {
+      toast(r?.err || 'İnfaz başarısız.',1);
+    }
+  });
 }
 
 // Rol bilgi badge ve modal
@@ -2258,7 +3127,7 @@ function openSuikastModal(){
   });
   const roles=[['doktor','Doktor','🩺'],['polis','Polis','🔦'],['savci','Savcı','⚖️'],
     ['muhtar','Muhtar','🏛️'],['gazeteci','Gazeteci','📰'],['psikolog','Psikolog','🧠'],['gazi','Gazi','🛡️'],
-    ['dedikoducu','Dedikoducu','🗣️'],['ajan','Ajan','🕵️'],['serif','Şerif','🤠'],['kurban','Kurban','🩸'],
+    ['dedikoducu','Dedikocucu','🗣️'],['ajan','Ajan','🕵️'],['serif','Şerif','🤠'],['kurban','Kurban','🩸'],
     ['cilingir','Çilingir','🔑'],['takipci','Takipçi','👣']];
   Q('SUIKAST_ROLES').innerHTML=roles.map(([id,n,e])=>`<div class="rgb" data-rid="${id}" onclick="selSuikastRole('${id}')">${e} ${n}</div>`).join('');
   Q('SUIKAST_DO_BTN').disabled=true;
@@ -2330,17 +3199,32 @@ function renderGO(data){
   else if(data.winner==='hain')gtEl.style.color='var(--hain)';
   else if(data.winner==='seri_katil'||data.winner==='dodo'||data.winner==='cellat')gtEl.style.color='var(--tarafsiz)';
   else gtEl.style.color='';
-  Q('GM').textContent='';
+
+  // Kendi coin değişimini büyük göster
+  const myUname = user?.username;
+  const myChange = myUname && data.coinUpdates?.[myUname]?.coinChange || 0;
+  const myTotalCoins = myUname && data.coinUpdates?.[myUname]?.totalCoins;
+  if(myChange !== 0){
+    const coinColor = myChange > 0 ? 'var(--gold)' : 'var(--hain)';
+    const sign = myChange > 0 ? '+' : '';
+    Q('GM').innerHTML = `<div style="margin-top:8px;padding:8px;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);border-radius:5px;display:inline-block">
+      <span style="color:${coinColor};font-weight:700;font-size:1.1rem">${sign}${myChange} 💰</span>
+      ${myTotalCoins!==undefined ? `<span style="color:var(--dim);font-size:.78rem;margin-left:6px">(toplam: ${myTotalCoins})</span>` : ''}
+      ${data.totalBetPool ? `<div style="font-size:.7rem;color:var(--dim);margin-top:3px">Bahis havuzu: ${data.totalBetPool}</div>` : ''}
+    </div>`;
+  } else {
+    Q('GM').textContent='';
+  }
 
   // Kazananlar kutusu
   const winBox=Q('WIN_BOX');
   const winList=Q('WIN_LIST');
   if(data.winners?.length){
     winBox.style.display='block';
-    winList.innerHTML=data.winners.map(w=>
-      // BURAYA DELİ ETİKETİNİ EKLEDİK
-      `<div class="winner-item">${avHTML(w.avatar,'sm')}<span class="trophy">🏆</span><span style="flex:1;font-weight:700">${w.name}</span><span style="color:var(--dim);font-size:.78rem">${w.roleEmoji} ${w.roleName} ${w.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span></div>`
-    ).join('');
+    winList.innerHTML=data.winners.map(w=>{
+      const cc = w.coinChange ? `<span style="color:var(--gold);font-size:.74rem;margin-left:4px">+${w.coinChange}💰</span>` : '';
+      return `<div class="winner-item">${avHTML(w.avatar,'sm')}<span class="trophy">🏆</span><span style="flex:1;font-weight:700">${w.name}${cc}</span><span style="color:var(--dim);font-size:.78rem">${w.roleEmoji} ${w.roleName} ${w.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span></div>`;
+    }).join('');
   } else {
     winBox.style.display='none';
   }
@@ -2351,8 +3235,9 @@ function renderGO(data){
     const isMe=p.id===me;
     const d=document.createElement('div');d.className='gop'+(p.isWinner?' winner':'');
     const meTag=isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'';
+    const cc = p.coinChange ? `<span style="color:${p.coinChange>0?'var(--gold)':'var(--hain)'};font-size:.7rem;margin-left:4px">${p.coinChange>0?'+':''}${p.coinChange}💰</span>` : '';
     d.innerHTML=`${avHTML(p.avatar,'sm')}<span>${p.isAlive?'✅':'💀'}</span><span>${p.roleEmoji}</span>
-      <span style="flex:1">${p.name}${meTag}</span><span style="color:var(--dim);font-size:.74rem">${p.roleName} (${p.team}) ${p.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span>
+      <span style="flex:1">${p.name}${meTag}${cc}</span><span style="color:var(--dim);font-size:.74rem">${p.roleName} (${p.team}) ${p.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span>
       ${p.isWinner?'<span class="ib">🏆 KAZANDI</span>':''}`;
     l.appendChild(d);});
   // Yeni oyun butonu herkese görünür - herkes başlatabilir
@@ -2689,6 +3574,8 @@ io2.on('priv',s=>{
   renderH();
   // Suikastçı durumu değişebilir - butonu güncelle
   updateSuikastFloatingBtn();updateRoleInfoBtn();
+  // Sabotaj mini oyun gösterilmeli mi?
+  sabotageCheck();
   if(!s.isAlive&&!deathOk){
     Q('DOV').classList.add('sh');
     deathOk=true;
@@ -2722,6 +3609,16 @@ io2.on('cellatVictory',d=>{
 io2.on('cellatPrivateWin',d=>{
   toast(`⛓️ Hedefini ${d.targetName} astırdın! Kazandın.`);
 });
+// Engizitör infaz sonucu - herkese yayın
+io2.on('engizitorResult',d=>{
+  const ov=Q('SUIKAST_OV');
+  Q('SUIKAST_TXT').textContent=`⚖️ ${d.msg}`;
+  Q('SUIKAST_SUB').textContent=d.killedName?`${d.killedName} infaz edildi.`:'';
+  ov.style.background='rgba(94,58,135,.96)';
+  ov.classList.add('sh');
+  setTimeout(()=>ov.classList.remove('sh'),4500);
+});
+
 io2.on('voteTally',t=>updateTally(t));
 io2.on('presidentVoteTally',t=>updatePVTally(t));
 io2.on('hainKillVotes',v=>renderHKV(v));
@@ -2739,7 +3636,19 @@ io2.on('gameOver',d=>{
   // Ama isDead durumu post_game/lobby'de sıfırlanacak
 });
 
-io2.on('statsUpdate',r=>{if(r){user=r;updateUserUI();}});
+io2.on('statsUpdate',r=>{
+  if(r){
+    user=r;
+    updateUserUI();
+    // Profil veya mağaza modal açıksa anında güncelle
+    const cm=Q('MOD_COINS');if(cm)cm.textContent=r.coins??0;
+    const sc=Q('SHOP_COINS');if(sc)sc.textContent=r.coins??0;
+    const sp=Q('MOD_SP');if(sp)sp.textContent=r.stats?.played??0;
+    const sw=Q('MOD_SW');if(sw)sw.textContent=r.stats?.won??0;
+    const sl=Q('MOD_SL');if(sl)sl.textContent=r.stats?.lost??0;
+    const mv=Q('MOD_MV');if(mv)mv.textContent=r.stats?.mvp??0;
+  }
+});
 
 io2.on('spec',d=>{
   _lastSpec=d;

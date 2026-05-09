@@ -1,0 +1,20 @@
+{
+  "name": "AZAP - Sosyal Dedüksiyon",
+  "short_name": "AZAP",
+  "description": "Türkçe sosyal dedüksiyon oyunu. 33 farklı rolle hain bul, masum kal.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06060e",
+  "theme_color": "#c0392b",
+  "lang": "tr",
+  "categories": ["games", "social", "entertainment"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

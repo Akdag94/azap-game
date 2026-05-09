@@ -7,7 +7,7 @@ const archiver = null; // archiver yoksa zip yapamayacağız, fallback olarak js
 const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
 const Reports = require('./reports');
-const { PHASES } = require('./gameConstants');
+const { PHASES, TEAMS } = require('./gameConstants');
 
 
 const app = express();
@@ -24,6 +24,137 @@ const io = new Server(server, {
   allowEIO3: true
 });
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.json({ limit: '1mb' }));
+
+// ── ÖDEME PAKETLERİ KATALOĞU ──
+const PAYMENT_PACKAGES = {
+  // Altın paketleri (TL → coin)
+  'gold_100': { type: 'coins', amount: 100, price: 19.90, currency: 'TRY', label: '100 Altın', emoji: '💰' },
+  'gold_500': { type: 'coins', amount: 600, price: 79.90, currency: 'TRY', label: '500 + 100 Bonus Altın', emoji: '💰', bonus: 100 },
+  'gold_1500': { type: 'coins', amount: 2000, price: 199.90, currency: 'TRY', label: '1500 + 500 Bonus Altın', emoji: '💎', bonus: 500 },
+  'gold_5000': { type: 'coins', amount: 7500, price: 499.90, currency: 'TRY', label: '5000 + 2500 Bonus Altın', emoji: '💎', bonus: 2500 },
+  // Premium üyelik
+  'premium_1m': { type: 'premium', days: 30, price: 49.90, currency: 'TRY', label: 'AZAP Premium - 1 Ay', emoji: '👑' },
+  'premium_3m': { type: 'premium', days: 90, price: 129.90, currency: 'TRY', label: 'AZAP Premium - 3 Ay', emoji: '👑', bonus: 'İlk ay ücretsiz' },
+  'premium_12m': { type: 'premium', days: 365, price: 449.90, currency: 'TRY', label: 'AZAP Premium - 1 Yıl', emoji: '👑', bonus: '%24 indirim' }
+};
+
+// Bağış (donate) önerilen miktarlar — kullanıcı kendi miktarını da girebilir
+const DONATION_PRESETS = [10, 25, 50, 100, 250, 500];
+
+// Paket katalog endpoint'i (frontend mağazada gösterir)
+app.get('/api/shop/packages', (req, res) => {
+  res.json({
+    packages: PAYMENT_PACKAGES,
+    donationPresets: DONATION_PRESETS,
+    paymentEnabled: !!process.env.IYZICO_API_KEY // Gerçek ödeme aktif mi
+  });
+});
+
+// ── İYZİCO ÖDEME OLUŞTURMA ──
+// TODO: Gerçek İyzico SDK'sı eklenecek. Şu an stub:
+// - process.env.IYZICO_API_KEY ve IYZICO_SECRET_KEY okuyacak
+// - npm install iyzipay ile entegre olacak
+// - https://dev.iyzipay.com/tr docs'a göre Checkout Form yöntemi kullanacak
+app.post('/api/payment/create', async (req, res) => {
+  const { username, packageId, donationAmount } = req.body || {};
+  if (!username) return res.status(400).json({ ok: false, error: 'Kullanıcı yok' });
+
+  let amount, label, type, payload;
+  if (packageId === 'donation') {
+    if (!donationAmount || donationAmount < 5 || donationAmount > 5000) {
+      return res.status(400).json({ ok: false, error: 'Bağış 5-5000 TL arası olmalı' });
+    }
+    amount = parseFloat(donationAmount);
+    label = `${amount} TL Bağış`;
+    type = 'donation';
+    payload = { amount };
+  } else {
+    const pkg = PAYMENT_PACKAGES[packageId];
+    if (!pkg) return res.status(404).json({ ok: false, error: 'Paket yok' });
+    amount = pkg.price;
+    label = pkg.label;
+    type = pkg.type;
+    payload = pkg;
+  }
+
+  // İyzico bağlı değilse: dev modunda direkt simüle et
+  if (!process.env.IYZICO_API_KEY) {
+    // DEV MODE: ödeme simülasyonu (production'da kaldırılacak)
+    return res.json({
+      ok: true,
+      devMode: true,
+      message: 'İyzico bağlı değil — dev modunda simülasyon. Production için IYZICO_API_KEY ekle.',
+      paymentInfo: { username, packageId, amount, label, type }
+    });
+  }
+
+  // TODO: Gerçek İyzico Checkout Form oluştur
+  // const iyzipay = require('iyzipay');
+  // const client = new iyzipay({ apiKey: process.env.IYZICO_API_KEY, secretKey: process.env.IYZICO_SECRET_KEY, uri: 'https://api.iyzipay.com' });
+  // const result = await client.checkoutFormInitialize.create({ ... });
+  // res.json({ ok: true, checkoutFormContent: result.checkoutFormContent, paymentPageUrl: result.paymentPageUrl });
+
+  return res.status(501).json({ ok: false, error: 'İyzico entegrasyonu henüz tamamlanmadı' });
+});
+
+// İyzico callback (ödeme tamamlandığında)
+// TODO: gerçek webhook imzasını doğrula
+app.post('/api/payment/callback', async (req, res) => {
+  // TODO: req.body.token ile Iyzico'dan ödeme detayını doğrula
+  // Sonra: applyPayment(username, packageId)
+  res.json({ ok: true });
+});
+
+// DEV MODE: ödeme simülasyonu — production'da KAPATILMALI
+app.post('/api/payment/dev-complete', (req, res) => {
+  if (process.env.IYZICO_API_KEY) {
+    return res.status(403).json({ ok: false, error: 'Production modunda dev complete çalışmaz' });
+  }
+  const { username, packageId, donationAmount } = req.body || {};
+  applyPayment(username, packageId, donationAmount);
+  res.json({ ok: true });
+});
+
+// Ödeme başarılı sonrası uygulama
+function applyPayment(username, packageId, donationAmount) {
+  if (packageId === 'donation') {
+    Accounts.recordDonation(username, donationAmount);
+    Accounts.recordPayment(username, {
+      id: 'don_' + Date.now(),
+      type: 'donation',
+      amount: donationAmount,
+      currency: 'TRY',
+      status: 'success'
+    });
+    return { ok: true, type: 'donation', amount: donationAmount };
+  }
+  const pkg = PAYMENT_PACKAGES[packageId];
+  if (!pkg) return { ok: false };
+
+  if (pkg.type === 'coins') {
+    Accounts.addCoins(username, pkg.amount);
+  } else if (pkg.type === 'premium') {
+    Accounts.activatePremium(username, pkg.days);
+  }
+  Accounts.recordPayment(username, {
+    id: 'pay_' + Date.now(),
+    type: pkg.type,
+    packageId,
+    amount: pkg.price,
+    currency: pkg.currency,
+    status: 'success'
+  });
+
+  // Stats güncelle (hem socket hem next request)
+  for (const [sid, uname] of authed.entries()) {
+    if (uname === username) {
+      const stats = Accounts.getStats(uname);
+      if (stats) io.sockets.sockets.get(sid)?.emit('statsUpdate', stats);
+    }
+  }
+  return { ok: true, type: pkg.type };
+}
 
 // Report screenshot endpoint - sadece admin authentication ile bakılabilir
 app.get('/admin/screenshot/:filename', (req, res) => {
@@ -104,7 +235,6 @@ ${imgHtml}
 
 app.get('*', (_, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
-const radioStartTime = Date.now(); // Sunucu ilk açıldığında radyoyu başlat
 
 
 function genCode() { let c; do { c = String(1000 + Math.random() * 9000 | 0); } while (rooms.has(c)); return c; }
@@ -239,10 +369,18 @@ function endGame(rc, wc, res) {
   // Kazananları wc.winner'a göre hesapla
   const winnerKey = wc.winner;
   const winnerPlayers = [...g.players.values()].filter(p => {
-    // Cellat hedefini astırmışsa daima kazanır (oyunu kim kazansa kazansın)
+    // Cellat hedefini astırmışsa daima kazanır
     if (p.role === 'cellat' && g.cellatWon.has(p.id)) return true;
-    // Yamyam: hem hainlerle hem masumlarla kazanır (kazanan takım masum/hain ise)
+    // Yamyam: masum veya hain kazanırsa o da
     if (p.role === 'yamyam' && (winnerKey === TEAMS.MASUM || winnerKey === TEAMS.HAIN)) return true;
+    // Koruyucu: koruduğu kişi hayattaysa
+    if (p.role === 'koruyucu') {
+      const targetId = g.koruyucuTargets.get(p.id);
+      const target = targetId ? g.players.get(targetId) : null;
+      return !!(target?.isAlive);
+    }
+    // Veba kazandıysa sadece veba
+    if (winnerKey === 'veba') return p.role === 'veba';
     if (winnerKey === p.actualTeam) return true;
     if (winnerKey === 'seri_katil' && p.role === 'seri_katil') return true;
     if (winnerKey === 'dodo' && p.role === 'dodo') return true;
@@ -252,6 +390,41 @@ function endGame(rc, wc, res) {
   const winnerSet = new Set(winnerUsernames);
   winnerUsernames.forEach(u => Accounts.record(u, true));
   [...g.players.values()].map(p => p.username).filter(u => u && !winnerSet.has(u)).forEach(u => Accounts.record(u, false));
+
+  // ── COIN DAĞITIMI ──
+  // Kazanan: +20 coin (oyuna katılma + kazanma bonusu)
+  // Kaybeden: +5 coin (oyuna katıldı)
+  // Bahis havuzu: kazanan oyuncular arasında, koydukları orana göre dağıtılır + kazanma bonusu zaten eklendi
+  const bets = g.bets || new Map(); // username -> betAmount
+  const totalBetPool = [...bets.values()].reduce((a, b) => a + b, 0);
+  // Kazanan kullanıcıların toplam bahis miktarı (pay hesabı için)
+  const winnerBetTotal = [...bets.entries()]
+    .filter(([uname, _]) => winnerSet.has(uname))
+    .reduce((a, [_, amt]) => a + amt, 0);
+
+  const coinUpdates = {}; // username -> { coinChange, totalCoins }
+
+  // Tüm oyuncular için coin dağıtımı
+  [...g.players.values()].forEach(p => {
+    if (!p.username) return;
+    let change = 0;
+    if (winnerSet.has(p.username)) {
+      change += 20; // Kazanma bonusu
+      // Bahis payı: koyduğu oran kadar payını alır
+      if (winnerBetTotal > 0 && bets.has(p.username)) {
+        const myBet = bets.get(p.username);
+        const myShare = Math.floor((myBet / winnerBetTotal) * totalBetPool);
+        change += myShare;
+      }
+    } else {
+      change += 5; // Katılım ödülü
+      // Bahis kaybedildi (zaten lobide düşürüldü, geri verilmez)
+    }
+    if (change !== 0) {
+      const r = Accounts.addCoins(p.username, change);
+      coinUpdates[p.username] = { coinChange: change, totalCoins: r.coins };
+    }
+  });
 
   // Stats güncellemesi
   g.players.forEach(p => {
@@ -265,19 +438,23 @@ function endGame(rc, wc, res) {
 
   const data = {
     ...wc, dodoWins: res?.dodoWins, cellatWins: res?.cellatWins,
+    coinUpdates, // Frontend'e coin değişimini söyle
+    totalBetPool,
     players: [...g.players.values()].map(p => {
       const ro = g.ro(p.role);
       return {
         id: p.id, name: p.name, username: p.username, avatar: p.avatar,
         role: p.role, roleName: ro?.name, roleEmoji: ro?.emoji,
         team: p.actualTeam, isAlive: p.isAlive, isInsane: p.isInsane,
-        isWinner: winnerSet.has(p.username)
+        isWinner: winnerSet.has(p.username),
+        coinChange: coinUpdates[p.username]?.coinChange || 0
       };
     }),
     winners: winnerPlayers.map(p => ({
       id: p.id, name: p.name, username: p.username, avatar: p.avatar,
       roleName: g.ro(p.role)?.name, roleEmoji: g.ro(p.role)?.emoji,
-      isInsane: p.isInsane
+      isInsane: p.isInsane,
+      coinChange: coinUpdates[p.username]?.coinChange || 0
     }))
   };
   g.gameResult = data;
@@ -301,9 +478,10 @@ function startMvpVote(rc) {
 function resolveMvp(rc) {
   const g = rooms.get(rc); if (!g) return;
   const result = g.resolveMvpVote();
-  // MVP'ye 1 puan kaydet
+  // MVP'ye 1 puan kaydet + 5 coin
   if (result.mvp?.username) {
     Accounts.recordMvp(result.mvp.username);
+    Accounts.addCoins(result.mvp.username, 5);
     // Stats güncellemesi: TÜM oyuncuları senkronla
     g.players.forEach(p => {
       const stats = Accounts.getStats(p.username);
@@ -381,11 +559,6 @@ function emitHainKillVotes(rc) {
 }
 
 io.on('connection', (socket) => {
-  socket.emit('sync_radio', {
-    startTime: radioStartTime,
-    serverTime: Date.now()
-  });
-
   socket.on('auth:register', (d, cb) => { /* ... */ });
   socket.on('auth:register', (d, cb) => { const r = Accounts.register(d.username, d.password); if (r.success) { kickOldSessions(d.username.trim(), socket.id); authed.set(socket.id, d.username.trim()); } cb(r); });
   socket.on('auth:login', (d, cb) => {
@@ -468,14 +641,23 @@ io.on('connection', (socket) => {
     if (rc) {
       const g = rooms.get(rc);
       if (g) {
+        // Lobide bahis varsa geri ver
+        const u = authed.get(socket.id);
+        if (u && g.bets?.has(u) && g.phase === PHASES.LOBBY) {
+          Accounts.addCoins(u, g.bets.get(u));
+          g.bets.delete(u);
+          io.to(rc).emit('betUpdate', {
+            bets: Object.fromEntries(g.bets || new Map()),
+            total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)
+          });
+        }
         g.removePlayer(socket.id); g.removeSpectator(socket.id);
         if (g.players.size === 0 && g.spectators.size === 0) { rooms.delete(rc); clearTimer(rc); }
-        else { 
-          // Lider ayrıldıysa yeni lider seç
+        else {
           if (g.leaderId === socket.id && g.players.size > 0) {
             g.leaderId = [...g.players.keys()][0];
           }
-          emit(rc); 
+          emit(rc);
         }
       }
       socket.leave(rc);
@@ -498,7 +680,11 @@ io.on('connection', (socket) => {
     const rc = prooms.get(socket.id), g = rooms.get(rc);
     if (!g || g.leaderId !== socket.id) return;
     if (g.phase !== PHASES.LOBBY) return;
-    if (d.enabledRoles) g.enabledRoles = new Set(d.enabledRoles);
+    if (d.enabledRoles) {
+      // implemented:false rolleri filtrele - default açık olamazlar
+      const ROLES = require('./gameConstants').ROLES;
+      g.enabledRoles = new Set(d.enabledRoles.filter(k => ROLES[k] && ROLES[k].implemented !== false));
+    }
     if (d.insanityRate !== undefined) g.insanityRate = Math.max(0, Math.min(100, d.insanityRate));
     if (d.config) g.setConfig(d.config);
     if (d.hainKillMode) g.setHainKillMode(d.hainKillMode);
@@ -511,6 +697,49 @@ io.on('connection', (socket) => {
     }
     // Throttle ile emit (lider slider'ı çok hızlı değiştirirse her değişimde state göndermesin)
     emit(rc);
+  });
+
+  // ── BAHİS SİSTEMİ ──
+  // Lobide oyun başlamadan önce coin yatırma
+  socket.on('bet:place', ({ amount }, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
+    if (g.phase !== PHASES.LOBBY) return cb?.({ ok: false, err: 'Oyun başladı, bahis yapılamaz!' });
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    const amt = parseInt(amount);
+    if (!amt || amt < 5 || amt > 1000) return cb?.({ ok: false, err: 'Bahis 5-1000 arası olmalı!' });
+    // Önce eski bahsi geri ver (varsa)
+    if (!g.bets) g.bets = new Map();
+    const oldBet = g.bets.get(u) || 0;
+    if (oldBet > 0) Accounts.addCoins(u, oldBet);
+    // Yeni bahsi al
+    const r = Accounts.spendCoins(u, amt);
+    if (!r.success) return cb?.({ ok: false, err: r.error || 'Yetersiz coin' });
+    g.bets.set(u, amt);
+    cb?.({ ok: true, coins: r.coins, bet: amt });
+    // Tüm odaya bahis durumunu yayınla
+    io.to(rc).emit('betUpdate', {
+      bets: Object.fromEntries(g.bets),
+      total: [...g.bets.values()].reduce((a, b) => a + b, 0)
+    });
+  });
+
+  // Bahsi geri çek (lobide hâlâ)
+  socket.on('bet:cancel', (_, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return cb?.({ ok: false });
+    if (g.phase !== PHASES.LOBBY) return cb?.({ ok: false, err: 'Oyun başladı!' });
+    const u = authed.get(socket.id);
+    if (!u || !g.bets?.has(u)) return cb?.({ ok: false });
+    const amt = g.bets.get(u);
+    Accounts.addCoins(u, amt);
+    g.bets.delete(u);
+    cb?.({ ok: true });
+    io.to(rc).emit('betUpdate', {
+      bets: Object.fromEntries(g.bets || new Map()),
+      total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)
+    });
   });
 
   socket.on('start', (_, cb) => {
@@ -606,6 +835,55 @@ io.on('connection', (socket) => {
         setTimeout(() => endGame(rc, wc, null), 3000);
       }
     }
+  });
+
+  socket.on('engizitor', ({ targetId }, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc); if (!g) return;
+    const res = g.submitEngizitor(socket.id, targetId);
+    cb?.({ ok: res.ok, err: res.err });
+    if (res.ok) {
+      io.to(rc).emit('engizitorResult', { msg: res.msg, killedName: res.killedName });
+      emit(rc);
+      const wc = g.checkWin();
+      if (wc.over) setTimeout(() => endGame(rc, wc, null), 3000);
+    }
+  });
+
+  // ── SABOTAJ ──
+  socket.on('sabotage:vote', (_, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc); if (!g) return;
+    const res = g.submitSabotage(socket.id);
+    cb?.(res);
+    if (res.ok) {
+      // Sadece hain takım üyelerine sabotaj oy durumunu yayınla
+      const aliveHainSocketIds = [...g.players.values()]
+        .filter(p => p.isAlive && p.actualTeam === TEAMS.HAIN)
+        .map(p => p.id);
+      aliveHainSocketIds.forEach(sid => {
+        io.sockets.sockets.get(sid)?.emit('sabotage:update', {
+          totalVotes: res.totalVotes,
+          neededVotes: Math.floor(aliveHainSocketIds.length / 2) + 1,
+          voted: res.voted
+        });
+      });
+    }
+  });
+
+  // Sabotaj mini oyun sonucu
+  socket.on('sabotage:result', ({ won }, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc); if (!g) return;
+    const ok = g.recordSabotageResult(socket.id, !!won);
+    if (ok && won) {
+      // Kazanan +5 coin
+      const u = authed.get(socket.id);
+      if (u) {
+        const r = Accounts.addCoins(u, 5);
+        const stats = Accounts.getStats(u);
+        if (stats) socket.emit('statsUpdate', stats);
+        socket.emit('toast', { msg: '🎉 Mini oyun kazandın! +5 altın', type: 'success' });
+      }
+    }
+    cb?.({ ok });
   });
 
   socket.on('vote', ({ targetId }, cb) => {
