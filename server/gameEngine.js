@@ -96,12 +96,15 @@ class GameEngine {
     // Veba (Tarafsız, henüz IMPLEMENTED:false)
     this.plagued = new Map();
 
-    // ── SABOTAJ SİSTEMİ ──
-    // Hain gece kolektif sabotaj oyu kullanır. Çoğunluk → ertesi gündüz mini oyun
+  // ── SABOTAJ SİSTEMİ ──
+    // Hain gece kolektif sabotaj oyu kullanır. 1 oy yeter
     this.sabotageVotes = new Set(); // hainId Set (bu gece sabotaj isteyenler)
-    this.sabotageActive = false;    // bu gündüz sabotaj aktif mi
-    this.sabotageTargets = new Map(); // pid -> { gameType, completed, won }
-    this.sabotageGames = new Map();   // gameId -> { type, players, state, ... }
+    this.sabotagePending = false;   // gündüz başında pending olur, rastgele anda tetiklenir
+    this.sabotagePendingFromSystem = false; // hain değil, sistem mi tetikliyor
+    this.sabotageActive = false;    // şu an mini oyun çalışıyor mu
+    this.sabotageStartedAt = 0;     // ne zaman başladı (timer ertelemesi için)
+    this.sabotageTargets = new Map(); // pid -> { gameType, opponentType, opponentId, completed, won }
+    this.sabotagePairs = new Map(); // gameId -> { players: [pid1, pid2], gameType, ... } (PvP eşleşmeler)
   }
 
   addPlayer(id, name, username, wins, avatar, mvp, isAdmin) {
@@ -1485,50 +1488,252 @@ class GameEngine {
     return { ok: true, voted: this.sabotageVotes.has(pid), totalVotes: this.sabotageVotes.size };
   }
 
-  // Sabotajı resolveNight sonunda kontrol et — çoğunluk hain isterse aktive et
+  // resolveNight sonunda: HERHANGİ bir hain oy verdiyse pending olur
   _checkSabotageActivation() {
     const aliveHain = this.alive().filter(p => p.actualTeam === TEAMS.HAIN);
     if (aliveHain.length === 0 || this.sabotageVotes.size === 0) {
-      this.sabotageActive = false;
-      this.sabotageTargets.clear();
+      this.sabotagePending = false;
       return false;
     }
-    const needed = Math.floor(aliveHain.length / 2) + 1;
-    if (this.sabotageVotes.size < needed) {
-      this.sabotageActive = false;
-      this.sabotageTargets.clear();
-      return false;
-    }
-    // Sabotaj başarılı! Rastgele 1-2 masum/tarafsız seç
-    const aliveNonHain = this.alive().filter(p => p.actualTeam !== TEAMS.HAIN);
-    if (aliveNonHain.length === 0) return false;
-    const numTargets = Math.min(2, Math.max(1, Math.floor(aliveNonHain.length / 4)));
-    const targets = this.shuf([...aliveNonHain]).slice(0, numTargets);
-    const gameTypes = ['xox', 'rps', 'colorword'];
-    this.sabotageActive = true;
-    this.sabotageTargets.clear();
-    targets.forEach(t => {
-      const gameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
-      this.sabotageTargets.set(t.id, {
-        gameType,
-        completed: false,
-        won: false,
-        startedAt: Date.now()
-      });
-    });
-    this.log(`🚨 SABOTAJ! ${targets.map(t => t.name).join(', ')} mini oyun çözmeli.`);
+    // 1 hainin oyu yeter
+    this.sabotagePending = true;
     return true;
   }
 
-  // Sabotaj mini oyun sonucunu kaydet
+  // Gündüzde rastgele bir anda çağrılır (index.js setTimeout)
+  // fromSystem: true ise oyun kendiliğinden başlatır (hainler de hedef olabilir)
+  triggerSabotage(fromSystem = false) {
+    if (!this.sabotagePending && !fromSystem) return false;
+    if (this.phase !== PHASES.DAY_DISCUSSION && this.phase !== PHASES.VOTING) return false;
+    if (this.sabotageActive) return false; // çakışma engellendi
+
+    const aliveAll = this.alive();
+    // Sistem sabotajında: tüm canlılar hedef olabilir (hain dahil, ama coin yok)
+    // Hain sabotajında: sadece masum/tarafsız hedef
+    const candidatePool = fromSystem
+      ? aliveAll
+      : aliveAll.filter(p => p.actualTeam !== TEAMS.HAIN);
+
+    if (candidatePool.length === 0) {
+      this.sabotagePending = false;
+      return false;
+    }
+
+    // Hedef sayısı: 2-3 arası
+    const numTargets = Math.min(
+      candidatePool.length,
+      Math.max(1, Math.min(3, Math.floor(candidatePool.length / 2)))
+    );
+    const selected = this.shuf([...candidatePool]).slice(0, numTargets);
+    const gameTypes = ['xox', 'rps', 'colorword'];
+
+    this.sabotageActive = true;
+    this.sabotagePending = false;
+    this.sabotagePendingFromSystem = fromSystem;
+    this.sabotageStartedAt = Date.now();
+    this.sabotageTargets.clear();
+    this.sabotagePairs.clear();
+
+    // Eşleşme: rastgele AI veya başka oyuncu
+    const shuffled = this.shuf([...selected]);
+    let pairId = 1;
+    while (shuffled.length >= 2) {
+      const goPvP = Math.random() < 0.6;
+      if (goPvP) {
+        const p1 = shuffled.shift();
+        const p2 = shuffled.shift();
+        const gType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+        const gameId = `pair_${pairId++}`;
+        this.sabotagePairs.set(gameId, {
+          gameType: gType,
+          players: [p1.id, p2.id],
+          state: this._initPvPGameState(gType),
+          completed: false,
+          winner: null
+        });
+        this.sabotageTargets.set(p1.id, {
+          gameType: gType,
+          opponentType: 'player',
+          opponentId: p2.id,
+          gameId,
+          fromSystem,
+          completed: false,
+          won: false
+        });
+        this.sabotageTargets.set(p2.id, {
+          gameType: gType,
+          opponentType: 'player',
+          opponentId: p1.id,
+          gameId,
+          fromSystem,
+          completed: false,
+          won: false
+        });
+      } else {
+        const p1 = shuffled.shift();
+        const gType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+        this.sabotageTargets.set(p1.id, {
+          gameType: gType,
+          opponentType: 'ai',
+          fromSystem,
+          completed: false,
+          won: false
+        });
+      }
+    }
+    if (shuffled.length === 1) {
+      const p1 = shuffled[0];
+      const gType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+      this.sabotageTargets.set(p1.id, {
+        gameType: gType,
+        opponentType: 'ai',
+        fromSystem,
+        completed: false,
+        won: false
+      });
+    }
+
+    const targetNames = [...this.sabotageTargets.keys()].map(id => this.pn(id));
+    this.log(`🚨 ${fromSystem ? 'SİSTEM' : 'HAIN'} SABOTAJI! ${targetNames.join(', ')} mini oyun çözmeli.`);
+    return true;
+  }
+
+  _initPvPGameState(gameType) {
+    if (gameType === 'xox') {
+      return { board: Array(9).fill(null), turn: 0, symbols: ['X', 'O'], moves: [] };
+    } else if (gameType === 'rps') {
+      return { round: 1, maxRound: 3, scores: [0, 0], lastChoices: [null, null], roundLocked: false };
+    } else if (gameType === 'colorword') {
+      return { scores: [0, 0], target: 3, completed: [false, false] };
+    }
+    return {};
+  }
+
+  // Sabotaj mini oyun sonucu (AI modu — direkt kayıt)
   recordSabotageResult(pid, won) {
     const target = this.sabotageTargets.get(pid);
     if (!target) return false;
     if (target.completed) return false;
+    if (target.opponentType !== 'ai') return false; // AI moduysa sadece direkt kaydedilir
     target.completed = true;
     target.won = won;
+    this._maybeEndSabotage();
     return true;
   }
+
+  // PvP oyun aksiyonu — gameEngine içinde çözüm
+  submitSabotageMove(pid, moveData) {
+    const target = this.sabotageTargets.get(pid);
+    if (!target || target.opponentType !== 'player') return { ok: false, err: 'PvP oyununda değilsin' };
+    const pair = this.sabotagePairs.get(target.gameId);
+    if (!pair || pair.completed) return { ok: false, err: 'Oyun bitti' };
+    const myIdx = pair.players.indexOf(pid);
+    if (myIdx === -1) return { ok: false, err: 'Oyuncu yok' };
+
+    if (pair.gameType === 'xox') {
+      const idx = moveData.cellIndex;
+      if (typeof idx !== 'number' || idx < 0 || idx > 8) return { ok: false, err: 'Geçersiz hücre' };
+      if (pair.state.turn !== myIdx) return { ok: false, err: 'Senin sıran değil' };
+      if (pair.state.board[idx] !== null) return { ok: false, err: 'Hücre dolu' };
+      pair.state.board[idx] = pair.state.symbols[myIdx];
+      pair.state.moves.push({ pid, cell: idx });
+      // Win check
+      const winner = this._xoxCheckWinner(pair.state.board);
+      if (winner !== null) {
+        pair.completed = true;
+        if (winner === 'draw') {
+          pair.players.forEach(p => {
+            const t = this.sabotageTargets.get(p);
+            if (t) { t.completed = true; t.won = false; }
+          });
+        } else {
+          const winnerIdx = pair.state.symbols.indexOf(winner);
+          const winnerPid = pair.players[winnerIdx];
+          pair.players.forEach(p => {
+            const t = this.sabotageTargets.get(p);
+            if (t) { t.completed = true; t.won = (p === winnerPid); }
+          });
+        }
+        this._maybeEndSabotage();
+      } else {
+        pair.state.turn = 1 - myIdx;
+      }
+      return { ok: true, state: pair.state, completed: pair.completed };
+    }
+
+    if (pair.gameType === 'rps') {
+      const choice = moveData.choice;
+      if (!['rock','paper','scissors'].includes(choice)) return { ok: false, err: 'Geçersiz seçim' };
+      if (pair.state.lastChoices[myIdx]) return { ok: false, err: 'Bu round seçim yaptın' };
+      pair.state.lastChoices[myIdx] = choice;
+      // Her iki oyuncu da seçim yaptıysa round çözümle
+      if (pair.state.lastChoices[0] && pair.state.lastChoices[1]) {
+        const c0 = pair.state.lastChoices[0], c1 = pair.state.lastChoices[1];
+        let roundWinner = null;
+        if (c0 !== c1) {
+          if (
+            (c0==='rock'&&c1==='scissors') ||
+            (c0==='paper'&&c1==='rock') ||
+            (c0==='scissors'&&c1==='paper')
+          ) { pair.state.scores[0]++; roundWinner = 0; }
+          else { pair.state.scores[1]++; roundWinner = 1; }
+        }
+        pair.state.round++;
+        if (pair.state.round > pair.state.maxRound) {
+          pair.completed = true;
+          const winnerIdx = pair.state.scores[0] > pair.state.scores[1] ? 0 :
+                            pair.state.scores[0] < pair.state.scores[1] ? 1 : -1;
+          pair.players.forEach((p, i) => {
+            const t = this.sabotageTargets.get(p);
+            if (t) { t.completed = true; t.won = (i === winnerIdx); }
+          });
+          this._maybeEndSabotage();
+        } else {
+          // Yeni round - seçimleri sıfırla (ama önce sonuç gönderilebilsin)
+          // Bunu frontend tarafında animasyonla göstereceğiz
+        }
+      }
+      return { ok: true, state: pair.state, completed: pair.completed };
+    }
+
+    if (pair.gameType === 'colorword') {
+      // Cevap çoğu zaman doğru/yanlış
+      const correct = !!moveData.correct;
+      if (correct) pair.state.scores[myIdx]++;
+      // İlk hedefe ulaşan kazanır
+      if (pair.state.scores[myIdx] >= pair.state.target) {
+        pair.completed = true;
+        pair.players.forEach((p, i) => {
+          const t = this.sabotageTargets.get(p);
+          if (t) { t.completed = true; t.won = (i === myIdx); }
+        });
+        this._maybeEndSabotage();
+      }
+      return { ok: true, state: pair.state, completed: pair.completed, myScore: pair.state.scores[myIdx] };
+    }
+    return { ok: false, err: 'Bilinmeyen oyun' };
+  }
+
+  _xoxCheckWinner(board) {
+    const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    for (const [a,b,c] of lines) {
+      if (board[a] && board[a]===board[b] && board[b]===board[c]) return board[a];
+    }
+    if (!board.includes(null)) return 'draw';
+    return null;
+  }
+
+  _maybeEndSabotage() {
+    // Tüm hedefler tamamlandı mı?
+    const allDone = [...this.sabotageTargets.values()].every(t => t.completed);
+    if (allDone) {
+      this.sabotageActive = false;
+      this.log(`🚨 Sabotaj tamamlandı. ${[...this.sabotageTargets.values()].filter(t => t.won).length} oyuncu kazandı.`);
+    }
+  }
+
+  // Hain "sahte" oyun: coin yok, sadece eğlence (dummy state, no team game)
+  // Frontend tarafında çözülür, backend tutmaz
 
   // Suikastçı suikast girişimi (her tur 1 hak; yanlış bilirse zaten ölür, doğruysa sonraki tur tekrar denenebilir)
   submitSuikast(pid, targetId, guessedRole) {
@@ -1794,9 +1999,11 @@ class GameEngine {
     this.plagued.clear();
     // Sabotaj
     this.sabotageVotes.clear();
+    this.sabotagePending = false;
     this.sabotageActive = false;
+    this.sabotageStartedAt = 0;
     this.sabotageTargets.clear();
-    this.sabotageGames.clear();
+    this.sabotagePairs.clear();
     this.presidentId = null;
     this.presidentVotes.clear();
     this.roleSelectionPicks.clear();
@@ -1970,7 +2177,27 @@ class GameEngine {
       demirciArmored: p.role === 'demirci' ? [...this.steelArmor.entries()].filter(([_, dId]) => dId === pid).map(([tId, _]) => tId) : null,
       // Sabotaj: bu kişi sabotaja maruz kaldıysa
       sabotageGame: this.sabotageActive && this.sabotageTargets.has(pid)
-        ? this.sabotageTargets.get(pid)
+        ? (() => {
+            const t = this.sabotageTargets.get(pid);
+            const out = {
+              gameType: t.gameType,
+              opponentType: t.opponentType,
+              fromSystem: !!t.fromSystem,
+              completed: t.completed,
+              won: t.won
+            };
+            if (t.opponentType === 'player' && t.gameId) {
+              const pair = this.sabotagePairs.get(t.gameId);
+              if (pair) {
+                const myIdx = pair.players.indexOf(pid);
+                out.gameId = t.gameId;
+                out.myIndex = myIdx;
+                out.state = pair.state;
+                out.pairCompleted = pair.completed;
+              }
+            }
+            return out;
+          })()
         : null,
       // Sabotaj oyu (sadece hainler görür)
       sabotageVoted: p.actualTeam === TEAMS.HAIN ? this.sabotageVotes.has(pid) : false,

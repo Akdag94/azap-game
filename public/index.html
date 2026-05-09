@@ -386,11 +386,16 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 /* ════════════ MODERN UI MODU ════════════ */
 /* body.modern-ui aktifken: oyuncu listeleri 2-sütunlu grid kart şeklinde */
 body.modern-ui .pl{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;list-style:none;margin-top:10px}
-body.modern-ui .pi{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:16px 8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1px solid var(--brd);border-radius:8px;font-size:.85rem;min-height:150px;justify-content:center;position:relative;transition:all .2s}
-body.modern-ui .pi .av{width:78px !important;height:78px !important;font-size:2.2rem !important;border-radius:14px !important}
+body.modern-ui .pi{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:14px 8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1px solid var(--brd);border-radius:8px;font-size:.85rem;min-height:115px;justify-content:center;position:relative;transition:all .2s}
+body.modern-ui .pi .av{width:62px !important;height:62px !important;font-size:1.85rem !important;border-radius:11px !important}
 body.modern-ui .pi .pi-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
 body.modern-ui .pi .pi-name span:first-child{font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-body.modern-ui .pi.dead{opacity:.4;filter:grayscale(.7)}
+body.modern-ui .pi.dead{opacity:.45;filter:grayscale(.7);position:relative}
+body.modern-ui .pi.dead::after{content:'💀';position:absolute;top:6px;right:8px;font-size:1.1rem;opacity:.8}
+body.modern-ui .pi.dead .pi-name span:first-child{text-decoration:line-through;color:var(--dim)}
+body.modern-ui .pi.dead .av{filter:grayscale(1) brightness(.6)}
+/* İzleyici/ölü ekranında oyuncular grid 2-sütun */
+body.modern-ui #SPP_GRID{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 body.modern-ui .pi.president{border-color:var(--gold);box-shadow:0 0 8px rgba(255,215,0,.3)}
 body.modern-ui .pi .crown{position:absolute;top:6px;right:8px}
 body.modern-ui .pi .badge{font-size:.6rem;padding:1px 5px}
@@ -398,22 +403,27 @@ body.modern-ui .pi .wins-badge{font-size:.7rem;color:var(--dim);position:absolut
 
 /* Gece hedef seçimi (.tb): kart grid */
 body.modern-ui #NTL{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-body.modern-ui .tb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:16px 8px;min-height:150px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3))}
-body.modern-ui .tb .av{width:78px !important;height:78px !important;font-size:2.2rem !important;border-radius:14px !important;margin-bottom:8px}
+body.modern-ui .tb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 8px;min-height:115px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3))}
+body.modern-ui .tb .av{width:62px !important;height:62px !important;font-size:1.85rem !important;border-radius:11px !important;margin-bottom:6px}
 body.modern-ui .tb .tb-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
 body.modern-ui .tb .tb-name span:first-child{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.modern-ui .tb.sel{border-color:var(--hi);box-shadow:0 0 12px rgba(255,255,255,.15);transform:scale(1.03)}
 
 /* Oylama (.vb): kart grid */
 body.modern-ui #VG,body.modern-ui #PV_GRID,body.modern-ui #MV_GRID{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-body.modern-ui .vb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:16px 8px;min-height:170px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1.5px solid var(--brd)}
-body.modern-ui .vb .av{width:78px !important;height:78px !important;font-size:2.2rem !important;border-radius:14px !important;margin-bottom:8px}
+body.modern-ui .vb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 8px;min-height:130px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1.5px solid var(--brd)}
+body.modern-ui .vb .av{width:62px !important;height:62px !important;font-size:1.85rem !important;border-radius:11px !important;margin-bottom:6px}
 body.modern-ui .vb .vb-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
 body.modern-ui .vb .vb-name span:first-child{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.modern-ui .vb .vc{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.4);padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.2)}
 body.modern-ui .vb .tk{position:absolute;bottom:6px;right:8px;font-size:.7rem;color:var(--safe);opacity:0;transition:opacity .2s}
 body.modern-ui .vb.vd .tk{opacity:1}
 body.modern-ui .vb.vd{border-color:var(--hi);box-shadow:0 0 12px rgba(255,255,255,.2);background:linear-gradient(180deg,var(--hiG),var(--bg3))}
+body.modern-ui .vb.dead{opacity:.45;filter:grayscale(.7);cursor:not-allowed;position:relative}
+body.modern-ui .vb.dead::after{content:'💀';position:absolute;top:6px;right:8px;font-size:1.1rem;opacity:.8}
+body.modern-ui .vb.dead .av{filter:grayscale(1) brightness(.6)}
+.vb.dead{opacity:.45}
+.vb.dead .vb-name span{text-decoration:line-through}
 body.modern-ui .vb .crown{position:absolute;top:6px;left:8px}
 /* GÜNDÜZ TEMASINDA modern UI kartlar için kontrast - gündüz kartlar çok açık olduğundan */
 body.day.modern-ui .vb{background:linear-gradient(180deg,#fff8e8,#f4ead0);border:1.5px solid #c4a877;box-shadow:0 1px 3px rgba(0,0,0,.08)}
@@ -527,8 +537,10 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 <div class="sr" id="MOD_PREMIUM_ROW" style="display:none"><span>👑 Premium</span><span class="sv" id="MOD_PREMIUM" style="color:#bb8fce;font-weight:600">-</span></div>
 <div class="sr" id="MOD_DONATED_ROW" style="display:none"><span>💝 Toplam Bağış</span><span class="sv" id="MOD_DONATED" style="color:#e91e63;font-weight:600">₺0</span></div>
 </div>
-<div class="st mt12">Mağaza</div>
-<button class="b b2 bs" style="width:100%" onclick="openShopModal()">🛒 Mağazaya Git</button>
+
+<!-- Envanter -->
+<div class="st mt12">🎒 Envanter</div>
+<div id="PROF_INVENTORY" style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px;min-height:60px;font-size:.82rem"></div>
 <div class="st mt12">Arayüz</div>
 <div class="ui-mode-row" id="UI_MODE_ROW">
 <label data-mode="classic" onclick="setUIMode('classic')"><input type="radio" name="uimode" value="classic"> 📋 Klasik</label>
@@ -756,11 +768,11 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 <!-- Floating Suikast butonu (sadece suikastçı için, gündüz/oylama fazında) -->
 <button class="suikast-btn" id="SUIKAST_BTN_FLOAT" onclick="openSuikastModal()" title="Suikast">🗡️</button>
 
-<!-- Floating Sabotaj butonu (sadece hain takım için, gece fazında) -->
-<button class="suikast-btn" id="SABOTAJ_BTN_FLOAT" onclick="toggleSabotage()" title="Sabotaj Oyu" style="background:linear-gradient(135deg,#5e2c1c,#8e3a1a);border-color:#a04020;display:none;bottom:14px;left:14px;right:auto">🚨</button>
-
 <!-- Floating Engizitör butonu (sadece engizitör için, tartışma fazında) -->
 <button class="suikast-btn" id="ENGIZITOR_BTN_FLOAT" onclick="openEngizitorModal()" title="Engizitör İnfaz" style="background:linear-gradient(135deg,#5e3a87,#8e44ad);border-color:#8e44ad;display:none">⚖️</button>
+
+<!-- Floating Mini Oyun butonu (gündüz, eğlence) -->
+<button class="suikast-btn" id="MINIGAME_BTN_FLOAT" onclick="openFakeMinigame()" title="Mini Oyun (Eğlence)" style="background:linear-gradient(135deg,#1e6091,#2980b9);border-color:#3498db;display:none;bottom:14px;left:14px;right:auto">🎮</button>
 
 <!-- Engizitör Modal -->
 <div class="suikast-modal" id="ENGIZITOR_MODAL">
@@ -844,7 +856,11 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
 <div class="scr" id="S1">
 <div class="top-actions">
 <button class="tab-btn" onclick="openProfile()">👤</button>
+<button class="tab-btn" onclick="openShopModal()" id="TOP_SHOP_BTN" style="position:relative">🛒</button>
 <button class="tab-btn" onclick="openModal('MDL_GUIDE');renderGuide()">📜</button>
+<div id="TOP_COINS" style="display:none;align-items:center;gap:5px;padding:6px 12px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:6px;color:var(--gold);font-weight:700;font-size:.82rem">
+<span style="font-size:.95rem">💰</span><span id="TOP_COIN_VAL">0</span>
+</div>
 </div>
 <div class="entry">
 <div class="tc mb8" style="font-size:.85rem;color:var(--dim)">
@@ -871,6 +887,25 @@ Hoş geldin, <strong id="WN"></strong>
 <ul class="pl" id="LP"></ul>
 <div id="LS"></div>
 <button class="b b2 bs bw mt8" onclick="leaveRoom()">↩️ Lobiden Çık</button>
+
+<!-- BAHİS PANELİ - login + oyuncu olan herkese görünür -->
+<div id="BET_PANEL" style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:6px;padding:10px;margin-top:10px;display:none">
+  <div class="st" style="color:var(--gold);margin-bottom:6px">💰 Bahis (opsiyonel)</div>
+  <div style="font-size:.74rem;color:var(--dim);margin-bottom:6px;line-height:1.4">
+    Coin yatır. Oyunu kazanırsan tüm bahis havuzunu kazananlarla paylaşırsın (yatırdığın oran kadar pay alırsın). Kaybedersen kaybolur. Min 5, max 1000.
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+    <input class="inp" id="BET_AMOUNT" type="number" min="5" max="1000" placeholder="Miktar" style="flex:1;padding:6px 8px;font-size:.85rem">
+    <button class="b bs" style="background:var(--gold);color:#000;border:none;font-weight:600" onclick="placeBet()">💰 Yatır</button>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:.78rem">
+    <span>Bahsim: <strong id="MY_BET" style="color:var(--gold)">0</strong></span>
+    <span>Toplam havuz: <strong id="BET_POOL" style="color:var(--gold)">0</strong></span>
+  </div>
+  <button class="b bs mt8" style="width:100%;border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem;display:none" id="BET_CANCEL_BTN" onclick="cancelBet()">Bahsi Geri Çek</button>
+  <div id="BET_LIST" style="margin-top:8px;font-size:.72rem;color:var(--dim)"></div>
+</div>
+
 <div class="sbox" id="SP2" style="display:none">
 <div class="st">⚙️ Ayarlar</div>
 <div class="srow"><span>🧠 Delilik</span><input type="range" min="0" max="50" value="15" id="SI" oninput="uSet()"><span class="sval" id="VI">%15</span></div>
@@ -899,24 +934,6 @@ Hoş geldin, <strong id="WN"></strong>
 
 <div class="st mt8">Roller</div>
 <div class="rgrid" id="RG"></div>
-
-<!-- BAHİS PANELİ -->
-<div class="st mt12" style="color:var(--gold)">💰 Bahis (opsiyonel)</div>
-<div id="BET_PANEL" style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:6px;padding:10px;margin-bottom:10px">
-  <div style="font-size:.74rem;color:var(--dim);margin-bottom:6px;line-height:1.4">
-    Coin yatır. Oyunu kazanırsan tüm bahis havuzunu kazananlarla paylaşırsın (yatırdığın oran kadar pay alırsın). Kaybedersen kaybolur. Min 5, max 1000.
-  </div>
-  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-    <input class="inp" id="BET_AMOUNT" type="number" min="5" max="1000" placeholder="Miktar" style="flex:1;padding:6px 8px;font-size:.85rem">
-    <button class="b bs" style="background:var(--gold);color:#000;border:none;font-weight:600" onclick="placeBet()">💰 Yatır</button>
-  </div>
-  <div style="display:flex;justify-content:space-between;font-size:.78rem">
-    <span>Bahsim: <strong id="MY_BET" style="color:var(--gold)">0</strong></span>
-    <span>Toplam havuz: <strong id="BET_POOL" style="color:var(--gold)">0</strong></span>
-  </div>
-  <button class="b bs mt8" style="width:100%;border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem" id="BET_CANCEL_BTN" onclick="cancelBet()" style="display:none">Bahsi Geri Çek</button>
-  <div id="BET_LIST" style="margin-top:8px;font-size:.72rem;color:var(--dim)"></div>
-</div>
 
 <button class="b b1 bw mt12" id="BS" onclick="startGame()">Oyunu Başlat</button>
 </div>
@@ -967,6 +984,7 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="abtn" id="AB2" style="display:none">
 <button class="b bk" id="BK" onclick="conf('kill')" disabled>🗡️ Öldür</button>
 <button class="b ba" id="BA" onclick="conf('ability')" disabled>✨ Yetenek</button>
+<button class="b bs" id="BSAB" onclick="toggleSabotage()" style="background:linear-gradient(135deg,#5e2c1c,#8e3a1a);color:#fff;border:1px solid #a04020;font-size:.74rem;letter-spacing:1.5px;flex:0 0 auto">🚨 Sabotaj</button>
 </div>
 <div id="SAA" style="display:none"><button class="b b1 bw mt12" id="BSA" onclick="conf('single')" disabled>Onayla</button></div>
 <div id="HCA"></div>
@@ -1061,6 +1079,16 @@ const io2=io({
 let me,gs,ps,sel1,sel2,selG,voted,nsent,isSpec=false,isDead=false,AM='login',user=null,deathOk=false,lastDead=new Set(),_lastSpec=null;
 let mvpVoted=null;
 const Q=id=>document.getElementById(id);
+// XSS koruması: HTML entity escape
+const esc = (s) => {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
 
 const RDEF={
   DOKTOR:{e:'🩺',n:'Doktor',t:'masum',d:'Birini saldırıdan korur. Kendini sadece 1 kez koruyabilir.',
@@ -1405,13 +1433,13 @@ function updateShopHeader(){
 }
 
 async function openShopModal(){
+  if(!user){toast('Önce giriş yap!',1);return;}
   await loadShopCatalog();
   io2.emit('auth:stats',null,r=>{
     if(r){user=r;}
     updateShopHeader();
-    closeModal('MDL_PROFILE');
     openModal('MDL_SHOP');
-    shopSwitchTab('gold'); // Default sekme
+    shopSwitchTab('gold');
   });
 }
 
@@ -1486,6 +1514,12 @@ function updateUserUI(){
   if(!user)return;
   Q('WN').textContent=user.username;
   Q('WAV_SLOT').innerHTML=avHTML(user.avatar,'md','👤');
+  // Topbar coin göster
+  const tc = Q('TOP_COINS');
+  if(tc){
+    tc.style.display='flex';
+    Q('TOP_COIN_VAL').textContent = user.coins ?? 0;
+  }
 }
 
 function openProfile(){
@@ -1511,6 +1545,21 @@ function openProfile(){
       Q('MOD_DONATED').textContent = `₺${r.totalDonated.toFixed(0)}`;
     } else {
       Q('MOD_DONATED_ROW').style.display='none';
+    }
+    // Envanter render
+    const inv = Q('PROF_INVENTORY');
+    if(inv){
+      const items = r.inventory || [];
+      if(items.length === 0){
+        inv.innerHTML = '<div style="color:var(--dim);text-align:center;padding:8px;font-size:.78rem">Henüz eşyan yok. Mağazadan satın alabilirsin (yakında).</div>';
+      } else {
+        inv.innerHTML = items.map(itemId =>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:var(--bg3);border-radius:4px;margin-bottom:4px">
+            <span>📦 ${itemId}</span>
+            <span style="font-size:.7rem;color:var(--dim)">Sahip</span>
+          </div>`
+        ).join('');
+      }
     }
     // UI mode radio'larını güncelle
     let curMode = 'classic';
@@ -2436,36 +2485,66 @@ function updateSuikastFloatingBtn(){
       ebtn.style.display='none';
     }
   }
-  // Sabotaj butonu (hain takım, gece fazında)
-  const sbtn = Q('SABOTAJ_BTN_FLOAT');
+  // Inline sabotaj butonu (hain takım, gece fazında)
+  const sbtn = Q('BSAB');
   if(sbtn){
     const isHain = ps?.team === 'hain' && ps?.isAlive;
     if(isHain && gs?.phase === 'night'){
       sbtn.style.display='flex';
-      // Oy durumu göster
       if(ps?.sabotageVoted){
         sbtn.style.background='linear-gradient(135deg,#a04020,#c25030)';
-        sbtn.style.boxShadow='0 0 20px rgba(192,80,40,.6)';
-        sbtn.title=`Sabotaj OY VERDIN (${ps.sabotageVoteCount} hain)`;
+        sbtn.style.boxShadow='0 0 12px rgba(192,80,40,.5)';
+        sbtn.textContent='🚨 İptal';
       } else {
         sbtn.style.background='linear-gradient(135deg,#5e2c1c,#8e3a1a)';
-        sbtn.style.boxShadow='0 2px 14px rgba(0,0,0,.5)';
-        sbtn.title='Sabotaj oy ver';
+        sbtn.style.boxShadow='';
+        sbtn.textContent='🚨 Sabotaj';
       }
     } else {
       sbtn.style.display='none';
     }
   }
+  // Mini Oyun butonu (gündüz, eğlence — sahte oyun coin yok)
+  const mgBtn = Q('MINIGAME_BTN_FLOAT');
+  if(mgBtn){
+    const inDayPhase = gs?.phase === 'day_discussion' || gs?.phase === 'voting';
+    const isAlive = ps?.isAlive;
+    const sabotageActive = !!ps?.sabotageGame; // sabotaj zaten aktifse sahte oyun gösterme
+    if(inDayPhase && isAlive && !sabotageActive){
+      mgBtn.style.display='flex';
+    } else {
+      mgBtn.style.display='none';
+    }
+  }
+}
+
+// Sahte mini oyun (eğlence — coin yok, sabotaj sırası dışı)
+function openFakeMinigame(){
+  if(!confirm('🎮 Mini Oyun (Eğlence)\n\nBilgisayara karşı sahte mini oyun. Coin kazanamazsın, sadece eğlence amaçlı. Devam?'))return;
+  // Rastgele oyun seç
+  const games = ['xox','rps','colorword'];
+  const gType = games[Math.floor(Math.random()*games.length)];
+  // Sahte oyun ayar
+  Q('SABO_OV').classList.add('sh');
+  Q('SABO_SUB').textContent = '🎮 Eğlence Modu — Coin yok';
+  window._saboFakeMode = true;
+  if(gType === 'xox') initXOX();
+  else if(gType === 'rps') initRPS();
+  else if(gType === 'colorword') initColorWord();
 }
 
 function toggleSabotage(){
-  if(!confirm('🚨 SABOTAJ\nDiğer hainlerle birlikte sabotaj başlatmak için oy verirsin. Çoğunluk kabul ederse ertesi gündüz rastgele 1-2 masuma mini oyun gelir. Devam?'))return;
+  const isVoted = ps?.sabotageVoted;
+  const msg = isVoted
+    ? '🚨 Sabotaj oyunu geri çekmek istediğine emin misin?'
+    : '🚨 SABOTAJ\nGündüz rastgele bir anda 2-3 oyuncuya mini oyun gelir. Senin oyun yeterli (1 hain). Devam?';
+  if(!confirm(msg))return;
   io2.emit('sabotage:vote', null, r => {
     if(r?.ok){
-      const msg = r.voted
-        ? `✅ Sabotaj oyu verildi (${r.totalVotes} hain)`
-        : `⏪ Sabotaj oyun geri alındı (${r.totalVotes} hain)`;
-      toast(msg);
+      const m = r.voted
+        ? '✅ Sabotaj oyu verildi'
+        : '⏪ Sabotaj oyun geri alındı';
+      toast(m);
     }
   });
 }
@@ -2517,6 +2596,13 @@ function startSabotageGame(gameType){
 }
 
 function sabotageSkip(){
+  if(window._saboFakeMode){
+    if(!confirm('Mini oyunu kapatmak istiyor musun?'))return;
+    window._saboFakeMode = false;
+    Q('SABO_OV').classList.remove('sh');
+    _saboShown = false;
+    return;
+  }
   if(!confirm('Mini oyunu geçmek istiyor musun? (kaybetmiş sayılırsın)'))return;
   io2.emit('sabotage:result', { won: false }, ()=>{
     Q('SABO_OV').classList.remove('sh');
@@ -2525,6 +2611,15 @@ function sabotageSkip(){
 }
 
 function sabotageEnd(won){
+  // Sahte mod: server'a kayıt yok
+  if(window._saboFakeMode){
+    window._saboFakeMode = false;
+    setTimeout(()=>{
+      Q('SABO_OV').classList.remove('sh');
+      _saboShown = false;
+    }, 1500);
+    return;
+  }
   io2.emit('sabotage:result', { won }, ()=>{
     setTimeout(()=>{
       Q('SABO_OV').classList.remove('sh');
@@ -2881,11 +2976,12 @@ function amLoadUsers(){
         <span style="font-size:1.2rem">${u.isAdmin?'👁️':'👤'}</span>
         <div>
           <div style="font-weight:600">${u.username}${u.isAdmin?' <span style="color:#bb8fce;font-size:.7rem">(ADMIN)</span>':''}</div>
-          <div style="font-size:.7rem;color:var(--dim)">🏆 ${u.stats.won} • 🎮 ${u.stats.played} • ❤️ ${u.stats.mvp||0}</div>
+          <div style="font-size:.7rem;color:var(--dim)">🏆 ${u.stats.won} • 🎮 ${u.stats.played} • ❤️ ${u.stats.mvp||0} • <span style="color:var(--gold)">💰 ${u.coins??0}</span></div>
         </div>
         <div class="am-user-actions">
-          <button class="am-btn info" onclick="amEditStats('${u.username}')">📊</button>
-          <button class="am-btn warn" onclick="amResetPassword('${u.username}')">🔑</button>
+          <button class="am-btn info" onclick="amEditStats('${u.username}')" title="İstatistikleri">📊</button>
+          <button class="am-btn" style="background:rgba(255,215,0,.15);color:var(--gold);border:1px solid var(--gold)" onclick="amEditCoins('${u.username}',${u.coins??0})" title="Coin yönet">💰</button>
+          <button class="am-btn warn" onclick="amResetPassword('${u.username}')" title="Şifre sıfırla">🔑</button>
           <button class="am-btn ${u.isAdmin?'warn':'ok'}" onclick="amToggleAdmin('${u.username}',${!u.isAdmin})">${u.isAdmin?'⬇️':'⬆️'}</button>
           <button class="am-btn danger" onclick="amDeleteUser('${u.username}')">🗑️</button>
         </div>
@@ -2942,6 +3038,26 @@ function amEditStats(username){
     mvp:parseInt(mvp)||0
   }},r=>{
     if(r.ok){toast('İstatistik güncellendi.');amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+
+function amEditCoins(username, currentCoins){
+  const action = prompt(`"${username}" coin yönetimi:\n\nMevcut bakiye: ${currentCoins} 💰\n\n"+50" → 50 ekle\n"-30" → 30 çıkar\n"100" → tam 100'e ayarla\n\nİşlem:`, '+0');
+  if(action === null || action === '') return;
+  const trimmed = action.trim();
+  let payload;
+  if(trimmed.startsWith('+') || trimmed.startsWith('-')){
+    const delta = parseInt(trimmed);
+    if(isNaN(delta)){toast('Geçersiz miktar',1);return;}
+    payload = { username, delta };
+  } else {
+    const coins = parseInt(trimmed);
+    if(isNaN(coins) || coins < 0){toast('Geçersiz miktar',1);return;}
+    payload = { username, coins };
+  }
+  io2.emit('admin:setCoins', payload, r => {
+    if(r.ok){toast(`💰 Yeni bakiye: ${r.coins}`);amLoadUsers();}
     else toast(r.err||'Hata!',1);
   });
 }
@@ -3147,16 +3263,25 @@ function renderVote(){
   const tmIds=new Set();
   if(isH&&ps.teammates)ps.teammates.forEach(t=>tmIds.add(t.id));
   const cellatTargetId = ps?.role==='cellat' ? ps.cellatTargetId : null;
-  // Tüm canlı oyuncular (kendi de dahil)
-  gs.players.filter(p=>p.isAlive).forEach(p=>{
+  // Tüm oyuncular (canlı + ölü). Ölülere oy verilemez ama görsel olarak gösterilir
+  gs.players.forEach(p=>{
     const isT=tmIds.has(p.id);
     const isMe=p.id===me;
     const isCT=p.id===cellatTargetId;
-    const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
+    const d=document.createElement('div');
+    d.className='vb' + (p.isAlive ? '' : ' dead');
+    d.dataset.id=p.id;
     const nameStyle=isT?'color:var(--hain);font-weight:600':(isCT?'color:var(--tarafsiz);font-weight:600':(isMe?'color:var(--hi)':''));
     const ctIcon=isCT?' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>':'';
-    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="${nameStyle}">${p.name}${isMe?' (SEN)':''}${isT?' 🧛':''}${ctIcon}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span><span class="vc" data-vc="${p.id}">0</span><span class="tk">✓</span>`;
-    d.onclick=()=>doVote(p.id);grid.appendChild(d);
+    const deadIcon = !p.isAlive ? ' 💀' : '';
+    if(p.isAlive){
+      d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="${nameStyle}">${p.name}${isMe?' (SEN)':''}${isT?' 🧛':''}${ctIcon}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span><span class="vc" data-vc="${p.id}">0</span><span class="tk">✓</span>`;
+      d.onclick=()=>doVote(p.id);
+    } else {
+      // Ölü: tıklanamaz, üst çizili, soluk
+      d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="text-decoration:line-through;color:var(--dim)">${p.name}${deadIcon}</span></span>`;
+    }
+    grid.appendChild(d);
   });
   // Skip (Atla) butonu - kimseye oy verme
   const sk=document.createElement('div');sk.className='vb';sk.dataset.id='skip';
@@ -3200,18 +3325,21 @@ function renderGO(data){
   else if(data.winner==='seri_katil'||data.winner==='dodo'||data.winner==='cellat')gtEl.style.color='var(--tarafsiz)';
   else gtEl.style.color='';
 
-  // Kendi coin değişimini büyük göster
+  // Kendi coin değişimini büyük göster (önce username, sonra id ile fallback)
   const myUname = user?.username;
-  const myChange = myUname && data.coinUpdates?.[myUname]?.coinChange || 0;
-  const myTotalCoins = myUname && data.coinUpdates?.[myUname]?.totalCoins;
+  const myUpdate = (myUname && data.coinUpdates?.[myUname]) || (data.coinUpdatesById?.[me]) || null;
+  const myChange = myUpdate?.coinChange || 0;
+  const myTotalCoins = myUpdate?.totalCoins;
   if(myChange !== 0){
     const coinColor = myChange > 0 ? 'var(--gold)' : 'var(--hain)';
     const sign = myChange > 0 ? '+' : '';
-    Q('GM').innerHTML = `<div style="margin-top:8px;padding:8px;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);border-radius:5px;display:inline-block">
-      <span style="color:${coinColor};font-weight:700;font-size:1.1rem">${sign}${myChange} 💰</span>
-      ${myTotalCoins!==undefined ? `<span style="color:var(--dim);font-size:.78rem;margin-left:6px">(toplam: ${myTotalCoins})</span>` : ''}
+    Q('GM').innerHTML = `<div style="margin-top:8px;padding:10px 14px;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);border-radius:6px;display:inline-block">
+      <span style="color:${coinColor};font-weight:700;font-size:1.2rem">${sign}${myChange} 💰</span>
+      ${myTotalCoins!==undefined ? `<span style="color:var(--dim);font-size:.78rem;margin-left:8px">(toplam: ${myTotalCoins})</span>` : ''}
       ${data.totalBetPool ? `<div style="font-size:.7rem;color:var(--dim);margin-top:3px">Bahis havuzu: ${data.totalBetPool}</div>` : ''}
     </div>`;
+  } else if(!user) {
+    Q('GM').innerHTML = `<div style="margin-top:8px;padding:8px;color:var(--dim);font-size:.78rem">💡 Giriş yaparak oyun başına altın kazanabilirsin!</div>`;
   } else {
     Q('GM').textContent='';
   }
@@ -3263,11 +3391,11 @@ function renderSpec(data){
     leaveBtn.textContent = isDead ? '↩️ Odadan Çık' : '↩️ İzleyiciden Çık';
   }
   // İzleyici DELİ rozetini görür - kim deli net belli
-  Q('SPP').innerHTML=data.players.map(p=>
+  Q('SPP').innerHTML='<div id="SPP_GRID">'+data.players.map(p=>
     `<div class="pi ${p.isAlive?'':'dead'}${p.isPresident?' president':''}">${avHTML(p.avatar,'sm')}<span class="pi-name"><span>${p.name}${p.id===me?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':''}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>
       <span style="font-size:.74rem;color:var(--dim)">${p.roleEmoji} ${p.roleName}</span>
       ${p.isInsane?'<span class="deli-tag">DELİ</span>':''}
-      ${p.isSilenced?'<span style="font-size:.72rem">🤐</span>':''}</div>`).join('');
+      ${p.isSilenced?'<span style="font-size:.72rem">🤐</span>':''}</div>`).join('')+'</div>';
   Q('SLG').innerHTML=data.gameLog.map(l=>`<div class="sli"><span class="fm" style="color:var(--hi)">[${l.round}]</span> ${l.msg}</div>`).join('');
   Q('SLG').scrollTop=Q('SLG').scrollHeight;
 }

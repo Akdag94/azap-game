@@ -262,6 +262,9 @@ module.exports = {
         username: u.username,
         avatar: u.avatar || null,
         stats: u.stats,
+        coins: u.coins || 0,
+        premium: { active: isPremiumActive(u), daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 },
+        totalDonated: u.totalDonated || 0,
         isAdmin: !!u.isAdmin,
         created: u.created || 0
       };

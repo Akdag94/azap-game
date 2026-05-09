@@ -3,27 +3,83 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-const archiver = null; // archiver yoksa zip yapamayacağız, fallback olarak json+screenshots klasörü ver
+const archiver = null;
 const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
 const Reports = require('./reports');
 const { PHASES, TEAMS } = require('./gameConstants');
 
+// ── GÜVENLİK: opsiyonel middleware'ler (npm install helmet express-rate-limit) ──
+let helmet = null, rateLimit = null;
+try { helmet = require('helmet'); } catch(e){ console.warn('[GÜVENLİK] helmet yok — npm install helmet öneriliyor'); }
+try { rateLimit = require('express-rate-limit'); } catch(e){ console.warn('[GÜVENLİK] express-rate-limit yok — npm install express-rate-limit öneriliyor'); }
 
 const app = express();
+// Reverse proxy (nginx) arkasındaysa: client IP'yi doğru almak için
+app.set('trust proxy', 1);
+app.disable('x-powered-by'); // Express imzasını gizle
+
 const server = http.createServer(app);
-// 8MB buffer (screenshot için)
 const io = new Server(server, {
-  cors: { origin: '*' },
+  cors: { origin: process.env.CORS_ORIGIN || '*' },
   maxHttpBufferSize: 8e6,
-  // Bağlantı dayanıklılığı — mobil ekranı kilitleme/sekme geçişi için
-  pingTimeout: 60000,    // 60 sn yanıt gelmezse kopuk say (default 20s)
-  pingInterval: 25000,   // 25 sn'de bir ping (default 25s)
-  upgradeTimeout: 30000, // upgrade için 30 sn
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgradeTimeout: 30000,
   transports: ['websocket', 'polling'],
   allowEIO3: true
 });
-app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// ── HELMET (güvenlik header'ları) ──
+if (helmet) {
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'", "wss:", "ws:"],
+        frameSrc: ["'self'", "https://sandbox-api.iyzipay.com", "https://api.iyzipay.com"]
+      }
+    },
+    crossOriginEmbedderPolicy: false, // socket.io için
+    referrerPolicy: { policy: 'same-origin' }
+  }));
+}
+
+// ── RATE LIMITING ──
+const apiLimiter = rateLimit ? rateLimit({
+  windowMs: 60 * 1000, // 1 dakika
+  max: 60,             // dakikada max 60 istek
+  message: { ok: false, error: 'Çok fazla istek, lütfen bekleyin.' },
+  standardHeaders: true,
+  legacyHeaders: false
+}) : (req, res, next) => next();
+
+const paymentLimiter = rateLimit ? rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 dakika
+  max: 10,                  // 5 dakikada max 10 ödeme isteği
+  message: { ok: false, error: 'Ödeme istek limitine ulaştın, biraz bekle.' }
+}) : (req, res, next) => next();
+
+const adminLimiter = rateLimit ? rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { ok: false, error: 'Admin istek limiti.' }
+}) : (req, res, next) => next();
+
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  // Cache static assets (CSS, fonts) ama HTML cache'lenmesin
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+  }
+}));
 app.use(express.json({ limit: '1mb' }));
 
 // ── ÖDEME PAKETLERİ KATALOĞU ──
@@ -43,35 +99,43 @@ const PAYMENT_PACKAGES = {
 const DONATION_PRESETS = [10, 25, 50, 100, 250, 500];
 
 // Paket katalog endpoint'i (frontend mağazada gösterir)
-app.get('/api/shop/packages', (req, res) => {
+app.get('/api/shop/packages', apiLimiter, (req, res) => {
   res.json({
     packages: PAYMENT_PACKAGES,
     donationPresets: DONATION_PRESETS,
-    paymentEnabled: !!process.env.IYZICO_API_KEY // Gerçek ödeme aktif mi
+    paymentEnabled: !!process.env.IYZICO_API_KEY
   });
 });
 
 // ── İYZİCO ÖDEME OLUŞTURMA ──
-// TODO: Gerçek İyzico SDK'sı eklenecek. Şu an stub:
-// - process.env.IYZICO_API_KEY ve IYZICO_SECRET_KEY okuyacak
-// - npm install iyzipay ile entegre olacak
-// - https://dev.iyzipay.com/tr docs'a göre Checkout Form yöntemi kullanacak
-app.post('/api/payment/create', async (req, res) => {
+app.post('/api/payment/create', paymentLimiter, async (req, res) => {
   const { username, packageId, donationAmount } = req.body || {};
-  if (!username) return res.status(400).json({ ok: false, error: 'Kullanıcı yok' });
+
+  // ── GÜVENLİK: username sanitize ve doğrulama ──
+  if (typeof username !== 'string' || username.length < 2 || username.length > 16) {
+    return res.status(400).json({ ok: false, error: 'Kullanıcı adı geçersiz' });
+  }
+  // Kullanıcı sistemde var mı kontrol et
+  const userStats = Accounts.getStats(username);
+  if (!userStats) return res.status(404).json({ ok: false, error: 'Kullanıcı bulunamadı' });
+
+  // packageId whitelist kontrolü
+  if (packageId !== 'donation' && !PAYMENT_PACKAGES[packageId]) {
+    return res.status(400).json({ ok: false, error: 'Geçersiz paket' });
+  }
 
   let amount, label, type, payload;
   if (packageId === 'donation') {
-    if (!donationAmount || donationAmount < 5 || donationAmount > 5000) {
+    const amt = parseFloat(donationAmount);
+    if (!amt || amt < 5 || amt > 5000 || isNaN(amt)) {
       return res.status(400).json({ ok: false, error: 'Bağış 5-5000 TL arası olmalı' });
     }
-    amount = parseFloat(donationAmount);
+    amount = amt;
     label = `${amount} TL Bağış`;
     type = 'donation';
     payload = { amount };
   } else {
     const pkg = PAYMENT_PACKAGES[packageId];
-    if (!pkg) return res.status(404).json({ ok: false, error: 'Paket yok' });
     amount = pkg.price;
     label = pkg.label;
     type = pkg.type;
@@ -80,21 +144,15 @@ app.post('/api/payment/create', async (req, res) => {
 
   // İyzico bağlı değilse: dev modunda direkt simüle et
   if (!process.env.IYZICO_API_KEY) {
-    // DEV MODE: ödeme simülasyonu (production'da kaldırılacak)
     return res.json({
       ok: true,
       devMode: true,
-      message: 'İyzico bağlı değil — dev modunda simülasyon. Production için IYZICO_API_KEY ekle.',
+      message: 'İyzico bağlı değil — dev modunda simülasyon.',
       paymentInfo: { username, packageId, amount, label, type }
     });
   }
 
-  // TODO: Gerçek İyzico Checkout Form oluştur
-  // const iyzipay = require('iyzipay');
-  // const client = new iyzipay({ apiKey: process.env.IYZICO_API_KEY, secretKey: process.env.IYZICO_SECRET_KEY, uri: 'https://api.iyzipay.com' });
-  // const result = await client.checkoutFormInitialize.create({ ... });
-  // res.json({ ok: true, checkoutFormContent: result.checkoutFormContent, paymentPageUrl: result.paymentPageUrl });
-
+  // TODO: Gerçek İyzico Checkout Form
   return res.status(501).json({ ok: false, error: 'İyzico entegrasyonu henüz tamamlanmadı' });
 });
 
@@ -106,12 +164,30 @@ app.post('/api/payment/callback', async (req, res) => {
   res.json({ ok: true });
 });
 
-// DEV MODE: ödeme simülasyonu — production'da KAPATILMALI
-app.post('/api/payment/dev-complete', (req, res) => {
+// DEV MODE: ödeme simülasyonu — production'da OTOMATİK ENGELLENİR
+app.post('/api/payment/dev-complete', paymentLimiter, (req, res) => {
+  // SADECE: İyzico bağlı değil (NODE_ENV development) ise çalışır
   if (process.env.IYZICO_API_KEY) {
-    return res.status(403).json({ ok: false, error: 'Production modunda dev complete çalışmaz' });
+    return res.status(403).json({ ok: false, error: 'Production modunda devre dışı' });
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ ok: false, error: 'Production modunda devre dışı' });
   }
   const { username, packageId, donationAmount } = req.body || {};
+  // Validation
+  if (typeof username !== 'string' || username.length < 2 || username.length > 16) {
+    return res.status(400).json({ ok: false, error: 'Kullanıcı geçersiz' });
+  }
+  if (!Accounts.getStats(username)) return res.status(404).json({ ok: false, error: 'Kullanıcı yok' });
+  if (packageId !== 'donation' && !PAYMENT_PACKAGES[packageId]) {
+    return res.status(400).json({ ok: false, error: 'Paket geçersiz' });
+  }
+  if (packageId === 'donation') {
+    const amt = parseFloat(donationAmount);
+    if (!amt || amt < 5 || amt > 5000 || isNaN(amt)) {
+      return res.status(400).json({ ok: false, error: 'Bağış geçersiz' });
+    }
+  }
   applyPayment(username, packageId, donationAmount);
   res.json({ ok: true });
 });
@@ -157,21 +233,24 @@ function applyPayment(username, packageId, donationAmount) {
 }
 
 // Report screenshot endpoint - sadece admin authentication ile bakılabilir
-app.get('/admin/screenshot/:filename', (req, res) => {
+app.get('/admin/screenshot/:filename', adminLimiter, (req, res) => {
   const token = req.query.token;
-  if (!token) return res.status(403).send('Forbidden');
-  // Token kontrolü: socket id token'ı admin authed.get'inden gelir
+  if (!token || typeof token !== 'string') return res.status(403).send('Forbidden');
   const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
   if (!u || !Accounts.isAdmin(u[1])) return res.status(403).send('Forbidden');
-  const fpath = Reports.getScreenshotPath(req.params.filename);
+  // Path traversal koruması
+  const filename = req.params.filename;
+  if (typeof filename !== 'string' || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return res.status(400).send('Invalid filename');
+  }
+  const fpath = Reports.getScreenshotPath(filename);
   if (!fpath || !fs.existsSync(fpath)) return res.status(404).send('Not found');
   res.sendFile(fpath);
 });
 
-// Tüm raporları + ekran görüntülerini tek HTML dosyası olarak dışa aktar
-app.get('/admin/export-reports', (req, res) => {
+app.get('/admin/export-reports', adminLimiter, (req, res) => {
   const token = req.query.token;
-  if (!token) return res.status(403).send('Forbidden');
+  if (!token || typeof token !== 'string') return res.status(403).send('Forbidden');
   const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
   if (!u || !Accounts.isAdmin(u[1])) return res.status(403).send('Forbidden');
 
@@ -330,8 +409,60 @@ function resolveNight(rc) {
   }
   startTimer(rc, g.config.REPORT_DURATION, () => toDay(rc));
 }
-function toDay(rc) { const g = rooms.get(rc); if (!g) return; g.startDiscussion(); emit(rc); startTimer(rc, g.config.DISCUSSION_DURATION, () => toVote(rc)); }
-function toVote(rc) { const g = rooms.get(rc); if (!g) return; g.startVoting(); emit(rc); startTimer(rc, g.config.VOTING_DURATION, () => resolveVote(rc)); }
+function toDay(rc) {
+  const g = rooms.get(rc); if (!g) return;
+  g.startDiscussion();
+  emit(rc);
+  startTimer(rc, g.config.DISCUSSION_DURATION, () => toVote(rc));
+
+  const totalDayMs = (g.config.DISCUSSION_DURATION + (g.config.VOTING_DURATION || 90)) * 1000;
+  // ── HAIN SABOTAJI (pending varsa) ──
+  if (g.sabotagePending) {
+    const triggerAt = Math.floor(totalDayMs * (0.2 + Math.random() * 0.6));
+    setTimeout(() => {
+      if (!rooms.has(rc)) return;
+      if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
+      if (g.sabotageActive) return; // çakışma engelle
+      const ok = g.triggerSabotage(false);
+      if (ok) {
+        io.to(rc).emit('sabotage:start', {
+          targetIds: [...g.sabotageTargets.keys()],
+          fromSystem: false
+        });
+        emit(rc);
+      }
+    }, triggerAt);
+  } else {
+    // ── SİSTEM RANDOM SABOTAJI (~%20 ihtimal, hain sabotajı yoksa) ──
+    if (Math.random() < 0.2) {
+      const triggerAt = Math.floor(totalDayMs * (0.2 + Math.random() * 0.6));
+      setTimeout(() => {
+        if (!rooms.has(rc)) return;
+        if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
+        if (g.sabotageActive || g.sabotagePending) return; // çakışma engelle
+        const ok = g.triggerSabotage(true); // fromSystem
+        if (ok) {
+          io.to(rc).emit('sabotage:start', {
+            targetIds: [...g.sabotageTargets.keys()],
+            fromSystem: true
+          });
+          emit(rc);
+        }
+      }, triggerAt);
+    }
+  }
+}
+function toVote(rc) {
+  const g = rooms.get(rc); if (!g) return;
+  // Sabotaj aktifse oylama başlamaz, 5 saniyede bir kontrol et
+  if (g.sabotageActive) {
+    setTimeout(() => toVote(rc), 5000);
+    return;
+  }
+  g.startVoting();
+  emit(rc);
+  startTimer(rc, g.config.VOTING_DURATION, () => resolveVote(rc));
+}
 function resolveVote(rc) {
   const g = rooms.get(rc); if (!g) return;
   const res = g.resolveVoting();
@@ -403,6 +534,7 @@ function endGame(rc, wc, res) {
     .reduce((a, [_, amt]) => a + amt, 0);
 
   const coinUpdates = {}; // username -> { coinChange, totalCoins }
+  const coinUpdatesById = {}; // socketId -> { coinChange, totalCoins } (login olmayanlar için fallback)
 
   // Tüm oyuncular için coin dağıtımı
   [...g.players.values()].forEach(p => {
@@ -423,6 +555,7 @@ function endGame(rc, wc, res) {
     if (change !== 0) {
       const r = Accounts.addCoins(p.username, change);
       coinUpdates[p.username] = { coinChange: change, totalCoins: r.coins };
+      coinUpdatesById[p.id] = { coinChange: change, totalCoins: r.coins };
     }
   });
 
@@ -438,7 +571,8 @@ function endGame(rc, wc, res) {
 
   const data = {
     ...wc, dodoWins: res?.dodoWins, cellatWins: res?.cellatWins,
-    coinUpdates, // Frontend'e coin değişimini söyle
+    coinUpdates, // username -> {coinChange, totalCoins}
+    coinUpdatesById, // socketId -> {coinChange, totalCoins} fallback
     totalBetPool,
     players: [...g.players.values()].map(p => {
       const ro = g.ro(p.role);
@@ -559,30 +693,74 @@ function emitHainKillVotes(rc) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('auth:register', (d, cb) => { /* ... */ });
-  socket.on('auth:register', (d, cb) => { const r = Accounts.register(d.username, d.password); if (r.success) { kickOldSessions(d.username.trim(), socket.id); authed.set(socket.id, d.username.trim()); } cb(r); });
+  // ── AUTH (input validation güçlendirilmiş) ──
+  // Username sanitization helper
+  function sanitizeUsername(u) {
+    if (typeof u !== 'string') return null;
+    const trimmed = u.trim();
+    if (trimmed.length < 2 || trimmed.length > 16) return null;
+    // Sadece harf/rakam/altçizgi/tire/boşluk
+    if (!/^[\p{L}\p{N}_\- ]+$/u.test(trimmed)) return null;
+    return trimmed;
+  }
+
+  socket.on('auth:register', (d, cb) => {
+    if (!d || typeof d !== 'object') return cb?.({ success: false, error: 'Geçersiz veri' });
+    const cleanUser = sanitizeUsername(d.username);
+    if (!cleanUser) return cb?.({ success: false, error: 'Kullanıcı adı 2-16 karakter, sadece harf/rakam/_/- olmalı' });
+    if (typeof d.password !== 'string' || d.password.length < 3 || d.password.length > 100) {
+      return cb?.({ success: false, error: 'Şifre 3-100 karakter olmalı' });
+    }
+    const r = Accounts.register(cleanUser, d.password);
+    if (r.success) {
+      kickOldSessions(cleanUser, socket.id);
+      authed.set(socket.id, cleanUser);
+    }
+    cb(r);
+  });
   socket.on('auth:login', (d, cb) => {
-    const r = Accounts.login(d.username, d.password, !!d.rememberMe);
-    if (r.success) { kickOldSessions(d.username.trim(), socket.id); authed.set(socket.id, d.username.trim()); }
+    if (!d || typeof d !== 'object') return cb?.({ success: false, error: 'Geçersiz veri' });
+    const cleanUser = sanitizeUsername(d.username);
+    if (!cleanUser) return cb?.({ success: false, error: 'Kullanıcı adı geçersiz' });
+    if (typeof d.password !== 'string' || d.password.length === 0) {
+      return cb?.({ success: false, error: 'Şifre gerekli' });
+    }
+    const r = Accounts.login(cleanUser, d.password, !!d.rememberMe);
+    if (r.success) {
+      kickOldSessions(cleanUser, socket.id);
+      authed.set(socket.id, cleanUser);
+    }
     cb(r);
   });
   // Token ile otomatik giriş
-  socket.on('auth:loginByToken', ({ token }, cb) => {
+  socket.on('auth:loginByToken', ({ token } = {}, cb) => {
+    if (typeof token !== 'string' || token.length < 8 || token.length > 200) {
+      return cb?.({ success: false, error: 'Token geçersiz' });
+    }
     const r = Accounts.loginByToken(token);
-    if (r.success) { kickOldSessions(r.user.username, socket.id); authed.set(socket.id, r.user.username); }
+    if (r.success) {
+      kickOldSessions(r.user.username, socket.id);
+      authed.set(socket.id, r.user.username);
+    }
     cb(r);
   });
   // Çıkış yap
-  socket.on('auth:logout', ({ token }, cb) => {
-    if (token) Accounts.logoutToken(token);
+  socket.on('auth:logout', ({ token } = {}, cb) => {
+    if (token && typeof token === 'string') Accounts.logoutToken(token);
     authed.delete(socket.id);
     cb?.({ success: true });
   });
   socket.on('auth:stats', (_, cb) => { const u = authed.get(socket.id); cb(u ? Accounts.getStats(u) : null); });
   socket.on('auth:leaderboard', (_, cb) => cb(Accounts.leaderboard()));
-  socket.on('auth:changePassword', ({ oldPass, newPass }, cb) => {
+  socket.on('auth:changePassword', ({ oldPass, newPass } = {}, cb) => {
     const u = authed.get(socket.id);
     if (!u) return cb({ success: false, error: 'Giriş yap!' });
+    if (typeof oldPass !== 'string' || typeof newPass !== 'string') {
+      return cb({ success: false, error: 'Geçersiz veri' });
+    }
+    if (newPass.length < 3 || newPass.length > 100) {
+      return cb({ success: false, error: 'Yeni şifre 3-100 karakter olmalı' });
+    }
     cb(Accounts.changePassword(u, oldPass, newPass));
   });
   socket.on('auth:setAvatar', ({ avatar }, cb) => {
@@ -603,26 +781,40 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('room:create', ({ playerName }, cb) => {
+  // Helper: oyun içi isim sanitize (harf/rakam/_/-/boşluk, max 12)
+  function sanitizePlayerName(name) {
+    if (typeof name !== 'string') return null;
+    const trimmed = name.trim();
+    if (trimmed.length < 1 || trimmed.length > 12) return null;
+    // HTML kaçışı: < > & " ' karakterleri yok edilir
+    return trimmed.replace(/[<>&"']/g, '');
+  }
+
+  socket.on('room:create', ({ playerName } = {}, cb) => {
     const u = authed.get(socket.id);
-    if (!u) return cb({ ok: false, err: 'Giriş yap!' });
+    if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    const cleanName = sanitizePlayerName(playerName);
+    if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı' });
     const stats = Accounts.getStats(u);
     const code = genCode(), g = new GameEngine(code, socket.id);
-    g.addPlayer(socket.id, playerName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin);
+    g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin);
     rooms.set(code, g); prooms.set(socket.id, code); socket.join(code);
-    cb({ ok: true, code }); emit(code);
+    cb?.({ ok: true, code }); emit(code);
   });
 
-  socket.on('room:join', ({ code, playerName }, cb) => {
+  socket.on('room:join', ({ code, playerName } = {}, cb) => {
     const u = authed.get(socket.id);
-    if (!u) return cb({ ok: false, err: 'Giriş yap!' });
-    const g = rooms.get(code);
-    if (!g) return cb({ ok: false, err: 'Oda yok!' });
-    if (g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME) return cb({ ok: false, err: 'Oyun başlamış!' });
+    if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    if (typeof code !== 'string' || code.length !== 4) return cb?.({ ok: false, err: 'Kod geçersiz' });
+    const cleanName = sanitizePlayerName(playerName);
+    if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı' });
+    const g = rooms.get(code.toUpperCase());
+    if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
+    if (g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME) return cb?.({ ok: false, err: 'Oyun başlamış!' });
     const stats = Accounts.getStats(u);
-    if (!g.addPlayer(socket.id, playerName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin)) return cb({ ok: false, err: 'Oda dolu!' });
-    prooms.set(socket.id, code); socket.join(code);
-    cb({ ok: true, code }); emit(code);
+    if (!g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin)) return cb?.({ ok: false, err: 'Oda dolu!' });
+    prooms.set(socket.id, code.toUpperCase()); socket.join(code.toUpperCase());
+    cb?.({ ok: true, code: code.toUpperCase() }); emit(code.toUpperCase());
   });
 
   socket.on('room:spectate', ({ code }, cb) => {
@@ -870,20 +1062,76 @@ io.on('connection', (socket) => {
   });
 
   // Sabotaj mini oyun sonucu
-  socket.on('sabotage:result', ({ won }, cb) => {
+  socket.on('sabotage:result', ({ won, isFake }, cb) => {
     const rc = prooms.get(socket.id), g = rooms.get(rc); if (!g) return;
+    // isFake: hainler eğlence amaçlı oynadığında — coin yok, oyun mantığı yok
+    if (isFake) { cb?.({ ok: true, fake: true }); return; }
+
+    // Hedefin gerçekten sabotaj target'ı olup olmadığını kontrol et (server side validation)
+    const target = g.sabotageTargets.get(socket.id);
+    if (!target) return cb?.({ ok: false, err: 'Sabotaj hedefin değilsin' });
+    if (target.completed) return cb?.({ ok: false, err: 'Zaten tamamlandı' });
+    if (target.opponentType !== 'ai') return cb?.({ ok: false, err: 'AI moduda değilsin' });
+
     const ok = g.recordSabotageResult(socket.id, !!won);
     if (ok && won) {
-      // Kazanan +5 coin
+      // Kazanan +5 coin (hain bile olsa fromSystem ise alır)
       const u = authed.get(socket.id);
-      if (u) {
+      const player = g.players.get(socket.id);
+      // Hain takımı: sadece sistem sabotajından coin alır (kendi sabotajından alamaz)
+      const canEarnCoin = player?.actualTeam !== 'hain' || target.fromSystem;
+      if (u && canEarnCoin) {
         const r = Accounts.addCoins(u, 5);
         const stats = Accounts.getStats(u);
         if (stats) socket.emit('statsUpdate', stats);
         socket.emit('toast', { msg: '🎉 Mini oyun kazandın! +5 altın', type: 'success' });
+      } else if (u) {
+        socket.emit('toast', { msg: 'Mini oyunu kazandın (kendi sabotajın, coin yok).', type: 'info' });
       }
     }
     cb?.({ ok });
+  });
+
+  // PvP sabotaj hamlesi
+  socket.on('sabotage:move', (moveData, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc); if (!g) return;
+    const res = g.submitSabotageMove(socket.id, moveData || {});
+    cb?.(res);
+    if (res.ok && res.completed) {
+      // Pair'deki tüm oyunculara durum güncelle + coin
+      const target = g.sabotageTargets.get(socket.id);
+      if (target?.gameId) {
+        const pair = g.sabotagePairs.get(target.gameId);
+        pair?.players.forEach(pid => {
+          const t = g.sabotageTargets.get(pid);
+          if (!t || !t.completed) return;
+          const u = authed.get(pid);
+          const player = g.players.get(pid);
+          const canEarnCoin = player?.actualTeam !== 'hain' || target.fromSystem;
+          if (t.won && u && canEarnCoin) {
+            Accounts.addCoins(u, 5);
+            const stats = Accounts.getStats(u);
+            const sock = io.sockets.sockets.get(pid);
+            if (stats && sock) sock.emit('statsUpdate', stats);
+            sock?.emit('toast', { msg: '🎉 Rakibini yendin! +5 altın', type: 'success' });
+          } else if (u) {
+            const sock = io.sockets.sockets.get(pid);
+            sock?.emit('toast', { msg: t.won ? '🎉 Kazandın!' : '💀 Kaybettin!', type: t.won ? 'success' : 'info' });
+          }
+        });
+        emit(rc); // privateState yenile
+      }
+    } else if (res.ok) {
+      // Devam ediyor — diğer oyuncuya state'i bildir
+      const target = g.sabotageTargets.get(socket.id);
+      if (target?.gameId) {
+        const pair = g.sabotagePairs.get(target.gameId);
+        pair?.players.forEach(pid => {
+          const sock = io.sockets.sockets.get(pid);
+          if (sock) sock.emit('priv', g.privateState(pid));
+        });
+      }
+    }
   });
 
   socket.on('vote', ({ targetId }, cb) => {
@@ -892,12 +1140,11 @@ io.on('connection', (socket) => {
     cb?.({ ok });
     if (ok) {
       emitVoteTally(rc);
-      // Tüm canlı oyuncular oy verdiyse süreyi atla
       if (g.phase === PHASES.VOTING) {
-        const aliveCount = g.alive().length;
-        if (g.votes.size >= aliveCount) {
+        // Oylayabilecek (canlı VE karantinada/donmuş olmayan) oyuncu sayısı
+        const eligibleVoters = g.alive().filter(p => !g.frozen.has(p.id)).length;
+        if (g.votes.size >= eligibleVoters) {
           clearTimer(rc);
-          // Hemen sonuca geç
           resolveVote(rc);
         }
       }
@@ -923,10 +1170,25 @@ io.on('connection', (socket) => {
   });
 
   // ── BUG RAPOR (tüm kullanıcılar) ──
-  socket.on('report:create', ({ description, screenshot }, cb) => {
+  socket.on('report:create', ({ description, screenshot } = {}, cb) => {
     const u = authed.get(socket.id);
+    // Spam koruması: anonim olamaz, sadece login olanlar bug rapor edebilir
+    if (!u) return cb?.({ success: false, error: 'Önce giriş yap!' });
+    if (typeof description !== 'string' || description.length < 5 || description.length > 2000) {
+      return cb?.({ success: false, error: 'Açıklama 5-2000 karakter olmalı' });
+    }
+    // Screenshot opsiyonel ama varsa data URL doğrula + boyut kontrolü
+    if (screenshot) {
+      if (typeof screenshot !== 'string' || !screenshot.startsWith('data:image/')) {
+        return cb?.({ success: false, error: 'Geçersiz görsel' });
+      }
+      // Base64 size limit (~5MB)
+      if (screenshot.length > 7 * 1024 * 1024) {
+        return cb?.({ success: false, error: 'Görsel çok büyük (max 5MB)' });
+      }
+    }
     const result = Reports.create({
-      username: u || 'anonim',
+      username: u,
       description,
       screenshot
     });
@@ -969,6 +1231,42 @@ io.on('connection', (socket) => {
     if (!requireAdmin(cb)) return;
     const r = Accounts.adminSetStats(username, stats);
     cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+
+  // Admin: kullanıcının coin'ini değiştir (delta verilebilir, set edilebilir)
+  socket.on('admin:setCoins', ({ username, coins, delta }, cb) => {
+    if (!requireAdmin(cb)) return;
+    if (!username) return cb?.({ ok: false, err: 'Kullanıcı yok' });
+    if (typeof delta === 'number') {
+      // Coin değişikliği (eklenir/çıkarılır)
+      const r = Accounts.addCoins(username, delta);
+      if (!r.success) return cb?.({ ok: false, err: r.error });
+      // Kullanıcı online'sa stats yenile
+      for (const [sid, uname] of authed.entries()) {
+        if (uname === username) {
+          const stats = Accounts.getStats(uname);
+          if (stats) io.sockets.sockets.get(sid)?.emit('statsUpdate', stats);
+        }
+      }
+      return cb?.({ ok: true, coins: r.coins });
+    }
+    if (typeof coins === 'number') {
+      // Tam set - mevcut coin'i farktan ayar (clamp 0)
+      const stats = Accounts.getStats(username);
+      if (!stats) return cb?.({ ok: false, err: 'Kullanıcı yok' });
+      const target = Math.max(0, parseInt(coins) || 0);
+      const diff = target - (stats.coins || 0);
+      const r = Accounts.addCoins(username, diff);
+      // Online stats yenile
+      for (const [sid, uname] of authed.entries()) {
+        if (uname === username) {
+          const s = Accounts.getStats(uname);
+          if (s) io.sockets.sockets.get(sid)?.emit('statsUpdate', s);
+        }
+      }
+      return cb?.({ ok: true, coins: r.coins });
+    }
+    cb?.({ ok: false, err: 'coins veya delta gerekli' });
   });
 
   // Admin yetkisi değiştir
