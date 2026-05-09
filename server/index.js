@@ -751,6 +751,20 @@ io.on('connection', (socket) => {
     cb?.({ success: true });
   });
   socket.on('auth:stats', (_, cb) => { const u = authed.get(socket.id); cb(u ? Accounts.getStats(u) : null); });
+
+  // Eşya aktif et/pasifle
+  socket.on('inventory:equip', ({ itemId, equipped } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    if (typeof itemId !== 'string' || itemId.length > 50) return cb?.({ ok: false, err: 'Eşya ID geçersiz' });
+    const r = Accounts.toggleEquip(u, itemId, !!equipped);
+    if (r.success) {
+      // Kullanıcıya güncel stats gönder
+      const stats = Accounts.getStats(u);
+      socket.emit('statsUpdate', stats);
+    }
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
   socket.on('auth:leaderboard', (_, cb) => cb(Accounts.leaderboard()));
   socket.on('auth:changePassword', ({ oldPass, newPass } = {}, cb) => {
     const u = authed.get(socket.id);

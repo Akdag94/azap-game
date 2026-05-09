@@ -1443,6 +1443,18 @@ async function openShopModal(){
   });
 }
 
+// Envanter eşya kullan/kullanma
+function toggleEquipItem(itemId, equipped){
+  io2.emit('inventory:equip', { itemId, equipped }, r => {
+    if(r?.ok){
+      toast(equipped ? '✓ Eşya aktif edildi' : 'Eşya pasifleştirildi');
+      openProfile(); // yeniden render
+    } else {
+      toast(r?.err || 'Hata!', 1);
+    }
+  });
+}
+
 // ── BAHİS ──
 function placeBet(){
   const amt = parseInt(Q('BET_AMOUNT').value);
@@ -1553,12 +1565,21 @@ function openProfile(){
       if(items.length === 0){
         inv.innerHTML = '<div style="color:var(--dim);text-align:center;padding:8px;font-size:.78rem">Henüz eşyan yok. Mağazadan satın alabilirsin (yakında).</div>';
       } else {
-        inv.innerHTML = items.map(itemId =>
-          `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:var(--bg3);border-radius:4px;margin-bottom:4px">
-            <span>📦 ${itemId}</span>
-            <span style="font-size:.7rem;color:var(--dim)">Sahip</span>
-          </div>`
-        ).join('');
+        inv.innerHTML = items.map(it => {
+          // Migration: string -> obj
+          const item = typeof it === 'string' ? { id: it, equipped: false } : it;
+          const itemId = item.id;
+          const equipped = !!item.equipped;
+          // Kategori bazlı emoji
+          const cat = itemId.split('_')[0];
+          const catEmoji = {frame:'🖼️',font:'✒️',color:'🎨',effect:'✨'}[cat] || '📦';
+          // Görünen isim
+          const name = itemId.replace(/_/g,' ');
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:${equipped?'rgba(184,134,11,.1)':'var(--bg3)'};border:1px solid ${equipped?'var(--gold)':'var(--brd)'};border-radius:5px;margin-bottom:5px">
+            <span>${catEmoji} ${esc(name)}</span>
+            <button class="b bs" style="padding:4px 10px;font-size:.7rem;${equipped?'background:var(--gold);color:#000':'background:var(--bg2);color:var(--dim);border:1px solid var(--brd)'}" onclick="toggleEquipItem('${esc(itemId)}',${!equipped})">${equipped?'✓ Aktif':'Kullan'}</button>
+          </div>`;
+        }).join('');
       }
     }
     // UI mode radio'larını güncelle

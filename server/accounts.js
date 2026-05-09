@@ -158,9 +158,57 @@ module.exports = {
     const db = read(), key = username?.toLowerCase()?.trim();
     if (!db[key]) return { success: false };
     ensureStats(db[key]);
-    if (!db[key].inventory.includes(itemId)) db[key].inventory.push(itemId);
+    // Eski format (string array) → yeni format (obj array) migration
+    db[key].inventory = db[key].inventory.map(it =>
+      typeof it === 'string' ? { id: it, equipped: false, acquiredAt: Date.now() } : it
+    );
+    if (!db[key].inventory.find(it => it.id === itemId)) {
+      db[key].inventory.push({ id: itemId, equipped: false, acquiredAt: Date.now() });
+    }
     write(db);
     return { success: true };
+  },
+
+  // Eşya aktif et / pasifle (kategori başına 1 eşya aktif olabilir)
+  toggleEquip(username, itemId, equipped) {
+    const db = read(), key = username?.toLowerCase()?.trim();
+    if (!db[key]) return { success: false, error: 'Kullanıcı yok' };
+    ensureStats(db[key]);
+    // Migration
+    db[key].inventory = db[key].inventory.map(it =>
+      typeof it === 'string' ? { id: it, equipped: false, acquiredAt: Date.now() } : it
+    );
+    const item = db[key].inventory.find(it => it.id === itemId);
+    if (!item) return { success: false, error: 'Eşya envanterinde yok' };
+    // Kategori belirle: itemId formatı "frame_gold", "font_gothic", "color_red" vb.
+    const category = itemId.split('_')[0];
+    if (equipped) {
+      // Aynı kategorideki diğer eşyaları pasifleştir
+      db[key].inventory.forEach(it => {
+        if (it.id !== itemId && it.id.startsWith(category + '_')) it.equipped = false;
+      });
+      item.equipped = true;
+    } else {
+      item.equipped = false;
+    }
+    write(db);
+    return { success: true, inventory: db[key].inventory };
+  },
+
+  // Aktif eşyaları kategori bazında döndür (frame, font, color vb.)
+  getEquipped(username) {
+    const db = read(), key = username?.toLowerCase()?.trim();
+    if (!db[key]) return {};
+    ensureStats(db[key]);
+    const equipped = {};
+    db[key].inventory.forEach(it => {
+      const item = typeof it === 'string' ? { id: it, equipped: false } : it;
+      if (item.equipped) {
+        const category = item.id.split('_')[0];
+        equipped[category] = item.id;
+      }
+    });
+    return equipped;
   },
 
   // ── PREMIUM ÜYELİK ──
