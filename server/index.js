@@ -367,9 +367,8 @@ app.post('/admin/login', adminLimiter, express.json(), (req, res) => {
   res.json({ ok: true, admin: true, type: 'session' });
 });
 
-// HTML Dashboard: görsel admin paneli
+// HTML Dashboard: görsel admin paneli (HTML herkese açık, veriler /admin/analytics'ten gelir)
 app.get('/admin/dashboard', adminLimiter, (req, res) => {
-  if (!checkAdmin(req, res)) return;
   const html = `<!DOCTYPE html>
 <html lang="tr">
 <head>
