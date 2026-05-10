@@ -65,7 +65,26 @@ const adminLimiter = rateLimit ? rateLimit({
   message: { ok: false, error: 'Admin istek limiti.' }
 }) : (req, res, next) => next();
 
+// ── GÜVENLİK: Hassas dosya/dizin erişimini engelle (.env, .git, node_modules vb.) ──
+const BLOCKED_PATHS = [
+  /^\/\.[^/]/i,                // Tüm dotfile'lar: .env, .git, .htaccess, .DS_Store vb.
+  /\/\.\./,                    // Path traversal: ../ içeren her şey
+  /^\/(node_modules|server|data|\.git)(\/|$)/i,  // Hassas dizinler
+  /\.(env|key|pem|crt|p12|pfx|sql|db|sqlite|log|bak|backup|old|swp|swo)$/i, // Hassas uzantılar
+  /^\/(package(-lock)?\.json|yarn\.lock|composer\.(json|lock)|Dockerfile|docker-compose\.ya?ml|\.gitignore|\.dockerignore|README\.md|CHANGELOG.*|LICENSE.*)$/i
+];
+app.use((req, res, next) => {
+  const urlPath = req.path;
+  for (const re of BLOCKED_PATHS) {
+    if (re.test(urlPath)) {
+      return res.status(404).send('Not Found');
+    }
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public'), {
+  dotfiles: 'deny', // Dotfile'ları statik servis etme
   // Cache static assets (CSS, fonts) ama HTML cache'lenmesin
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
@@ -533,7 +552,14 @@ setInterval(()=>{if(!dashboard.classList.contains('hidden'))loadStats();},5000);
   res.send(html);
 });
 
-app.get('*', (_, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
+// SPA fallback — sadece güvenli yolları index.html'e yönlendir
+app.get('*', (req, res) => {
+  // Bilinen statik uzantılar 404 döner (gerçek dosya bulunamadıysa)
+  if (/\.(env|key|pem|crt|sql|db|log|bak|backup|old|swp|swo|json|yml|yaml|md|gitignore|htaccess|config|conf|ini|toml)$/i.test(req.path)) {
+    return res.status(404).send('Not Found');
+  }
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
 
 // ── ANLİK ZİYARETÇİ İSTATİSTİKLERİ (sadece sayaçlar, IP kaydetmiyoruz) ──
