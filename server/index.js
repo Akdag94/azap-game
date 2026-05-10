@@ -10,6 +10,9 @@ const Accounts = require('./accounts');
 const Reports = require('./reports');
 const { PHASES, TEAMS } = require('./gameConstants');
 
+// ── ADMIN PANEL GÜVENLİĞİ: Sabit gizli anahtar (.env'den alınabilir) ──
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'azap-admin-2026-gizli-anahtar-degistir';
+
 // ── GÜVENLİK: opsiyonel middleware'ler (npm install helmet express-rate-limit) ──
 let helmet = null, rateLimit = null;
 try { helmet = require('helmet'); } catch(e){ console.warn('[GÜVENLİK] helmet yok — npm install helmet öneriliyor'); }
@@ -22,7 +25,7 @@ app.disable('x-powered-by'); // Express imzasını gizle
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: ["https://azap.online", "http://localhost:3000", "https://www.azap.online" ] },
+  cors: { origin: ["https://azap.online", "http://localhost:3000", "https://www.azap.online", "http://127.0.0.1:3000", "http://localhost:5500", "http://127.0.0.1:5500" ] },
   maxHttpBufferSize: 8e6,
   pingTimeout: 60000,
   pingInterval: 25000,
@@ -33,21 +36,12 @@ const io = new Server(server, {
 
 // ── HELMET (güvenlik header'ları) ──
 if (helmet) {
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-        imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'", "wss:", "ws:"],
-        frameSrc: ["'self'", "https://sandbox-api.iyzipay.com", "https://api.iyzipay.com"]
-      }
-    },
-    crossOriginEmbedderPolicy: false, // socket.io için
-    referrerPolicy: { policy: 'same-origin' }
-  }));
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false
+    })
+  );
 }
 
 // ── RATE LIMITING ──
@@ -324,8 +318,248 @@ ${imgHtml}
   res.send(html);
 });
 
+// ── ADMIN ANALYTICS (sadece admin erişebilir) ──
+
+// Admin auth helper — hem socket.id (geçici) hem de ADMIN_SECRET_KEY (sabit master key) kabul eder
+function checkAdmin(req, res) {
+  const token = req.query.token;
+  if (!token || typeof token !== 'string') { res.status(403).send('Forbidden'); return null; }
+  // 1) Sabit master key kontrolü (en güçlü, sadece senin bildiğin)
+  if (token === ADMIN_SECRET_KEY) return '__MASTER_ADMIN__';
+  // 2) Socket.id ile geçici token kontrolü (admin kullanıcı adı + socket.id eşleşmesi)
+  const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
+  if (!u || !Accounts.isAdmin(u[1])) { res.status(403).send('Forbidden'); return null; }
+  return u[1];
+}
+
+// JSON API: anlık istatistikler + geçmiş
+app.get('/admin/analytics', adminLimiter, (req, res) => {
+  if (!checkAdmin(req, res)) return;
+  const activeRooms = rooms.size;
+  const playersInRooms = Array.from(rooms.values()).reduce((sum, g) => sum + g.players.size, 0);
+  const uptime = Math.floor((Date.now() - siteStats.startedAt) / 1000);
+  res.json({
+    ok: true,
+    stats: {
+      totalConnections: siteStats.totalConnections,
+      currentActive: siteStats.currentActive,
+      peakConcurrent: siteStats.peakConcurrent,
+      uptimeSeconds: uptime,
+      activeRooms: activeRooms,
+      playersInRooms: playersInRooms,
+      history: siteStats.history // Sunucu tarafında tutulan rolling window
+    }
+  });
+});
+
+// Admin login: POST ile token al (URL'de gözükmez)
+app.post('/admin/login', adminLimiter, express.json(), (req, res) => {
+  const { token } = req.body || {};
+  if (!token || typeof token !== 'string') {
+    return res.status(403).json({ ok: false, error: 'Token gerekli' });
+  }
+  // Master key veya admin socket token kontrolü
+  if (token === ADMIN_SECRET_KEY) return res.json({ ok: true, admin: true, type: 'master' });
+  const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
+  if (!u || !Accounts.isAdmin(u[1])) {
+    return res.status(403).json({ ok: false, error: 'Geçersiz token' });
+  }
+  res.json({ ok: true, admin: true, type: 'session' });
+});
+
+// HTML Dashboard: görsel admin paneli
+app.get('/admin/dashboard', adminLimiter, (req, res) => {
+  if (!checkAdmin(req, res)) return;
+  const html = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AZAP Admin Panel</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0f1a;color:#e0e0ff;padding:20px;min-height:100vh}
+.container{max-width:1200px;margin:0 auto}
+h1{color:#ff6b6b;margin-bottom:8px;font-size:28px}
+.sub{color:#8892b0;font-size:14px;margin-bottom:30px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:30px}
+.card{background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #2d2d44}
+.card h3{color:#8892b0;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.card .value{color:#fff;font-size:36px;font-weight:700}
+.refresh{background:#ff6b6b;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:20px}
+.refresh:hover{background:#ff5252}
+.logout{background:#2d2d44;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:20px;margin-left:10px}
+.logout:hover{background:#ff6b6b}
+.error{color:#ff6b6b;text-align:center;padding:40px}
+.time{color:#64ffda;font-weight:600}
+.chart-container{background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #2d2d44;margin-bottom:20px}
+.chart-title{color:#8892b0;font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.login-box{max-width:400px;margin:100px auto;background:#1a1a2e;border-radius:16px;padding:40px;border:1px solid #2d2d44}
+.login-box h2{color:#ff6b6b;margin-bottom:20px;text-align:center}
+.login-box input{width:100%;padding:12px;border-radius:8px;border:1px solid #2d2d44;background:#0f0f1a;color:#fff;margin-bottom:16px;font-size:14px}
+.login-box button{width:100%;padding:12px;background:#ff6b6b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px}
+.login-box button:hover{background:#ff5252}
+.login-error{color:#ff6b6b;margin-top:12px;text-align:center;font-size:14px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<!-- LOGIN SAYFASI -->
+<div id="loginPage" class="login-box">
+<h2>AZAP Admin Girişi</h2>
+<input type="password" id="tokenInput" placeholder="Admin token girin..." autocomplete="off">
+<button onclick="doLogin()">Giriş Yap</button>
+<div id="loginError" class="login-error"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
+<div class="container">
+<h1>AZAP Admin Panel</h1>
+<p class="sub">Canlı Site İstatistikleri</p>
+<button class="refresh" onclick="loadStats()">Yenile</button>
+<button class="logout" onclick="doLogout()">Çıkış Yap</button>
+<div id="stats" class="grid">
+<div class="card"><h3>Şu An Sitede</h3><div class="value" id="current">-</div></div>
+<div class="card"><h3>Toplam Bağlantı</h3><div class="value" id="total">-</div></div>
+<div class="card"><h3>Rekor Anlık</h3><div class="value" id="peak">-</div></div>
+<div class="card"><h3>Aktif Oda</h3><div class="value" id="rooms">-</div></div>
+<div class="card"><h3>Odada Oyuncu</h3><div class="value" id="players">-</div></div>
+<div class="card"><h3>Uptime</h3><div class="value" id="uptime">-</div></div>
+</div>
+<div class="chart-container">
+<div class="chart-title">Canlı Oyuncu Grafiği (Son 5 Dakika)</div>
+<canvas id="playerChart" height="80"></canvas>
+</div>
+<div class="chart-container">
+<div class="chart-title">Oda & Oyuncu Dağılımı</div>
+<canvas id="roomChart" height="80"></canvas>
+</div>
+<p class="sub">Son güncelleme: <span class="time" id="lastUpdate">-</span></p>
+</div>
+</div>
+
+<script>
+let token = localStorage.getItem('azap_admin_token');
+const loginPage = document.getElementById('loginPage');
+const dashboard = document.getElementById('dashboard');
+
+function showDashboard(){
+  loginPage.classList.add('hidden');
+  dashboard.classList.remove('hidden');
+  initCharts();
+  loadStats();
+}
+function showLogin(){
+  localStorage.removeItem('azap_admin_token');
+  loginPage.classList.remove('hidden');
+  dashboard.classList.add('hidden');
+}
+
+async function doLogin(){
+  const input = document.getElementById('tokenInput');
+  const t = input.value.trim();
+  if(!t){document.getElementById('loginError').textContent='Token girin';return;}
+  try{
+    const r = await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})});
+    const d = await r.json();
+    if(d.ok && d.admin){
+      token = t;
+      localStorage.setItem('azap_admin_token', token);
+      showDashboard();
+    } else {
+      document.getElementById('loginError').textContent = d.error || 'Geçersiz token';
+    }
+  }catch(e){document.getElementById('loginError').textContent='Hata: '+e.message;}
+}
+function doLogout(){showLogin();}
+
+// Enter tuşu
+ document.getElementById('tokenInput').addEventListener('keypress', e => {if(e.key==='Enter')doLogin();});
+
+let playerChart, roomChart;
+function initCharts(){
+  playerChart = new Chart(document.getElementById('playerChart'),{
+    type:'line',
+    data:{labels:[],datasets:[{label:'Aktif Oyuncu',data:[],borderColor:'#64ffda',backgroundColor:'rgba(100,255,218,0.1)',fill:true,tension:0.4}]},
+    options:{responsive:true,scales:{x:{display:false},y:{beginAtZero:true,grid:{color:'#2d2d44'}}},plugins:{legend:{display:false}}}
+  });
+  roomChart = new Chart(document.getElementById('roomChart'),{
+    type:'bar',
+    data:{labels:['Aktif Oda','Odadaki Oyuncu'],datasets:[{data:[0,0],backgroundColor:['#ff6b6b','#4ecdc4']}]},
+    options:{responsive:true,scales:{y:{beginAtZero:true,grid:{color:'#2d2d44'}}},plugins:{legend:{display:false}}}
+  });
+}
+
+function fmt(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h+'s '+m+'d '+(s%60)+'sn';}
+
+async function loadStats(){
+  if(!token){showLogin();return;}
+  try{
+    const r = await fetch('/admin/analytics?token='+encodeURIComponent(token));
+    const d = await r.json();
+    if(!d.ok){
+      if(d.error && (d.error.includes('Forbidden')||d.error.includes('token'))){showLogin();return;}
+      document.getElementById('stats').innerHTML='<div class="error">'+d.error+'</div>';return;
+    }
+
+    document.getElementById('current').textContent=d.stats.currentActive;
+    document.getElementById('total').textContent=d.stats.totalConnections;
+    document.getElementById('peak').textContent=d.stats.peakConcurrent;
+    document.getElementById('rooms').textContent=d.stats.activeRooms;
+    document.getElementById('players').textContent=d.stats.playersInRooms;
+    document.getElementById('uptime').textContent=fmt(d.stats.uptimeSeconds);
+    document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('tr-TR');
+
+    // Sunucudan gelen history verisi ile grafikleri güncelle
+    if(d.stats.history && d.stats.history.length>0 && playerChart && roomChart){
+      const hist = d.stats.history;
+      playerChart.data.labels = hist.map(h => new Date(h.timestamp).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+      playerChart.data.datasets[0].data = hist.map(h => h.currentActive);
+      playerChart.update('none');
+
+      roomChart.data.datasets[0].data = [d.stats.activeRooms, d.stats.playersInRooms];
+      roomChart.update('none');
+    }
+  }catch(e){document.getElementById('stats').innerHTML='<div class="error">Hata: '+e.message+'</div>';}
+}
+
+// Sayfa yüklenince token varsa direkt dashboard
+if(token){showDashboard();}
+setInterval(()=>{if(!dashboard.classList.contains('hidden'))loadStats();},5000);
+</script>
+</body></html>`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
 app.get('*', (_, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
+
+// ── ANLİK ZİYARETÇİ İSTATİSTİKLERİ (sadece sayaçlar, IP kaydetmiyoruz) ──
+const siteStats = {
+  totalConnections: 0,      // Başarılı socket bağlantısı sayısı
+  peakConcurrent: 0,        // Aynı anda en fazla kaç kişi
+  currentActive: 0,         // Şu an sitede olan
+  startedAt: Date.now(),     // Sunucu başlangıç zamanı
+  history: []               // Rolling window: son 5 dakika (max 60 kayıt)
+};
+
+// Her 5 saniyede bir snapshot al (Rolling Window)
+const HISTORY_MAX = 60; // 5 dakika = 60 x 5 saniye
+setInterval(() => {
+  siteStats.history.push({
+    timestamp: Date.now(),
+    currentActive: siteStats.currentActive,
+    activeRooms: rooms.size,
+    playersInRooms: Array.from(rooms.values()).reduce((sum, g) => sum + g.players.size, 0)
+  });
+  // Sadece son 60 kaydı tut (5 dk)
+  if (siteStats.history.length > HISTORY_MAX) {
+    siteStats.history.shift();
+  }
+}, 5000);
 
 
 function genCode() { let c; do { c = String(crypto.randomInt(1000, 10000)); } while (rooms.has(c)); return c; }
@@ -705,6 +939,16 @@ function emitHainKillVotes(rc) {
 }
 
 io.on('connection', (socket) => {
+  // ── ZİYARETÇİ İSTATİSTİKLERİ (güvenli sayaçlar) ──
+  siteStats.totalConnections++;
+  siteStats.currentActive++;
+  if (siteStats.currentActive > siteStats.peakConcurrent) {
+    siteStats.peakConcurrent = siteStats.currentActive;
+  }
+  socket.on('disconnect', () => {
+    siteStats.currentActive = Math.max(0, siteStats.currentActive - 1);
+  });
+
   // ── AUTH (input validation güçlendirilmiş) ──
   // Username sanitization helper
   function sanitizeUsername(u) {
