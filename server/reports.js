@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const DB = path.join(__dirname, '..', 'data', 'reports.json');
 const SCREENSHOT_DIR = path.join(__dirname, '..', 'data', 'screenshots');
 
@@ -20,7 +21,7 @@ module.exports = {
       return { success: false, error: 'Açıklama çok uzun (max 5000 karakter).' };
     }
     const reports = read();
-    const id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const id = 'r_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex');
     let screenshotPath = null;
     if (screenshot && typeof screenshot === 'string' && screenshot.startsWith('data:image/')) {
       try {

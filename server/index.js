@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const archiver = null;
 const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
@@ -21,7 +22,7 @@ app.disable('x-powered-by'); // Express imzasını gizle
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: process.env.CORS_ORIGIN || '*' },
+  cors: { origin: ["https://azap.online", "http://localhost:3000", "https://www.azap.online" ] },
   maxHttpBufferSize: 8e6,
   pingTimeout: 60000,
   pingInterval: 25000,
@@ -238,12 +239,23 @@ app.get('/admin/screenshot/:filename', adminLimiter, (req, res) => {
   if (!token || typeof token !== 'string') return res.status(403).send('Forbidden');
   const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
   if (!u || !Accounts.isAdmin(u[1])) return res.status(403).send('Forbidden');
-  // Path traversal koruması
+  // Path traversal koruması - daha güvenli
   const filename = req.params.filename;
-  if (typeof filename !== 'string' || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+  if (typeof filename !== 'string' || 
+      filename.length === 0 || 
+      filename.length > 100 || 
+      !/^[a-zA-Z0-9._-]+$/.test(filename) ||
+      filename.includes('..') || 
+      filename.includes('/') || 
+      filename.includes('\\')) {
     return res.status(400).send('Invalid filename');
   }
   const fpath = Reports.getScreenshotPath(filename);
+  // Ek güvenlik: dosya yolu screenshot dizini içinde mi kontrol et
+  const screenshotDir = Reports.getScreenshotDir();
+  if (!fpath || !path.resolve(fpath).startsWith(path.resolve(screenshotDir))) {
+    return res.status(400).send('Invalid filename');
+  }
   if (!fpath || !fs.existsSync(fpath)) return res.status(404).send('Not found');
   res.sendFile(fpath);
 });
@@ -316,7 +328,7 @@ app.get('*', (_, res) => res.sendFile(path.join(__dirname, '..', 'public', 'inde
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
 
 
-function genCode() { let c; do { c = String(1000 + Math.random() * 9000 | 0); } while (rooms.has(c)); return c; }
+function genCode() { let c; do { c = String(crypto.randomInt(1000, 10000)); } while (rooms.has(c)); return c; }
 function startTimer(rc, dur, cb) {
   clearTimer(rc);
   const end = Date.now() + dur * 1000;
@@ -415,14 +427,13 @@ function toDay(rc) {
   emit(rc);
   startTimer(rc, g.config.DISCUSSION_DURATION, () => toVote(rc));
 
-  const totalDayMs = (g.config.DISCUSSION_DURATION + (g.config.VOTING_DURATION || 90)) * 1000;
-  // ── HAIN SABOTAJI (pending varsa) ──
+  // ── HAIN SABOTAJI (pending varsa SABAH OLUNCA DİREKT başlat) ──
+  // Frontend her hedef için kendi rastgele delay'ini uygulayacak
   if (g.sabotagePending) {
-    const triggerAt = Math.floor(totalDayMs * (0.2 + Math.random() * 0.6));
     setTimeout(() => {
       if (!rooms.has(rc)) return;
       if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
-      if (g.sabotageActive) return; // çakışma engelle
+      if (g.sabotageActive) return;
       const ok = g.triggerSabotage(false);
       if (ok) {
         io.to(rc).emit('sabotage:start', {
@@ -431,16 +442,17 @@ function toDay(rc) {
         });
         emit(rc);
       }
-    }, triggerAt);
+    }, 500); // 0.5sn — neredeyse anında başlasın
   } else {
     // ── SİSTEM RANDOM SABOTAJI (~%20 ihtimal, hain sabotajı yoksa) ──
-    if (Math.random() < 0.2) {
-      const triggerAt = Math.floor(totalDayMs * (0.2 + Math.random() * 0.6));
+    if (crypto.randomInt(0, 100) < 20) {
+      // Sistem sabotajı için biraz daha bekleme makul (anında olmasın, oyun akışı için)
+      const triggerAt = crypto.randomInt(5000, 35001); // 5-35sn arası rastgele
       setTimeout(() => {
         if (!rooms.has(rc)) return;
         if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
-        if (g.sabotageActive || g.sabotagePending) return; // çakışma engelle
-        const ok = g.triggerSabotage(true); // fromSystem
+        if (g.sabotageActive || g.sabotagePending) return;
+        const ok = g.triggerSabotage(true);
         if (ok) {
           io.to(rc).emit('sabotage:start', {
             targetIds: [...g.sabotageTargets.keys()],
@@ -751,6 +763,20 @@ io.on('connection', (socket) => {
     cb?.({ success: true });
   });
   socket.on('auth:stats', (_, cb) => { const u = authed.get(socket.id); cb(u ? Accounts.getStats(u) : null); });
+
+  // Yenile butonu için: anlık state ve priv state isteyebilir
+  socket.on('state:request', (_, cb) => {
+    const rc = prooms.get(socket.id);
+    if (rc) emit(rc);
+    cb?.({ ok: true });
+  });
+  socket.on('priv:request', (_, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (g && g.players.has(socket.id)) {
+      socket.emit('priv', g.privateState(socket.id));
+    }
+    cb?.({ ok: true });
+  });
 
   // Eşya aktif et/pasifle
   socket.on('inventory:equip', ({ itemId, equipped } = {}, cb) => {
@@ -1224,6 +1250,96 @@ io.on('connection', (socket) => {
   socket.on('admin:listUsers', (_, cb) => {
     if (!requireAdmin(cb)) return;
     cb?.({ ok: true, users: Accounts.listAll() });
+  });
+
+  // Site istatistikleri (dashboard için)
+  socket.on('admin:siteStats', (_, cb) => {
+    if (!requireAdmin(cb)) return;
+    const users = Accounts.listAll();
+    const totalUsers = users.length;
+    const totalAdmins = users.filter(u => u.isAdmin).length;
+    const activePremium = users.filter(u => u.premium?.active).length;
+    const totalDonations = users.reduce((s, u) => s + (u.totalDonated || 0), 0);
+    const totalCoinsSold = users.reduce((s, u) => s + (u.coins || 0), 0);
+
+    // Oyun istatistikleri
+    const totalGamesPlayed = users.reduce((s, u) => s + (u.stats?.played || 0), 0);
+    const totalGamesWon = users.reduce((s, u) => s + (u.stats?.won || 0), 0);
+    const totalMVPs = users.reduce((s, u) => s + (u.stats?.mvp || 0), 0);
+
+    // Aktif odalar (live)
+    const activeRooms = rooms.size;
+    const playersInRooms = [...rooms.values()].reduce((s, g) => s + g.players.size, 0);
+
+    // En aktif oyuncular (top 10)
+    const topPlayers = users
+      .filter(u => u.stats?.played > 0)
+      .map(u => ({
+        username: u.username,
+        played: u.stats.played,
+        won: u.stats.won,
+        mvp: u.stats.mvp || 0,
+        coins: u.coins || 0,
+        premium: u.premium?.active || false
+      }))
+      .sort((a, b) => b.played - a.played)
+      .slice(0, 10);
+
+    // Top kazananlar
+    const topWinners = users
+      .filter(u => u.stats?.won > 0)
+      .map(u => ({
+        username: u.username,
+        won: u.stats.won,
+        played: u.stats.played,
+        winRate: u.stats.played > 0 ? Math.round((u.stats.won / u.stats.played) * 100) : 0
+      }))
+      .sort((a, b) => b.won - a.won)
+      .slice(0, 10);
+
+    // Top destekçiler (bağışçılar)
+    const topDonors = users
+      .filter(u => u.totalDonated > 0)
+      .map(u => ({ username: u.username, totalDonated: u.totalDonated }))
+      .sort((a, b) => b.totalDonated - a.totalDonated)
+      .slice(0, 10);
+
+    // En zenginler (coin)
+    const topRichest = users
+      .filter(u => u.coins > 0)
+      .map(u => ({ username: u.username, coins: u.coins }))
+      .sort((a, b) => b.coins - a.coins)
+      .slice(0, 10);
+
+    // Kayıt zaman serisi (son 30 gün)
+    const now = Date.now();
+    const days30Ago = now - 30 * 24 * 60 * 60 * 1000;
+    const dayBuckets = {};
+    users.forEach(u => {
+      if (!u.created || u.created < days30Ago) return;
+      const day = new Date(u.created).toISOString().split('T')[0];
+      dayBuckets[day] = (dayBuckets[day] || 0) + 1;
+    });
+    const registrationsByDay = Object.entries(dayBuckets)
+      .sort((a, b) => a[0].localeCompare(b[0]));
+
+    // Bug raporları
+    const reports = Reports.list();
+    const openReports = reports.filter(r => r.status === 'open' || !r.status).length;
+    const closedReports = reports.length - openReports;
+
+    cb?.({
+      ok: true,
+      stats: {
+        users: { total: totalUsers, admins: totalAdmins, premium: activePremium },
+        finance: { totalDonations: totalDonations, totalCoins: totalCoinsSold },
+        games: { played: totalGamesPlayed, won: totalGamesWon, mvps: totalMVPs },
+        live: { activeRooms, playersInRooms },
+        reports: { open: openReports, closed: closedReports, total: reports.length },
+        topPlayers, topWinners, topDonors, topRichest,
+        registrationsByDay
+      }
+    });
   });
 
   // Yeni hesap oluştur

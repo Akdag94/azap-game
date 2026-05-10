@@ -48,6 +48,14 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 @keyframes logoBreath{0%,100%{text-shadow:0 0 30px var(--accG),0 2px 4px rgba(0,0,0,.6)}50%{text-shadow:0 0 40px var(--accG),0 0 60px var(--accG),0 2px 4px rgba(0,0,0,.6)}}
 .logo-s{font-size:.65rem;color:var(--dim);letter-spacing:6px;text-transform:uppercase}
 .signature{position:absolute;bottom:-2px;right:6px;font-size:.55rem;color:var(--dim);font-family:'Fira Code',monospace;letter-spacing:1px;opacity:.6}
+/* Oyun içi yenile/çıkış butonları (sağ üstte küçük, AZAP altında, oyun başlayınca görünür) */
+.game-actions{position:fixed;top:8px;right:8px;z-index:95;display:flex;gap:5px}
+.game-action-btn{width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:var(--txt);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:all .15s;padding:0}
+.game-action-btn:hover{background:rgba(255,255,255,.1);transform:scale(1.05)}
+.game-action-btn.danger{border-color:rgba(192,57,43,.4);color:var(--hain)}
+.game-action-btn.danger:hover{background:rgba(192,57,43,.15)}
+body.day .game-action-btn{background:rgba(255,255,255,.7);border-color:rgba(0,0,0,.1);color:var(--txt)}
+body.day .game-action-btn:hover{background:rgba(255,255,255,.9)}
 
 .top-actions{position:absolute;top:12px;right:6px;display:flex;gap:5px;z-index:50}
 .tab-btn{background:var(--bg3);border:1px solid var(--brd);color:var(--txt);padding:5px 9px;border-radius:3px;font-size:.7rem;font-family:'Cinzel Decorative',serif;letter-spacing:1px;cursor:pointer;transition:all .2s}
@@ -196,20 +204,20 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 .htog{position:fixed;bottom:14px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--dim);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .htog.sh{display:flex}
 /* Rol bilgisi - sol üst (her zaman görünür) */
-.role-info-btn{position:fixed;top:30px;left:14px;z-index:91;background:var(--bg3);border:1px solid var(--brd);color:var(--txt);padding:6px 10px;border-radius:6px;cursor:pointer;display:none;align-items:center;gap:6px;font-size:.78rem;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.role-info-btn{position:fixed;top:50px;left:14px;z-index:91;background:var(--bg3);border:1px solid var(--brd);color:var(--txt);padding:6px 10px;border-radius:6px;cursor:pointer;display:none;align-items:center;gap:6px;font-size:.78rem;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .role-info-btn.sh{display:flex}
 .role-info-btn:hover{background:var(--bg2)}
 /* Rol rehberi butonu */
 .role-guide-btn{position:fixed;bottom:60px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--dim);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .role-guide-btn.sh{display:flex}
 /* Admin bakış butonu (sadece admin görür) */
-.admin-btn{position:fixed;bottom:106px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#5d3a8e,#9b59b6);border:1.5px solid #9b59b6;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(155,89,182,.5)}
+.admin-btn{position:fixed;bottom:62px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#5d3a8e,#9b59b6);border:1.5px solid #9b59b6;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(155,89,182,.5)}
 .admin-btn.sh{display:flex}
 /* Admin menü butonu (sadece admin görür) */
-.admin-menu-btn{position:fixed;bottom:152px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7d3c98,#bb8fce);border:1.5px solid #bb8fce;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(187,143,206,.5)}
+.admin-menu-btn{position:fixed;bottom:110px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7d3c98,#bb8fce);border:1.5px solid #bb8fce;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(187,143,206,.5)}
 .admin-menu-btn.sh{display:flex}
 /* Report butonu - sağ alt floating, profil/rehberden uzak */
-.report-btn{position:fixed;bottom:60px;right:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:rgba(192,57,43,.15);border:1px solid var(--hain);color:var(--hain);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3);transition:all .15s}
+.report-btn{position:fixed;bottom:62px;right:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:rgba(192,57,43,.15);border:1px solid var(--hain);color:var(--hain);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3);transition:all .15s}
 .report-btn:hover{background:rgba(192,57,43,.25);transform:scale(1.05)}
 .admin-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px 8px;background:rgba(255,255,255,.03);border-left:3px solid;border-radius:4px;margin:3px 0;font-size:.82rem}
 .admin-row.t-masum{border-left-color:var(--safe)}
@@ -223,6 +231,29 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 .am-tabs{display:flex;gap:4px;margin-bottom:10px;border-bottom:1px solid var(--brd)}
 .am-tab{padding:6px 12px;background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:.8rem;border-bottom:2px solid transparent}
 .am-tab.active{color:var(--hi);border-bottom-color:var(--hi)}
+
+/* Site istatistikleri kartlar + leaderboard */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px}
+.stat-card{background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:10px;text-align:center;transition:all .2s}
+.stat-card:hover{border-color:var(--hi);transform:translateY(-1px)}
+.stat-card.premium{background:linear-gradient(135deg,rgba(187,143,206,.08),rgba(94,58,135,.05));border-color:rgba(187,143,206,.25)}
+.stat-card.live{background:linear-gradient(135deg,rgba(39,174,96,.08),rgba(16,124,64,.05));border-color:rgba(39,174,96,.25)}
+.stat-card.finance{background:linear-gradient(135deg,rgba(233,30,99,.06),rgba(173,20,87,.04));border-color:rgba(233,30,99,.25)}
+.stat-card.gold{background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(184,134,11,.05));border-color:rgba(255,215,0,.25)}
+.stat-icon{font-size:1.5rem;margin-bottom:2px}
+.stat-num{font-size:1.3rem;font-weight:700;color:var(--txt);font-family:'Cormorant Garamond',serif}
+.stat-lbl{font-size:.68rem;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+
+.leaderboard{background:var(--bg2);border:1px solid var(--brd);border-radius:6px;overflow:hidden}
+.lb-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid var(--brd);font-size:.82rem}
+.lb-row:last-child{border-bottom:none}
+.lb-row.lb-top{background:linear-gradient(90deg,rgba(255,215,0,.04),transparent)}
+.lb-rank{width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:var(--bg3);border-radius:50%;font-weight:700;font-size:.74rem;flex-shrink:0}
+.lb-row.lb-top:nth-child(1) .lb-rank{background:linear-gradient(135deg,#ffd700,#b8860b);color:#000}
+.lb-row.lb-top:nth-child(2) .lb-rank{background:linear-gradient(135deg,#c0c0c0,#808080);color:#000}
+.lb-row.lb-top:nth-child(3) .lb-rank{background:linear-gradient(135deg,#cd7f32,#8b4513);color:#fff}
+.lb-name{flex:1;font-weight:600}
+.lb-stat{font-size:.74rem;color:var(--dim);white-space:nowrap}
 .am-user{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:4px;margin-bottom:4px;font-size:.8rem}
 .am-user.is-admin{background:rgba(155,89,182,.1);border-left:3px solid #9b59b6}
 .am-user-actions{display:flex;gap:4px;flex-wrap:wrap}
@@ -386,8 +417,8 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 /* ════════════ MODERN UI MODU ════════════ */
 /* body.modern-ui aktifken: oyuncu listeleri 2-sütunlu grid kart şeklinde */
 body.modern-ui .pl{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;list-style:none;margin-top:10px}
-body.modern-ui .pi{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:14px 8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1px solid var(--brd);border-radius:8px;font-size:.85rem;min-height:115px;justify-content:center;position:relative;transition:all .2s}
-body.modern-ui .pi .av{width:62px !important;height:62px !important;font-size:1.85rem !important;border-radius:11px !important}
+body.modern-ui .pi{display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;padding:9px 8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1px solid var(--brd);border-radius:8px;font-size:.85rem;min-height:120px;justify-content:center;position:relative;transition:all .2s}
+body.modern-ui .pi .av{width:82px !important;height:82px !important;font-size:2.4rem !important;border-radius:13px !important}
 body.modern-ui .pi .pi-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
 body.modern-ui .pi .pi-name span:first-child{font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.modern-ui .pi.dead{opacity:.45;filter:grayscale(.7);position:relative}
@@ -403,16 +434,16 @@ body.modern-ui .pi .wins-badge{font-size:.7rem;color:var(--dim);position:absolut
 
 /* Gece hedef seçimi (.tb): kart grid */
 body.modern-ui #NTL{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-body.modern-ui .tb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 8px;min-height:115px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3))}
-body.modern-ui .tb .av{width:62px !important;height:62px !important;font-size:1.85rem !important;border-radius:11px !important;margin-bottom:6px}
+body.modern-ui .tb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:9px 8px;min-height:120px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3))}
+body.modern-ui .tb .av{width:82px !important;height:82px !important;font-size:2.4rem !important;border-radius:13px !important;margin-bottom:5px}
 body.modern-ui .tb .tb-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
 body.modern-ui .tb .tb-name span:first-child{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.modern-ui .tb.sel{border-color:var(--hi);box-shadow:0 0 12px rgba(255,255,255,.15);transform:scale(1.03)}
 
 /* Oylama (.vb): kart grid */
 body.modern-ui #VG,body.modern-ui #PV_GRID,body.modern-ui #MV_GRID{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-body.modern-ui .vb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 8px;min-height:130px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1.5px solid var(--brd)}
-body.modern-ui .vb .av{width:62px !important;height:62px !important;font-size:1.85rem !important;border-radius:11px !important;margin-bottom:6px}
+body.modern-ui .vb{display:flex;flex-direction:column;align-items:center;text-align:center;padding:9px 8px;min-height:135px;justify-content:center;position:relative;border-radius:8px;background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1.5px solid var(--brd)}
+body.modern-ui .vb .av{width:82px !important;height:82px !important;font-size:2.4rem !important;border-radius:13px !important;margin-bottom:5px}
 body.modern-ui .vb .vb-name{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;max-width:100%;overflow:hidden}
 body.modern-ui .vb .vb-name span:first-child{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.modern-ui .vb .vc{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.4);padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.2)}
@@ -709,6 +740,7 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 <div class="role-modal-title" style="color:#bb8fce">⚙️ ADMİN MENÜ</div>
 <div class="am-tabs">
 <button class="am-tab active" data-amtab="users" onclick="amSwitchTab('users')">👥 Kullanıcılar</button>
+<button class="am-tab" data-amtab="stats" onclick="amSwitchTab('stats')">📊 İstatistikler</button>
 <button class="am-tab" data-amtab="reports" onclick="amSwitchTab('reports')">🐛 Bug Raporları</button>
 </div>
 <div id="AM_USERS_PANE">
@@ -720,6 +752,10 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 <button class="b b1 bs" style="width:100%;margin-top:4px" onclick="amCreateUser()">Hesap Oluştur</button>
 </div>
 <div id="AM_USERS_LIST">Yükleniyor...</div>
+</div>
+<div id="AM_STATS_PANE" style="display:none">
+<div style="display:flex;gap:6px;margin-bottom:10px"><button class="am-btn info" onclick="amLoadStats()">🔄 Yenile</button></div>
+<div id="AM_STATS_BODY">Yükleniyor...</div>
 </div>
 <div id="AM_REPORTS_PANE" style="display:none">
 <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
@@ -831,6 +867,12 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
 <div class="logo">AZAP</div>
 <div class="logo-s">Sosyal Dedüksiyon</div>
 <div class="signature">Created by Azad Akdağ</div>
+</div>
+
+<!-- Oyun içi yenile + çıkış butonları (sadece oyundayken) -->
+<div class="game-actions" id="GAME_ACTIONS" style="display:none">
+  <button class="game-action-btn" onclick="refreshGame()" title="Sayfayı yenile">🔄</button>
+  <button class="game-action-btn danger" onclick="exitToMainMenu()" title="Ana menüye dön">🚪</button>
 </div>
 
 <!-- Auth -->
@@ -1168,7 +1210,7 @@ Object.entries(RDEF).forEach(([k,v])=>{
   ID_MAP[id]={e:v.e,n:v.n,d:v.d};
 });
 
-function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));Q(id).classList.add('on')}
+function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));Q(id).classList.add('on');updateGameActions();}
 function toast(m,e){const t=Q('T');t.textContent=m;t.className='toast'+(e?' er':'');t.classList.add('sh');setTimeout(()=>t.classList.remove('sh'),3e3)}
 function theme(day){document.body.classList.toggle('day',day)}
 function openModal(id){Q(id).classList.add('sh')}
@@ -1686,6 +1728,49 @@ function leaveAfterGame(){
   show('S1');
   io2.emit('auth:stats',null,r=>{if(r){user=r;updateUserUI();}});
   applyMusicForCurrentScreen();
+}
+
+// 🔄 Oyun içi sayfa yenileme (state'i resetleyip lobi/oyun ekranını tekrar yükler)
+function refreshGame(){
+  // Frontend state'i temizle ve sunucudan tekrar al
+  // Mevcut socket bağlantısını koruyoruz, sadece UI'yı yeniden çiz
+  if(gs && me){
+    // Aktif state istek
+    io2.emit('state:request', null, () => {
+      // State handler renderlayacak
+    });
+    // Aktif private state
+    io2.emit('priv:request', null, () => {});
+    toast('🔄 Yenileniyor...');
+    // 1 saniye sonra emin olmak için sayfa reload (token korunur)
+    setTimeout(() => location.reload(), 800);
+  } else {
+    location.reload();
+  }
+}
+
+// 🚪 Oyun içinden ana menüye dön (onaylı)
+function exitToMainMenu(){
+  const inActiveGame = gs && gs.phase !== 'lobby' && gs.phase !== 'post_game';
+  const msg = inActiveGame
+    ? '⚠️ Aktif bir oyundasın!\nÇıkarsan diğer oyuncular için sorun yaratabilirsin.\n\nGerçekten ana menüye dönmek istiyor musun?'
+    : 'Ana menüye dönmek istediğine emin misin?';
+  if(!confirm(msg)) return;
+  io2.emit('room:leave');
+  resetClient();
+  show('S1');
+  applyMusicForCurrentScreen();
+  toast('Ana menüye döndün');
+}
+
+// Game actions (yenile/çıkış) butonlarını göster/gizle
+function updateGameActions(){
+  const ga = Q('GAME_ACTIONS');
+  if(!ga) return;
+  // S0 (auth) ve S1 (entry) dışındaki tüm ekranlarda göster
+  const currentScreen = document.querySelector('.scr.on')?.id;
+  const showActions = currentScreen && currentScreen !== 'S0' && currentScreen !== 'S1';
+  ga.style.display = showActions ? 'flex' : 'none';
 }
 function resetClient(){
   deathOk=false;lastDead=new Set();gs=null;ps=null;isSpec=false;isDead=false;mvpVoted=null;
@@ -2525,13 +2610,14 @@ function updateSuikastFloatingBtn(){
       sbtn.style.display='none';
     }
   }
-  // Mini Oyun butonu (gündüz, eğlence — sahte oyun coin yok)
+  // Mini Oyun butonu (sadece HAINLER için — sahte mod, coin yok, eğlence)
   const mgBtn = Q('MINIGAME_BTN_FLOAT');
   if(mgBtn){
     const inDayPhase = gs?.phase === 'day_discussion' || gs?.phase === 'voting';
     const isAlive = ps?.isAlive;
-    const sabotageActive = !!ps?.sabotageGame; // sabotaj zaten aktifse sahte oyun gösterme
-    if(inDayPhase && isAlive && !sabotageActive){
+    const isHain = ps?.team === 'hain';
+    const sabotageActive = !!ps?.sabotageGame;
+    if(inDayPhase && isAlive && isHain && !sabotageActive){
       mgBtn.style.display='flex';
     } else {
       mgBtn.style.display='none';
@@ -2588,17 +2674,22 @@ let _saboGame = null; // mevcut oyun durumu
 let _saboShown = false; // bu sabotaj turunda gösterildi mi (tekrar açma)
 
 function sabotageCheck(){
-  // ps.sabotageGame varsa overlay aç
   if(!ps?.sabotageGame || ps.sabotageGame.completed){
     Q('SABO_OV').classList.remove('sh');
     _saboShown = false;
     return;
   }
-  // Sadece gündüz fazlarında göster (gece bitti, sabah/tartışma)
-  if(gs?.phase !== 'morning_report' && gs?.phase !== 'day_discussion') return;
+  if(gs?.phase !== 'morning_report' && gs?.phase !== 'day_discussion' && gs?.phase !== 'voting') return;
   if(_saboShown) return;
   _saboShown = true;
-  startSabotageGame(ps.sabotageGame.gameType);
+  // ── HER HEDEF İÇİN FARKLI ZAMANDA: 0-15 saniye arası random delay ──
+  const randomDelay = Math.floor(Math.random() * 15000);
+  setTimeout(() => {
+    // Hâlâ aktif mi (faz değişti mi, sabotaj sona erdi mi)
+    if(!ps?.sabotageGame || ps.sabotageGame.completed) return;
+    if(gs?.phase !== 'morning_report' && gs?.phase !== 'day_discussion' && gs?.phase !== 'voting') return;
+    startSabotageGame(ps.sabotageGame.gameType);
+  }, randomDelay);
 }
 
 function startSabotageGame(gameType){
@@ -2982,9 +3073,111 @@ function openAdminMenuModal(){
 function amSwitchTab(tab){
   document.querySelectorAll('[data-amtab]').forEach(b=>b.classList.toggle('active',b.dataset.amtab===tab));
   Q('AM_USERS_PANE').style.display = tab==='users' ? 'block' : 'none';
+  Q('AM_STATS_PANE').style.display = tab==='stats' ? 'block' : 'none';
   Q('AM_REPORTS_PANE').style.display = tab==='reports' ? 'block' : 'none';
   if(tab==='users')amLoadUsers();
-  else amLoadReports();
+  else if(tab==='stats')amLoadStats();
+  else if(tab==='reports')amLoadReports();
+}
+
+// Site istatistikleri
+function amLoadStats(){
+  const body = Q('AM_STATS_BODY');
+  body.innerHTML = 'Yükleniyor...';
+  io2.emit('admin:siteStats', {}, r => {
+    if(!r?.ok){body.innerHTML = `<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
+    const s = r.stats;
+    body.innerHTML = `
+      <!-- Üst Özet Kutuları -->
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${s.users.total}</div><div class="stat-lbl">Toplam Kullanıcı</div></div>
+        <div class="stat-card"><div class="stat-icon">👁️</div><div class="stat-num">${s.users.admins}</div><div class="stat-lbl">Admin</div></div>
+        <div class="stat-card premium"><div class="stat-icon">👑</div><div class="stat-num">${s.users.premium}</div><div class="stat-lbl">Aktif Premium</div></div>
+        <div class="stat-card live"><div class="stat-icon">🟢</div><div class="stat-num">${s.live.activeRooms}</div><div class="stat-lbl">Aktif Oda</div></div>
+        <div class="stat-card live"><div class="stat-icon">🎮</div><div class="stat-num">${s.live.playersInRooms}</div><div class="stat-lbl">Aktif Oyuncu</div></div>
+        <div class="stat-card finance"><div class="stat-icon">💝</div><div class="stat-num">₺${s.finance.totalDonations.toFixed(0)}</div><div class="stat-lbl">Toplam Bağış</div></div>
+        <div class="stat-card gold"><div class="stat-icon">💰</div><div class="stat-num">${s.finance.totalCoins.toLocaleString('tr-TR')}</div><div class="stat-lbl">Toplam Altın</div></div>
+        <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-num">${s.games.played}</div><div class="stat-lbl">Toplam Oyun</div></div>
+        <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-num">${s.games.won}</div><div class="stat-lbl">Toplam Galibiyet</div></div>
+        <div class="stat-card"><div class="stat-icon">❤️</div><div class="stat-num">${s.games.mvps}</div><div class="stat-lbl">Toplam MVP</div></div>
+        <div class="stat-card"><div class="stat-icon">🐛</div><div class="stat-num">${s.reports.open}</div><div class="stat-lbl">Açık Bug</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${s.reports.closed}</div><div class="stat-lbl">Çözülen Bug</div></div>
+      </div>
+
+      <!-- En Aktif Oyuncular -->
+      <div class="st mt12">🎮 En Aktif Oyuncular (Top 10)</div>
+      <div class="leaderboard">
+        ${s.topPlayers.length ? s.topPlayers.map((p,i)=>`
+          <div class="lb-row${i<3?' lb-top':''}">
+            <span class="lb-rank">${i+1}</span>
+            <span class="lb-name">${esc(p.username)}${p.premium?' 👑':''}</span>
+            <span class="lb-stat">🎮 ${p.played}</span>
+            <span class="lb-stat">🏆 ${p.won}</span>
+            <span class="lb-stat" style="color:var(--gold)">💰 ${p.coins}</span>
+          </div>
+        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+      </div>
+
+      <!-- En Çok Kazananlar -->
+      <div class="st mt12">🏆 En Çok Kazananlar (Top 10)</div>
+      <div class="leaderboard">
+        ${s.topWinners.length ? s.topWinners.map((p,i)=>`
+          <div class="lb-row${i<3?' lb-top':''}">
+            <span class="lb-rank">${i+1}</span>
+            <span class="lb-name">${esc(p.username)}</span>
+            <span class="lb-stat">${p.won}/${p.played}</span>
+            <span class="lb-stat" style="color:var(--safe)">%${p.winRate}</span>
+          </div>
+        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+      </div>
+
+      <!-- Bağışçılar -->
+      <div class="st mt12">💝 En Çok Destekçiler (Top 10)</div>
+      <div class="leaderboard">
+        ${s.topDonors.length ? s.topDonors.map((p,i)=>`
+          <div class="lb-row${i<3?' lb-top':''}">
+            <span class="lb-rank">${i+1}</span>
+            <span class="lb-name">${esc(p.username)}</span>
+            <span class="lb-stat" style="color:#e91e63;font-weight:700">₺${p.totalDonated.toFixed(0)}</span>
+          </div>
+        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Henüz bağış yapan yok</div>'}
+      </div>
+
+      <!-- En Zenginler -->
+      <div class="st mt12">💰 En Zenginler (Top 10)</div>
+      <div class="leaderboard">
+        ${s.topRichest.length ? s.topRichest.map((p,i)=>`
+          <div class="lb-row${i<3?' lb-top':''}">
+            <span class="lb-rank">${i+1}</span>
+            <span class="lb-name">${esc(p.username)}</span>
+            <span class="lb-stat" style="color:var(--gold);font-weight:700">${p.coins.toLocaleString('tr-TR')} 💰</span>
+          </div>
+        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+      </div>
+
+      <!-- Son 30 gün kayıtlar -->
+      <div class="st mt12">📅 Son 30 Gün Kayıtları</div>
+      <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px">
+        ${s.registrationsByDay.length ? renderRegistrationChart(s.registrationsByDay) : '<div style="color:var(--dim);text-align:center">Son 30 günde kayıt yok</div>'}
+      </div>
+    `;
+  });
+}
+
+// Basit ASCII bar chart (kayıt sayısına göre)
+function renderRegistrationChart(data){
+  const max = Math.max(...data.map(d => d[1]), 1);
+  return data.map(([day, count]) => {
+    const width = (count / max) * 100;
+    const dateStr = new Date(day).toLocaleDateString('tr-TR', {month:'short', day:'numeric'});
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:.78rem">
+      <span style="width:60px;color:var(--dim);font-size:.7rem">${dateStr}</span>
+      <div style="flex:1;background:var(--bg3);border-radius:3px;overflow:hidden;height:18px;position:relative">
+        <div style="background:linear-gradient(90deg,#bb8fce,#8e44ad);width:${width}%;height:100%;border-radius:3px;transition:width .3s"></div>
+        <span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:.7rem;font-weight:700">${count}</span>
+      </div>
+    </div>`;
+  }).join('');
 }
 function amLoadUsers(){
   const list=Q('AM_USERS_LIST');
@@ -3612,6 +3805,8 @@ io2.on('connect',()=>{
   }
   // Sürüklenebilir butonları kur (DOM hazır olduktan sonra)
   setTimeout(setupDraggableButtons, 100);
+  // İlk yüklemede game-actions (yenile/çıkış) görünürlüğünü ayarla (S0/S1'de gizli)
+  setTimeout(updateGameActions, 100);
 });
 
 // Phase tracking for optimized rendering

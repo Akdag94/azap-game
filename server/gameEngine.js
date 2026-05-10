@@ -2,6 +2,7 @@
 // AZAP v4 - Oyun Motoru
 // ============================================================
 const { TEAMS, ROLES, PHASES, DEFAULT_CONFIG } = require('./gameConstants');
+const crypto = require('crypto');
 
 class GameEngine {
   constructor(code, leaderId) {
@@ -428,7 +429,7 @@ class GameEngine {
     [...this.players.values()].filter(p => p.role === 'cellat').forEach(c => {
       const masums = [...this.players.values()].filter(p => p.id !== c.id && p.actualTeam === TEAMS.MASUM);
       if (masums.length > 0) {
-        const t = masums[Math.floor(Math.random() * masums.length)];
+        const t = masums[crypto.randomInt(0, masums.length)];
         this.cellatTarget.set(c.id, t.id);
       }
     });
@@ -436,7 +437,7 @@ class GameEngine {
     [...this.players.values()].filter(p => p.role === 'koruyucu').forEach(k => {
       const others = [...this.players.values()].filter(p => p.id !== k.id);
       if (others.length > 0) {
-        const t = others[Math.floor(Math.random() * others.length)];
+        const t = others[crypto.randomInt(0, others.length)];
         this.koruyucuTargets.set(k.id, t.id);
       }
     });
@@ -496,9 +497,9 @@ class GameEngine {
     if (candidates.length === 0) {
       // Kimse oy almamış: rastgele başkan
       const alive = this.alive();
-      this.presidentId = alive[Math.floor(Math.random() * alive.length)]?.id || null;
+      this.presidentId = alive[crypto.randomInt(0, alive.length)]?.id || null;
     } else {
-      this.presidentId = candidates[Math.floor(Math.random() * candidates.length)];
+      this.presidentId = candidates[crypto.randomInt(0, candidates.length)];
     }
     if (this.presidentId) {
       this.log(`👑 ${this.pn(this.presidentId)} başkan seçildi.`);
@@ -847,7 +848,7 @@ class GameEngine {
         else if (v === max) targets.push(tid);
       });
       if (targets.length > 0) {
-        const target = targets[Math.floor(Math.random() * targets.length)];
+        const target = targets[crypto.randomInt(0, targets.length)];
         this.tryKill(target, 'hain', rep, hainKills.map(a => a.pid));
       }
     } else {
@@ -964,7 +965,7 @@ class GameEngine {
         || eff.some(k => k.role === 'seri_katil' && k.targetId === a.targetId);
       let txt;
       if (insane) {
-        txt = Math.random() > 0.5 ? `${t.name}'i kurtardın!` : `${t.name}'e saldırı olmadı.`;
+        txt = crypto.randomInt(0, 2) > 0 ? `${t.name}'i kurtardın!` : `${t.name}'e saldırı olmadı.`;
       } else if (t.isShielded && wasAttacked && t.isAlive) {
         txt = `${t.name}'i kurtardın!`;
         rep.get(a.targetId)?.push({ i: '🩺', t: 'Saldırıya uğradın ama kurtarıldın!' });
@@ -998,7 +999,7 @@ class GameEngine {
         const killerName = this.pn(serifAction.pid);
         if (isDeadInsane) {
           const allAlive = this.alive().filter(p => p.id !== did);
-          const rp = allAlive[Math.floor(Math.random() * allAlive.length)];
+          const rp = allAlive[crypto.randomInt(0, allAlive.length)];
           const fakeName = rp ? rp.name : killerName;
           this.players.forEach((_, pid) => {
             rep.get(pid)?.push({ i: '🩸', t: `Kurban ${dead.name} son nefesinde katilinin ${fakeName} olduğunu söyledi!` });
@@ -1017,7 +1018,7 @@ class GameEngine {
           // Tek kill: oy veren hainlerden rastgele birini söyle (rol kullananı değil, oy vereni)
           const voters = hainKills.filter(k => k.killTargetId === did);
           if (voters.length > 0) {
-            const randomVoter = voters[Math.floor(Math.random() * voters.length)];
+            const randomVoter = voters[crypto.randomInt(0, voters.length)];
             killerName = this.pn(randomVoter.pid);
           }
         } else {
@@ -1028,7 +1029,7 @@ class GameEngine {
         if (killerName) {
           if (isDeadInsane) {
             const allAlive = this.alive().filter(p => p.id !== did);
-            const rp = allAlive[Math.floor(Math.random() * allAlive.length)];
+            const rp = allAlive[crypto.randomInt(0, allAlive.length)];
             const fakeName = rp ? rp.name : killerName;
             this.players.forEach((_, pid) => {
               rep.get(pid)?.push({ i: '🩸', t: `Kurban ${dead.name} son nefesinde katilinin ${fakeName} olduğunu söyledi!` });
@@ -1056,8 +1057,8 @@ class GameEngine {
       const realRole = this.ro(t.role);
       if (insane) {
         const allR = Object.values(ROLES).filter(r => r.id !== 'deli');
-        const fake = allR[Math.floor(Math.random() * allR.length)];
-        const fakeTeam = ['masum','hain','tarafsız'][Math.floor(Math.random() * 3)];
+        const fake = allR[crypto.randomInt(0, allR.length)];
+        const fakeTeam = ['masum','hain','tarafsiz'][crypto.randomInt(0, 3)];
         rep.get(a.pid)?.push({ i: '⚖️', t: `${t.name}: ${fake.emoji} ${fake.name} (${fakeTeam})` });
       } else {
         rep.get(a.pid)?.push({ i: '⚖️', t: `${t.name}: ${realRole?.emoji} ${realRole?.name} (${t.actualTeam})` });
@@ -1071,7 +1072,7 @@ class GameEngine {
       // Seri Katil iz bırakmaz — gazeteci her zaman "Rol kullanmadı" görür
       const isSK = t.role === 'seri_katil';
       const used = isSK ? false : this.nightActions.has(a.targetId);
-      const result = insane ? Math.random() > 0.5 : used;
+      const result = insane ? crypto.randomInt(0, 2) > 0 : used;
       rep.get(a.pid)?.push({ i: '📰', t: `${t.name}: ${result ? 'Rol kullandı' : 'Rol kullanmadı'}` });
       this.hist(a.pid, 'Araştırma', t.name, result ? 'Aktif' : 'Pasif');
     });
@@ -1099,7 +1100,7 @@ class GameEngine {
         return;
       }
       const same = t1.actualTeam === t2.actualTeam;
-      const result = insane ? Math.random() > 0.5 : same;
+      const result = insane ? crypto.randomInt(0, 2) > 0 : same;
       rep.get(a.pid)?.push({ i: '🗣️', t: `${t1.name} & ${t2.name}: ${result ? 'Aynı takım' : 'Farklı takım'}` });
       this.hist(a.pid, 'Dedikodu', `${t1.name} & ${t2.name}`, result ? 'Aynı' : 'Farklı');
     });
@@ -1149,8 +1150,8 @@ class GameEngine {
       if (insane) {
         // Deli: rastgele bir isim ve rastgele aktif/pasif
         const allAlive = this.alive().filter(p => p.id !== a.pid);
-        if (Math.random() > 0.5 && allAlive.length > 0) {
-          const rp = allAlive[Math.floor(Math.random() * allAlive.length)];
+        if (crypto.randomInt(0, 2) > 0 && allAlive.length > 0) {
+          const rp = allAlive[crypto.randomInt(0, allAlive.length)];
           rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: ${rp.name} kişisine rol kullandı.` });
           this.hist(a.pid, 'Takip', t.name, `${rp.name}'e gitti (sahte)`);
         } else {
@@ -1192,7 +1193,7 @@ class GameEngine {
         if (tid === pusucuId && !visitors.includes(hid)) visitors.push(hid);
       });
       if (visitors.length > 0) {
-        const victim = visitors[Math.floor(Math.random() * visitors.length)];
+        const victim = visitors[crypto.randomInt(0, visitors.length)];
         const v = this.players.get(victim);
         if (v?.isAlive && !v.isShielded && !v.isImmortal) {
           v.isAlive = false;
@@ -1534,56 +1535,11 @@ class GameEngine {
     this.sabotageTargets.clear();
     this.sabotagePairs.clear();
 
-    // Eşleşme: rastgele AI veya başka oyuncu
+    // Eşleşme: HER hedef AI'a karşı oynar (PvP iptal — kullanıcı isteği)
     const shuffled = this.shuf([...selected]);
-    let pairId = 1;
-    while (shuffled.length >= 2) {
-      const goPvP = Math.random() < 0.6;
-      if (goPvP) {
-        const p1 = shuffled.shift();
-        const p2 = shuffled.shift();
-        const gType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
-        const gameId = `pair_${pairId++}`;
-        this.sabotagePairs.set(gameId, {
-          gameType: gType,
-          players: [p1.id, p2.id],
-          state: this._initPvPGameState(gType),
-          completed: false,
-          winner: null
-        });
-        this.sabotageTargets.set(p1.id, {
-          gameType: gType,
-          opponentType: 'player',
-          opponentId: p2.id,
-          gameId,
-          fromSystem,
-          completed: false,
-          won: false
-        });
-        this.sabotageTargets.set(p2.id, {
-          gameType: gType,
-          opponentType: 'player',
-          opponentId: p1.id,
-          gameId,
-          fromSystem,
-          completed: false,
-          won: false
-        });
-      } else {
-        const p1 = shuffled.shift();
-        const gType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
-        this.sabotageTargets.set(p1.id, {
-          gameType: gType,
-          opponentType: 'ai',
-          fromSystem,
-          completed: false,
-          won: false
-        });
-      }
-    }
-    if (shuffled.length === 1) {
-      const p1 = shuffled[0];
-      const gType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+    while (shuffled.length >= 1) {
+      const p1 = shuffled.shift();
+      const gType = gameTypes[crypto.randomInt(0, gameTypes.length)];
       this.sabotageTargets.set(p1.id, {
         gameType: gType,
         opponentType: 'ai',
@@ -1803,7 +1759,7 @@ class GameEngine {
   getVoteWeight(vid) {
     const v = this.players.get(vid);
     if (v?.role === 'muhtar') {
-      if (v.isInsane || v.isTempInsane) { const r = Math.random(); return r < 0.25 ? -1 : r < 0.5 ? 0 : 2; }
+      if (v.isInsane || v.isTempInsane) { const r = crypto.randomInt(0, 100) / 100; return r < 0.25 ? -1 : r < 0.5 ? 0 : 2; }
       return 2;
     }
     return 1;
@@ -1888,7 +1844,7 @@ class GameEngine {
     });
     let mvpId = null;
     if (candidates.length > 0) {
-      mvpId = candidates[Math.floor(Math.random() * candidates.length)];
+      mvpId = candidates[crypto.randomInt(0, candidates.length)];
     }
     this.mvpResult = {
       mvpId, tally,
@@ -2027,7 +1983,7 @@ class GameEngine {
   }
 
   // ── HELPERS ──
-  shuf(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  shuf(a) { for (let i = a.length - 1; i > 0; i--) { const j = crypto.randomInt(0, i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   hist(pid, action, target, result) { this.actionHistory.get(pid)?.push({ round: this.round, action, target, result }); }
   log(msg) { this.gameLog.push({ round: this.round, time: Date.now(), msg }); }
 
