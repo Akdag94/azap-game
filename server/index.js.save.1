@@ -1,24 +1,17 @@
-require('dotenv').config();
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const archiver = null;
 const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
 const Reports = require('./reports');
 const { PHASES, TEAMS } = require('./gameConstants');
 
-// Eski hali: const ADMIN_SECRET_KEY = 'azap-admin-2026-gizli-anahtar-degistir';
-// Yeni hali:
-const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || '4794akd.';
-
 // ── GÜVENLİK: opsiyonel middleware'ler (npm install helmet express-rate-limit) ──
-let helmet = null, rateLimit = null;
-try { helmet = require('helmet'); } catch(e){ console.warn('[GÜVENLİK] helmet yok — npm install helmet öneriliyor'); }
-try { rateLimit = require('express-rate-limit'); } catch(e){ console.warn('[GÜVENLİK] express-rate-limit yok — npm install express-rate-limit öneriliyor'); }
 
 const app = express();
 // Reverse proxy (nginx) arkasındaysa: client IP'yi doğru almak için
@@ -27,7 +20,7 @@ app.disable('x-powered-by'); // Express imzasını gizle
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: ["https://azap.online", "http://localhost:3000", "https://www.azap.online", "http://127.0.0.1:3000", "http://localhost:5500", "http://127.0.0.1:5500" ] },
+  cors: { origin: process.env.CORS_ORIGIN || '*' },
   maxHttpBufferSize: 8e6,
   pingTimeout: 60000,
   pingInterval: 25000,
@@ -37,14 +30,30 @@ const io = new Server(server, {
 });
 
 // ── HELMET (güvenlik header'ları) ──
-if (helmet) {
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      crossOriginEmbedderPolicy: false
-    })
-  );
+if (rateLimit) {
+    const limiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+        message: "Çok fazla istek gönderildi, lütfen daha sonra tekrar deneyin."
+    });
+    app.use(limiter);
 }
+if (helmet) {
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'", "wss:", "ws:"],
+        frameSrc: ["'self'", "https://sandbox-api.iyzipay.com", "https://api.iyzipay.com"]
+      }
+    },
+    crossOriginEmbedderPolicy: false, // socket.io için
+    referrerPolicy: { policy: 'same-origin' }
+  }));
 
 // ── RATE LIMITING ──
 const apiLimiter = rateLimit ? rateLimit({
@@ -67,26 +76,7 @@ const adminLimiter = rateLimit ? rateLimit({
   message: { ok: false, error: 'Admin istek limiti.' }
 }) : (req, res, next) => next();
 
-// ── GÜVENLİK: Hassas dosya/dizin erişimini engelle (.env, .git, node_modules vb.) ──
-const BLOCKED_PATHS = [
-  /^\/\.[^/]/i,                // Tüm dotfile'lar: .env, .git, .htaccess, .DS_Store vb.
-  /\/\.\./,                    // Path traversal: ../ içeren her şey
-  /^\/(node_modules|server|data|\.git)(\/|$)/i,  // Hassas dizinler
-  /\.(env|key|pem|crt|p12|pfx|sql|db|sqlite|log|bak|backup|old|swp|swo)$/i, // Hassas uzantılar
-  /^\/(package(-lock)?\.json|yarn\.lock|composer\.(json|lock)|Dockerfile|docker-compose\.ya?ml|\.gitignore|\.dockerignore|README\.md|CHANGELOG.*|LICENSE.*)$/i
-];
-app.use((req, res, next) => {
-  const urlPath = req.path;
-  for (const re of BLOCKED_PATHS) {
-    if (re.test(urlPath)) {
-      return res.status(404).send('Not Found');
-    }
-  }
-  next();
-});
-
 app.use(express.static(path.join(__dirname, '..', 'public'), {
-  dotfiles: 'deny', // Dotfile'ları statik servis etme
   // Cache static assets (CSS, fonts) ama HTML cache'lenmesin
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
@@ -254,23 +244,12 @@ app.get('/admin/screenshot/:filename', adminLimiter, (req, res) => {
   if (!token || typeof token !== 'string') return res.status(403).send('Forbidden');
   const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
   if (!u || !Accounts.isAdmin(u[1])) return res.status(403).send('Forbidden');
-  // Path traversal koruması - daha güvenli
+  // Path traversal koruması
   const filename = req.params.filename;
-  if (typeof filename !== 'string' || 
-      filename.length === 0 || 
-      filename.length > 100 || 
-      !/^[a-zA-Z0-9._-]+$/.test(filename) ||
-      filename.includes('..') || 
-      filename.includes('/') || 
-      filename.includes('\\')) {
+  if (typeof filename !== 'string' || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
     return res.status(400).send('Invalid filename');
   }
   const fpath = Reports.getScreenshotPath(filename);
-  // Ek güvenlik: dosya yolu screenshot dizini içinde mi kontrol et
-  const screenshotDir = Reports.getScreenshotDir();
-  if (!fpath || !path.resolve(fpath).startsWith(path.resolve(screenshotDir))) {
-    return res.status(400).send('Invalid filename');
-  }
   if (!fpath || !fs.existsSync(fpath)) return res.status(404).send('Not found');
   res.sendFile(fpath);
 });
@@ -339,257 +318,11 @@ ${imgHtml}
   res.send(html);
 });
 
-// ── ADMIN ANALYTICS (sadece admin erişebilir) ──
-
-// Admin auth helper — hem socket.id (geçici) hem de ADMIN_SECRET_KEY (sabit master key) kabul eder
-function checkAdmin(req, res) {
-  const token = req.query.token;
-  if (!token || typeof token !== 'string') { res.status(403).send('Forbidden'); return null; }
-  // 1) Sabit master key kontrolü (en güçlü, sadece senin bildiğin)
-  if (token === ADMIN_SECRET_KEY) return '__MASTER_ADMIN__';
-  // 2) Socket.id ile geçici token kontrolü (admin kullanıcı adı + socket.id eşleşmesi)
-  const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
-  if (!u || !Accounts.isAdmin(u[1])) { res.status(403).send('Forbidden'); return null; }
-  return u[1];
-}
-
-// JSON API: anlık istatistikler + geçmiş
-app.get('/admin/analytics', adminLimiter, (req, res) => {
-  if (!checkAdmin(req, res)) return;
-  const activeRooms = rooms.size;
-  const playersInRooms = Array.from(rooms.values()).reduce((sum, g) => sum + g.players.size, 0);
-  const uptime = Math.floor((Date.now() - siteStats.startedAt) / 1000);
-  res.json({
-    ok: true,
-    stats: {
-      totalConnections: siteStats.totalConnections,
-      currentActive: siteStats.currentActive,
-      peakConcurrent: siteStats.peakConcurrent,
-      uptimeSeconds: uptime,
-      activeRooms: activeRooms,
-      playersInRooms: playersInRooms,
-      history: siteStats.history // Sunucu tarafında tutulan rolling window
-    }
-  });
-});
-
-// Admin login: POST ile token al (URL'de gözükmez)
-app.post('/admin/login', adminLimiter, express.json(), (req, res) => {
-  const { token } = req.body || {};
-  if (!token || typeof token !== 'string') {
-    return res.status(403).json({ ok: false, error: 'Token gerekli' });
-  }
-  // Master key veya admin socket token kontrolü
-  if (token === ADMIN_SECRET_KEY) return res.json({ ok: true, admin: true, type: 'master' });
-  const u = Array.from(authed.entries()).find(([sid, uname]) => sid === token);
-  if (!u || !Accounts.isAdmin(u[1])) {
-    return res.status(403).json({ ok: false, error: 'Geçersiz token' });
-  }
-  res.json({ ok: true, admin: true, type: 'session' });
-});
-
-// HTML Dashboard: görsel admin paneli (HTML herkese açık, veriler /admin/analytics'ten gelir)
-app.get('/admin/dashboard', adminLimiter, (req, res) => {
-  const html = `<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AZAP Admin Panel</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0f1a;color:#e0e0ff;padding:20px;min-height:100vh}
-.container{max-width:1200px;margin:0 auto}
-h1{color:#ff6b6b;margin-bottom:8px;font-size:28px}
-.sub{color:#8892b0;font-size:14px;margin-bottom:30px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:30px}
-.card{background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #2d2d44}
-.card h3{color:#8892b0;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.card .value{color:#fff;font-size:36px;font-weight:700}
-.refresh{background:#ff6b6b;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:20px}
-.refresh:hover{background:#ff5252}
-.logout{background:#2d2d44;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:20px;margin-left:10px}
-.logout:hover{background:#ff6b6b}
-.error{color:#ff6b6b;text-align:center;padding:40px}
-.time{color:#64ffda;font-weight:600}
-.chart-container{background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #2d2d44;margin-bottom:20px}
-.chart-title{color:#8892b0;font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
-.login-box{max-width:400px;margin:100px auto;background:#1a1a2e;border-radius:16px;padding:40px;border:1px solid #2d2d44}
-.login-box h2{color:#ff6b6b;margin-bottom:20px;text-align:center}
-.login-box input{width:100%;padding:12px;border-radius:8px;border:1px solid #2d2d44;background:#0f0f1a;color:#fff;margin-bottom:16px;font-size:14px}
-.login-box button{width:100%;padding:12px;background:#ff6b6b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px}
-.login-box button:hover{background:#ff5252}
-.login-error{color:#ff6b6b;margin-top:12px;text-align:center;font-size:14px}
-.hidden{display:none}
-</style>
-</head>
-<body>
-<!-- LOGIN SAYFASI -->
-<div id="loginPage" class="login-box">
-<h2>AZAP Admin Girişi</h2>
-<input type="password" id="tokenInput" placeholder="Admin token girin..." autocomplete="off">
-<button onclick="doLogin()">Giriş Yap</button>
-<div id="loginError" class="login-error"></div>
-</div>
-
-<!-- DASHBOARD -->
-<div id="dashboard" class="hidden">
-<div class="container">
-<h1>AZAP Admin Panel</h1>
-<p class="sub">Canlı Site İstatistikleri</p>
-<button class="refresh" onclick="loadStats()">Yenile</button>
-<button class="logout" onclick="doLogout()">Çıkış Yap</button>
-<div id="stats" class="grid">
-<div class="card"><h3>Şu An Sitede</h3><div class="value" id="current">-</div></div>
-<div class="card"><h3>Toplam Bağlantı</h3><div class="value" id="total">-</div></div>
-<div class="card"><h3>Rekor Anlık</h3><div class="value" id="peak">-</div></div>
-<div class="card"><h3>Aktif Oda</h3><div class="value" id="rooms">-</div></div>
-<div class="card"><h3>Odada Oyuncu</h3><div class="value" id="players">-</div></div>
-<div class="card"><h3>Uptime</h3><div class="value" id="uptime">-</div></div>
-</div>
-<div class="chart-container">
-<div class="chart-title">Canlı Oyuncu Grafiği (Son 5 Dakika)</div>
-<canvas id="playerChart" height="80"></canvas>
-</div>
-<div class="chart-container">
-<div class="chart-title">Oda & Oyuncu Dağılımı</div>
-<canvas id="roomChart" height="80"></canvas>
-</div>
-<p class="sub">Son güncelleme: <span class="time" id="lastUpdate">-</span></p>
-</div>
-</div>
-
-<script>
-let token = localStorage.getItem('azap_admin_token');
-const loginPage = document.getElementById('loginPage');
-const dashboard = document.getElementById('dashboard');
-
-function showDashboard(){
-  loginPage.classList.add('hidden');
-  dashboard.classList.remove('hidden');
-  initCharts();
-  loadStats();
-}
-function showLogin(){
-  localStorage.removeItem('azap_admin_token');
-  loginPage.classList.remove('hidden');
-  dashboard.classList.add('hidden');
-}
-
-async function doLogin(){
-  const input = document.getElementById('tokenInput');
-  const t = input.value.trim();
-  if(!t){document.getElementById('loginError').textContent='Token girin';return;}
-  try{
-    const r = await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})});
-    const d = await r.json();
-    if(d.ok && d.admin){
-      token = t;
-      localStorage.setItem('azap_admin_token', token);
-      showDashboard();
-    } else {
-      document.getElementById('loginError').textContent = d.error || 'Geçersiz token';
-    }
-  }catch(e){document.getElementById('loginError').textContent='Hata: '+e.message;}
-}
-function doLogout(){showLogin();}
-
-// Enter tuşu
- document.getElementById('tokenInput').addEventListener('keypress', e => {if(e.key==='Enter')doLogin();});
-
-let playerChart, roomChart;
-function initCharts(){
-  playerChart = new Chart(document.getElementById('playerChart'),{
-    type:'line',
-    data:{labels:[],datasets:[{label:'Aktif Oyuncu',data:[],borderColor:'#64ffda',backgroundColor:'rgba(100,255,218,0.1)',fill:true,tension:0.4}]},
-    options:{responsive:true,scales:{x:{display:false},y:{beginAtZero:true,grid:{color:'#2d2d44'}}},plugins:{legend:{display:false}}}
-  });
-  roomChart = new Chart(document.getElementById('roomChart'),{
-    type:'bar',
-    data:{labels:['Aktif Oda','Odadaki Oyuncu'],datasets:[{data:[0,0],backgroundColor:['#ff6b6b','#4ecdc4']}]},
-    options:{responsive:true,scales:{y:{beginAtZero:true,grid:{color:'#2d2d44'}}},plugins:{legend:{display:false}}}
-  });
-}
-
-function fmt(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h+'s '+m+'d '+(s%60)+'sn';}
-
-async function loadStats(){
-  if(!token){showLogin();return;}
-  try{
-    const r = await fetch('/admin/analytics?token='+encodeURIComponent(token));
-    const d = await r.json();
-    if(!d.ok){
-      if(d.error && (d.error.includes('Forbidden')||d.error.includes('token'))){showLogin();return;}
-      document.getElementById('stats').innerHTML='<div class="error">'+d.error+'</div>';return;
-    }
-
-    document.getElementById('current').textContent=d.stats.currentActive;
-    document.getElementById('total').textContent=d.stats.totalConnections;
-    document.getElementById('peak').textContent=d.stats.peakConcurrent;
-    document.getElementById('rooms').textContent=d.stats.activeRooms;
-    document.getElementById('players').textContent=d.stats.playersInRooms;
-    document.getElementById('uptime').textContent=fmt(d.stats.uptimeSeconds);
-    document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('tr-TR');
-
-    // Sunucudan gelen history verisi ile grafikleri güncelle
-    if(d.stats.history && d.stats.history.length>0 && playerChart && roomChart){
-      const hist = d.stats.history;
-      playerChart.data.labels = hist.map(h => new Date(h.timestamp).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
-      playerChart.data.datasets[0].data = hist.map(h => h.currentActive);
-      playerChart.update('none');
-
-      roomChart.data.datasets[0].data = [d.stats.activeRooms, d.stats.playersInRooms];
-      roomChart.update('none');
-    }
-  }catch(e){document.getElementById('stats').innerHTML='<div class="error">Hata: '+e.message+'</div>';}
-}
-
-// Sayfa yüklenince token varsa direkt dashboard
-if(token){showDashboard();}
-setInterval(()=>{if(!dashboard.classList.contains('hidden'))loadStats();},5000);
-</script>
-</body></html>`;
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(html);
-});
-
-// SPA fallback — sadece güvenli yolları index.html'e yönlendir
-app.get('*', (req, res) => {
-  // Bilinen statik uzantılar 404 döner (gerçek dosya bulunamadıysa)
-  if (/\.(env|key|pem|crt|sql|db|log|bak|backup|old|swp|swo|json|yml|yaml|md|gitignore|htaccess|config|conf|ini|toml)$/i.test(req.path)) {
-    return res.status(404).send('Not Found');
-  }
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-});
+app.get('*', (_, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
 
-// ── ANLİK ZİYARETÇİ İSTATİSTİKLERİ (sadece sayaçlar, IP kaydetmiyoruz) ──
-const siteStats = {
-  totalConnections: 0,      // Başarılı socket bağlantısı sayısı
-  peakConcurrent: 0,        // Aynı anda en fazla kaç kişi
-  currentActive: 0,         // Şu an sitede olan
-  startedAt: Date.now(),     // Sunucu başlangıç zamanı
-  history: []               // Rolling window: son 5 dakika (max 60 kayıt)
-};
 
-// Her 5 saniyede bir snapshot al (Rolling Window)
-const HISTORY_MAX = 60; // 5 dakika = 60 x 5 saniye
-setInterval(() => {
-  siteStats.history.push({
-    timestamp: Date.now(),
-    currentActive: siteStats.currentActive,
-    activeRooms: rooms.size,
-    playersInRooms: Array.from(rooms.values()).reduce((sum, g) => sum + g.players.size, 0)
-  });
-  // Sadece son 60 kaydı tut (5 dk)
-  if (siteStats.history.length > HISTORY_MAX) {
-    siteStats.history.shift();
-  }
-}, 5000);
-
-
-function genCode() { let c; do { c = String(crypto.randomInt(1000, 10000)); } while (rooms.has(c)); return c; }
+function genCode() { let c; do { c = String(1000 + Math.random() * 9000 | 0); } while (rooms.has(c)); return c; }
 function startTimer(rc, dur, cb) {
   clearTimer(rc);
   const end = Date.now() + dur * 1000;
@@ -688,13 +421,14 @@ function toDay(rc) {
   emit(rc);
   startTimer(rc, g.config.DISCUSSION_DURATION, () => toVote(rc));
 
-  // ── HAIN SABOTAJI (pending varsa SABAH OLUNCA DİREKT başlat) ──
-  // Frontend her hedef için kendi rastgele delay'ini uygulayacak
+  const totalDayMs = (g.config.DISCUSSION_DURATION + (g.config.VOTING_DURATION || 90)) * 1000;
+  // ── HAIN SABOTAJI (pending varsa) ──
   if (g.sabotagePending) {
+    const triggerAt = Math.floor(totalDayMs * (0.2 + Math.random() * 0.6));
     setTimeout(() => {
       if (!rooms.has(rc)) return;
       if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
-      if (g.sabotageActive) return;
+      if (g.sabotageActive) return; // çakışma engelle
       const ok = g.triggerSabotage(false);
       if (ok) {
         io.to(rc).emit('sabotage:start', {
@@ -703,17 +437,16 @@ function toDay(rc) {
         });
         emit(rc);
       }
-    }, 500); // 0.5sn — neredeyse anında başlasın
+    }, triggerAt);
   } else {
     // ── SİSTEM RANDOM SABOTAJI (~%20 ihtimal, hain sabotajı yoksa) ──
-    if (crypto.randomInt(0, 100) < 20) {
-      // Sistem sabotajı için biraz daha bekleme makul (anında olmasın, oyun akışı için)
-      const triggerAt = crypto.randomInt(5000, 35001); // 5-35sn arası rastgele
+    if (Math.random() < 0.2) {
+      const triggerAt = Math.floor(totalDayMs * (0.2 + Math.random() * 0.6));
       setTimeout(() => {
         if (!rooms.has(rc)) return;
         if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
-        if (g.sabotageActive || g.sabotagePending) return;
-        const ok = g.triggerSabotage(true);
+        if (g.sabotageActive || g.sabotagePending) return; // çakışma engelle
+        const ok = g.triggerSabotage(true); // fromSystem
         if (ok) {
           io.to(rc).emit('sabotage:start', {
             targetIds: [...g.sabotageTargets.keys()],
@@ -966,16 +699,6 @@ function emitHainKillVotes(rc) {
 }
 
 io.on('connection', (socket) => {
-  // ── ZİYARETÇİ İSTATİSTİKLERİ (güvenli sayaçlar) ──
-  siteStats.totalConnections++;
-  siteStats.currentActive++;
-  if (siteStats.currentActive > siteStats.peakConcurrent) {
-    siteStats.peakConcurrent = siteStats.currentActive;
-  }
-  socket.on('disconnect', () => {
-    siteStats.currentActive = Math.max(0, siteStats.currentActive - 1);
-  });
-
   // ── AUTH (input validation güçlendirilmiş) ──
   // Username sanitization helper
   function sanitizeUsername(u) {
@@ -1034,20 +757,6 @@ io.on('connection', (socket) => {
     cb?.({ success: true });
   });
   socket.on('auth:stats', (_, cb) => { const u = authed.get(socket.id); cb(u ? Accounts.getStats(u) : null); });
-
-  // Yenile butonu için: anlık state ve priv state isteyebilir
-  socket.on('state:request', (_, cb) => {
-    const rc = prooms.get(socket.id);
-    if (rc) emit(rc);
-    cb?.({ ok: true });
-  });
-  socket.on('priv:request', (_, cb) => {
-    const rc = prooms.get(socket.id), g = rooms.get(rc);
-    if (g && g.players.has(socket.id)) {
-      socket.emit('priv', g.privateState(socket.id));
-    }
-    cb?.({ ok: true });
-  });
 
   // Eşya aktif et/pasifle
   socket.on('inventory:equip', ({ itemId, equipped } = {}, cb) => {
@@ -1521,96 +1230,6 @@ io.on('connection', (socket) => {
   socket.on('admin:listUsers', (_, cb) => {
     if (!requireAdmin(cb)) return;
     cb?.({ ok: true, users: Accounts.listAll() });
-  });
-
-  // Site istatistikleri (dashboard için)
-  socket.on('admin:siteStats', (_, cb) => {
-    if (!requireAdmin(cb)) return;
-    const users = Accounts.listAll();
-    const totalUsers = users.length;
-    const totalAdmins = users.filter(u => u.isAdmin).length;
-    const activePremium = users.filter(u => u.premium?.active).length;
-    const totalDonations = users.reduce((s, u) => s + (u.totalDonated || 0), 0);
-    const totalCoinsSold = users.reduce((s, u) => s + (u.coins || 0), 0);
-
-    // Oyun istatistikleri
-    const totalGamesPlayed = users.reduce((s, u) => s + (u.stats?.played || 0), 0);
-    const totalGamesWon = users.reduce((s, u) => s + (u.stats?.won || 0), 0);
-    const totalMVPs = users.reduce((s, u) => s + (u.stats?.mvp || 0), 0);
-
-    // Aktif odalar (live)
-    const activeRooms = rooms.size;
-    const playersInRooms = [...rooms.values()].reduce((s, g) => s + g.players.size, 0);
-
-    // En aktif oyuncular (top 10)
-    const topPlayers = users
-      .filter(u => u.stats?.played > 0)
-      .map(u => ({
-        username: u.username,
-        played: u.stats.played,
-        won: u.stats.won,
-        mvp: u.stats.mvp || 0,
-        coins: u.coins || 0,
-        premium: u.premium?.active || false
-      }))
-      .sort((a, b) => b.played - a.played)
-      .slice(0, 10);
-
-    // Top kazananlar
-    const topWinners = users
-      .filter(u => u.stats?.won > 0)
-      .map(u => ({
-        username: u.username,
-        won: u.stats.won,
-        played: u.stats.played,
-        winRate: u.stats.played > 0 ? Math.round((u.stats.won / u.stats.played) * 100) : 0
-      }))
-      .sort((a, b) => b.won - a.won)
-      .slice(0, 10);
-
-    // Top destekçiler (bağışçılar)
-    const topDonors = users
-      .filter(u => u.totalDonated > 0)
-      .map(u => ({ username: u.username, totalDonated: u.totalDonated }))
-      .sort((a, b) => b.totalDonated - a.totalDonated)
-      .slice(0, 10);
-
-    // En zenginler (coin)
-    const topRichest = users
-      .filter(u => u.coins > 0)
-      .map(u => ({ username: u.username, coins: u.coins }))
-      .sort((a, b) => b.coins - a.coins)
-      .slice(0, 10);
-
-    // Kayıt zaman serisi (son 30 gün)
-    const now = Date.now();
-    const days30Ago = now - 30 * 24 * 60 * 60 * 1000;
-    const dayBuckets = {};
-    users.forEach(u => {
-      if (!u.created || u.created < days30Ago) return;
-      const day = new Date(u.created).toISOString().split('T')[0];
-      dayBuckets[day] = (dayBuckets[day] || 0) + 1;
-    });
-    const registrationsByDay = Object.entries(dayBuckets)
-      .sort((a, b) => a[0].localeCompare(b[0]));
-
-    // Bug raporları
-    const reports = Reports.list();
-    const openReports = reports.filter(r => r.status === 'open' || !r.status).length;
-    const closedReports = reports.length - openReports;
-
-    cb?.({
-      ok: true,
-      stats: {
-        users: { total: totalUsers, admins: totalAdmins, premium: activePremium },
-        finance: { totalDonations: totalDonations, totalCoins: totalCoinsSold },
-        games: { played: totalGamesPlayed, won: totalGamesWon, mvps: totalMVPs },
-        live: { activeRooms, playersInRooms },
-        reports: { open: openReports, closed: closedReports, total: reports.length },
-        topPlayers, topWinners, topDonors, topRichest,
-        registrationsByDay
-      }
-    });
   });
 
   // Yeni hesap oluştur
