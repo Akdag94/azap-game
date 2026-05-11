@@ -243,6 +243,25 @@ body.day .game-action-btn:hover{background:rgba(255,255,255,.9)}
 .stat-icon{font-size:1.5rem;margin-bottom:2px}
 .stat-num{font-size:1.3rem;font-weight:700;color:var(--txt);font-family:'Cormorant Garamond',serif}
 .stat-lbl{font-size:.68rem;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.stat-card.server{background:linear-gradient(135deg,rgba(100,255,218,.06),rgba(0,128,128,.04));border-color:rgba(100,255,218,.2)}
+.stats-section-title{font-size:.75rem;font-weight:700;color:var(--hi);text-transform:uppercase;letter-spacing:1px;margin:14px 0 7px;padding-left:9px;border-left:3px solid var(--hi);display:flex;align-items:center;gap:6px}
+.stats-grid-5{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:14px}
+.stats-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.stats-table th{padding:6px 10px;color:var(--dim);text-align:left;font-size:.7rem;font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--brd)}
+.stats-table td{padding:7px 10px;border-bottom:1px solid var(--brd);vertical-align:middle}
+.stats-table tr:last-child td{border-bottom:none}
+.stats-table tr:hover td{background:rgba(255,255,255,.03)}
+.phase-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;background:var(--bg3);color:var(--dim)}
+.phase-badge.phase-lobby{color:#64ffda;background:rgba(100,255,218,.1)}
+.phase-badge.phase-night{color:#bb8fce;background:rgba(187,143,206,.1)}
+.phase-badge.phase-role_selection,.phase-badge.phase-role_reveal{color:#f39c12;background:rgba(243,156,18,.08)}
+.phase-badge.phase-day_discussion,.phase-badge.phase-morning_report{color:#f39c12;background:rgba(243,156,18,.1)}
+.phase-badge.phase-voting,.phase-badge.phase-vote_result{color:#e91e63;background:rgba(233,30,99,.1)}
+.phase-badge.phase-game_over,.phase-badge.phase-post_game{color:var(--hain);background:rgba(192,57,43,.1)}
+.phase-badge.phase-mvp_vote,.phase-badge.phase-mvp_result{color:#e91e63;background:rgba(233,30,99,.08)}
+.phase-badge.phase-president_vote{color:#64ffda;background:rgba(100,255,218,.08)}
+.mini-bar-wrap{flex:1;background:var(--bg3);border-radius:2px;height:5px;min-width:30px;overflow:hidden}
+.mini-bar-fill{height:100%;border-radius:2px;transition:width .3s}
 
 .leaderboard{background:var(--bg2);border:1px solid var(--brd);border-radius:6px;overflow:hidden}
 .lb-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid var(--brd);font-size:.82rem}

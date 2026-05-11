@@ -353,22 +353,114 @@ function checkAdmin(req, res) {
   return u[1];
 }
 
-// JSON API: anlık istatistikler + geçmiş
+// JSON API: tam istatistik havuzu
 app.get('/admin/analytics', adminLimiter, (req, res) => {
   if (!checkAdmin(req, res)) return;
+  const now = Date.now();
+  const users = Accounts.listAll();
+
+  // ── SUNUCU ──
+  const uptime = Math.floor((now - siteStats.startedAt) / 1000);
   const activeRooms = rooms.size;
   const playersInRooms = Array.from(rooms.values()).reduce((sum, g) => sum + g.players.size, 0);
-  const uptime = Math.floor((Date.now() - siteStats.startedAt) / 1000);
+  const liveRoomsData = [...rooms.entries()].map(([code, g]) => ({
+    code, playerCount: g.players.size, spectatorCount: g.spectators?.size || 0,
+    phase: g.phase, round: g.round || 0
+  })).slice(0, 25);
+
+  // ── KULLANICI ──
+  const totalUsers = users.length;
+  const totalAdmins = users.filter(u => u.isAdmin).length;
+  const activePremium = users.filter(u => u.premium?.active).length;
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const usersToday = users.filter(u => u.created >= todayStart.getTime()).length;
+  const usersThisWeek = users.filter(u => u.created >= now - 7 * 86400000).length;
+  const usersThisMonth = users.filter(u => u.created >= now - 30 * 86400000).length;
+  const neverPlayed = users.filter(u => !(u.stats?.played)).length;
+  const usersWithItems = users.filter(u => (u.inventory?.length || 0) > 0).length;
+
+  // ── FİNANS ──
+  const totalDonations = users.reduce((s, u) => s + (u.totalDonated || 0), 0);
+  const totalCoinsHeld = users.reduce((s, u) => s + (u.coins || 0), 0);
+  const avgCoins = totalUsers > 0 ? Math.round(totalCoinsHeld / totalUsers) : 0;
+
+  // ── OYUN ──
+  const totalGamesPlayed = users.reduce((s, u) => s + (u.stats?.played || 0), 0);
+  const totalGamesWon = users.reduce((s, u) => s + (u.stats?.won || 0), 0);
+  const totalGamesLost = users.reduce((s, u) => s + (u.stats?.lost || 0), 0);
+  const totalMVPs = users.reduce((s, u) => s + (u.stats?.mvp || 0), 0);
+  const avgWinRate = totalGamesPlayed > 0 ? Math.round((totalGamesWon / totalGamesPlayed) * 100) : 0;
+  const avgGamesPerPlayer = totalUsers > 0 ? (totalGamesPlayed / totalUsers).toFixed(1) : '0';
+
+  // ── ENVANTER ──
+  const itemCounts = {};
+  users.forEach(u => {
+    (u.inventory || []).forEach(it => {
+      const id = typeof it === 'string' ? it : it.id;
+      if (id) itemCounts[id] = (itemCounts[id] || 0) + 1;
+    });
+  });
+  const totalItemsOwned = users.reduce((s, u) => s + (u.inventory?.length || 0), 0);
+  const topItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, count]) => ({ id, count }));
+
+  // ── LEADERBOARDlar ──
+  const topPlayers = users.filter(u => u.stats?.played > 0)
+    .map(u => ({ username: u.username, played: u.stats.played, won: u.stats.won, mvp: u.stats.mvp || 0, coins: u.coins || 0, premium: u.premium?.active || false }))
+    .sort((a, b) => b.played - a.played).slice(0, 10);
+
+  const topWinners = users.filter(u => u.stats?.won > 0)
+    .map(u => ({ username: u.username, won: u.stats.won, played: u.stats.played, winRate: u.stats.played > 0 ? Math.round((u.stats.won / u.stats.played) * 100) : 0 }))
+    .sort((a, b) => b.won - a.won).slice(0, 10);
+
+  const topWinRate = users.filter(u => (u.stats?.played || 0) >= 5)
+    .map(u => ({ username: u.username, played: u.stats.played, won: u.stats.won, winRate: Math.round((u.stats.won / u.stats.played) * 100) }))
+    .sort((a, b) => b.winRate - a.winRate).slice(0, 10);
+
+  const topMvps = users.filter(u => (u.stats?.mvp || 0) > 0)
+    .map(u => ({ username: u.username, mvp: u.stats.mvp, played: u.stats.played || 0 }))
+    .sort((a, b) => b.mvp - a.mvp).slice(0, 10);
+
+  const topLosers = users.filter(u => (u.stats?.lost || 0) > 0)
+    .map(u => ({ username: u.username, lost: u.stats.lost || 0, played: u.stats.played || 0 }))
+    .sort((a, b) => b.lost - a.lost).slice(0, 10);
+
+  const topDonors = users.filter(u => u.totalDonated > 0)
+    .map(u => ({ username: u.username, totalDonated: u.totalDonated }))
+    .sort((a, b) => b.totalDonated - a.totalDonated).slice(0, 10);
+
+  const topRichest = users.filter(u => u.coins > 0)
+    .map(u => ({ username: u.username, coins: u.coins }))
+    .sort((a, b) => b.coins - a.coins).slice(0, 10);
+
+  const premiumUsers = users.filter(u => u.premium?.active)
+    .map(u => ({ username: u.username, daysLeft: u.premium.daysLeft, totalDonated: u.totalDonated || 0 }))
+    .sort((a, b) => b.daysLeft - a.daysLeft).slice(0, 30);
+
+  // ── KAYIT GRAFİĞİ (son 30 gün) ──
+  const dayBuckets = {};
+  users.forEach(u => {
+    if (!u.created || u.created < now - 30 * 86400000) return;
+    const day = new Date(u.created).toISOString().split('T')[0];
+    dayBuckets[day] = (dayBuckets[day] || 0) + 1;
+  });
+  const registrationsByDay = Object.entries(dayBuckets).sort((a, b) => a[0].localeCompare(b[0]));
+
+  // ── RAPORLAR ──
+  const reports = Reports.list();
+  const openReports = reports.filter(r => r.status === 'open' || !r.status).length;
+  const closedReports = reports.length - openReports;
+
   res.json({
     ok: true,
     stats: {
-      totalConnections: siteStats.totalConnections,
-      currentActive: siteStats.currentActive,
-      peakConcurrent: siteStats.peakConcurrent,
-      uptimeSeconds: uptime,
-      activeRooms: activeRooms,
-      playersInRooms: playersInRooms,
-      history: siteStats.history // Sunucu tarafında tutulan rolling window
+      server: { uptime, totalConnections: siteStats.totalConnections, currentActive: siteStats.currentActive, peakConcurrent: siteStats.peakConcurrent, history: siteStats.history },
+      users: { total: totalUsers, admins: totalAdmins, premium: activePremium, today: usersToday, thisWeek: usersThisWeek, thisMonth: usersThisMonth, neverPlayed, withInventory: usersWithItems },
+      finance: { totalDonations, totalCoins: totalCoinsHeld, avgCoins },
+      games: { played: totalGamesPlayed, won: totalGamesWon, lost: totalGamesLost, mvps: totalMVPs, avgWinRate, avgGamesPerPlayer },
+      inventory: { totalItemsOwned, topItems },
+      live: { activeRooms, playersInRooms, rooms: liveRoomsData },
+      reports: { open: openReports, closed: closedReports, total: reports.length },
+      topPlayers, topWinners, topWinRate, topMvps, topLosers, topDonors, topRichest, premiumUsers, registrationsByDay
     }
   });
 });
@@ -388,166 +480,385 @@ app.post('/admin/login', adminLimiter, express.json(), (req, res) => {
   res.json({ ok: true, admin: true, type: 'session' });
 });
 
-// HTML Dashboard: görsel admin paneli (HTML herkese açık, veriler /admin/analytics'ten gelir)
+// HTML Dashboard: kapsamlı admin istatistik paneli
 app.get('/admin/dashboard', adminLimiter, (req, res) => {
   const html = `<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AZAP Admin Panel</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AZAP Admin Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0f1a;color:#e0e0ff;padding:20px;min-height:100vh}
-.container{max-width:1200px;margin:0 auto}
-h1{color:#ff6b6b;margin-bottom:8px;font-size:28px}
-.sub{color:#8892b0;font-size:14px;margin-bottom:30px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:30px}
-.card{background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #2d2d44}
-.card h3{color:#8892b0;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.card .value{color:#fff;font-size:36px;font-weight:700}
-.refresh{background:#ff6b6b;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:20px}
-.refresh:hover{background:#ff5252}
-.logout{background:#2d2d44;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:20px;margin-left:10px}
-.logout:hover{background:#ff6b6b}
-.error{color:#ff6b6b;text-align:center;padding:40px}
-.time{color:#64ffda;font-weight:600}
-.chart-container{background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #2d2d44;margin-bottom:20px}
-.chart-title{color:#8892b0;font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
-.login-box{max-width:400px;margin:100px auto;background:#1a1a2e;border-radius:16px;padding:40px;border:1px solid #2d2d44}
-.login-box h2{color:#ff6b6b;margin-bottom:20px;text-align:center}
-.login-box input{width:100%;padding:12px;border-radius:8px;border:1px solid #2d2d44;background:#0f0f1a;color:#fff;margin-bottom:16px;font-size:14px}
-.login-box button{width:100%;padding:12px;background:#ff6b6b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px}
-.login-box button:hover{background:#ff5252}
-.login-error{color:#ff6b6b;margin-top:12px;text-align:center;font-size:14px}
-.hidden{display:none}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a14;color:#e0e0ff;min-height:100vh}
+a{color:inherit;text-decoration:none}
+/* LAYOUT */
+.page{max-width:1400px;margin:0 auto;padding:20px 16px}
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:16px 0 20px;border-bottom:1px solid #1e1e30;margin-bottom:24px}
+.hdr-title{font-size:22px;font-weight:800;color:#ff6b6b;letter-spacing:-0.5px}
+.hdr-sub{font-size:12px;color:#555577;margin-top:2px}
+.hdr-right{display:flex;gap:8px;align-items:center}
+.upd-txt{font-size:11px;color:#555577}
+.upd-txt span{color:#64ffda}
+.btn{border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+.btn-r{background:#ff6b6b;color:#fff}.btn-r:hover{background:#ff5252}
+.btn-g{background:#1e3a2a;color:#27ae60;border:1px solid #27ae60}.btn-g:hover{background:#27ae60;color:#fff}
+.btn-d{background:#1a1a2e;color:#8892b0;border:1px solid #2d2d44}.btn-d:hover{background:#2d2d44;color:#e0e0ff}
+/* SECTIONS */
+.sec{margin-bottom:28px}
+.sec-title{font-size:11px;font-weight:800;color:#64ffda;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;padding-left:10px;border-left:3px solid #64ffda;display:flex;align-items:center;gap:8px}
+.sec-title.red{color:#ff6b6b;border-left-color:#ff6b6b}
+.sec-title.purple{color:#bb8fce;border-left-color:#bb8fce}
+.sec-title.gold{color:#ffd700;border-left-color:#ffd700}
+.sec-title.pink{color:#e91e63;border-left-color:#e91e63}
+.sec-title.green{color:#27ae60;border-left-color:#27ae60}
+/* STAT CARDS */
+.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.sc{background:#12121f;border:1px solid #1e1e30;border-radius:10px;padding:14px 12px;text-align:center;transition:.2s;cursor:default}
+.sc:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.sc .ico{font-size:22px;margin-bottom:5px}
+.sc .val{font-size:24px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px}
+.sc .lbl{font-size:10px;color:#555577;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.sc.c-teal{border-color:rgba(100,255,218,.25);background:linear-gradient(135deg,rgba(100,255,218,.05),#12121f)}
+.sc.c-red{border-color:rgba(255,107,107,.25);background:linear-gradient(135deg,rgba(255,107,107,.05),#12121f)}
+.sc.c-purple{border-color:rgba(187,143,206,.25);background:linear-gradient(135deg,rgba(187,143,206,.05),#12121f)}
+.sc.c-green{border-color:rgba(39,174,96,.25);background:linear-gradient(135deg,rgba(39,174,96,.05),#12121f)}
+.sc.c-gold{border-color:rgba(255,215,0,.25);background:linear-gradient(135deg,rgba(255,215,0,.05),#12121f)}
+.sc.c-pink{border-color:rgba(233,30,99,.25);background:linear-gradient(135deg,rgba(233,30,99,.05),#12121f)}
+.sc.c-blue{border-color:rgba(52,152,219,.25);background:linear-gradient(135deg,rgba(52,152,219,.05),#12121f)}
+/* CHARTS */
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:680px){.cg{grid-template-columns:1fr}}
+.cbox{background:#12121f;border:1px solid #1e1e30;border-radius:10px;padding:16px}
+.ct{font-size:11px;font-weight:700;color:#555577;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+/* TABLE */
+.tbl-wrap{background:#12121f;border:1px solid #1e1e30;border-radius:10px;overflow:hidden}
+.dtbl{width:100%;border-collapse:collapse;font-size:13px}
+.dtbl th{padding:9px 14px;color:#555577;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1e1e30;background:#0e0e1a}
+.dtbl td{padding:9px 14px;border-bottom:1px solid #0f0f1e;vertical-align:middle}
+.dtbl tbody tr:last-child td{border-bottom:none}
+.dtbl tbody tr:hover td{background:rgba(100,255,218,.025)}
+.phase{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;background:#1e1e30;color:#555577}
+.ph-lobby{color:#64ffda;background:rgba(100,255,218,.12)}
+.ph-night{color:#bb8fce;background:rgba(187,143,206,.12)}
+.ph-day{color:#f39c12;background:rgba(243,156,18,.12)}
+.ph-vote{color:#e91e63;background:rgba(233,30,99,.12)}
+.ph-over{color:#ff6b6b;background:rgba(255,107,107,.12)}
+/* LEADERBOARDS */
+.lb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.lb-box{background:#12121f;border:1px solid #1e1e30;border-radius:10px;overflow:hidden}
+.lb-hdr{padding:10px 14px;font-size:12px;font-weight:700;background:#0e0e1a;border-bottom:1px solid #1e1e30;display:flex;align-items:center;gap:6px;color:#ccd}
+.lb-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #0f0f1e;font-size:13px}
+.lb-row:last-child{border-bottom:none}
+.lb-row:hover{background:rgba(255,255,255,.02)}
+.lb-rk{width:22px;height:22px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;color:#555577}
+.lb-rk.r1{background:linear-gradient(135deg,#ffd700,#b8860b);color:#000}
+.lb-rk.r2{background:linear-gradient(135deg,#c0c0c0,#808080);color:#000}
+.lb-rk.r3{background:linear-gradient(135deg,#cd7f32,#8b4513);color:#fff}
+.lb-name{flex:1;font-weight:600;color:#dde;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.lb-val{font-size:12px;color:#8892b0;white-space:nowrap;text-align:right}
+.lb-bar{height:4px;width:50px;background:#1a1a2e;border-radius:2px;overflow:hidden;flex-shrink:0}
+.lb-bf{height:100%;border-radius:2px}
+.empty{color:#555577;text-align:center;padding:18px;font-size:13px;font-style:italic}
+/* PREMIUM */
+.prem-list{display:flex;flex-wrap:wrap;gap:8px}
+.prem-tag{background:linear-gradient(135deg,rgba(187,143,206,.1),rgba(94,58,135,.08));border:1px solid rgba(187,143,206,.25);border-radius:8px;padding:7px 12px;font-size:12px;display:flex;align-items:center;gap:8px}
+.pt-name{color:#bb8fce;font-weight:700}
+.pt-days{color:#8892b0;font-size:11px}
+.pt-don{color:#e91e63;font-size:11px}
+/* ITEMS */
+.item-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #0f0f1e;font-size:13px}
+.item-row:last-child{border-bottom:none}
+.item-row:hover{background:rgba(100,255,218,.025)}
+.item-rk{width:18px;font-size:11px;color:#555577;text-align:right;flex-shrink:0}
+.item-id{font-family:monospace;color:#64ffda;flex:1;font-size:12px}
+.item-bar{flex:1;height:5px;background:#1a1a2e;border-radius:3px;overflow:hidden;max-width:100px}
+.item-bf{height:100%;border-radius:3px;background:linear-gradient(90deg,#64ffda,#00b4d8)}
+.item-cnt{color:#e0e0ff;font-weight:700;width:45px;text-align:right;font-size:12px}
+/* BADGE */
+.bdg{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:800;margin-left:4px;vertical-align:middle}
+.bdg-p{background:rgba(187,143,206,.2);color:#bb8fce}
+.bdg-a{background:rgba(255,107,107,.2);color:#ff6b6b}
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a14}
+.login-box{background:#12121f;border:1px solid #1e1e30;border-radius:16px;padding:40px;width:100%;max-width:360px;text-align:center}
+.login-box h2{color:#ff6b6b;font-size:20px;margin-bottom:6px}
+.login-box p{color:#555577;font-size:13px;margin-bottom:24px}
+.login-box input{width:100%;padding:12px 14px;background:#0a0a14;border:1px solid #1e1e30;border-radius:8px;color:#e0e0ff;font-size:14px;margin-bottom:12px;outline:none;transition:.15s}
+.login-box input:focus{border-color:#64ffda}
+.login-box .btn-r{width:100%;padding:12px;font-size:15px}
+.login-err{color:#ff6b6b;font-size:12px;margin-top:8px;min-height:18px}
+.hidden{display:none!important}
+.divider{height:1px;background:#1e1e30;margin:4px 0}
 </style>
 </head>
 <body>
-<!-- LOGIN SAYFASI -->
-<div id="loginPage" class="login-box">
-<h2>AZAP Admin Girişi</h2>
-<input type="password" id="tokenInput" placeholder="Admin token girin..." autocomplete="off">
-<button onclick="doLogin()">Giriş Yap</button>
-<div id="loginError" class="login-error"></div>
+<!-- GİRİŞ -->
+<div id="loginWrap" class="login-wrap">
+  <div class="login-box">
+    <h2>⚡ AZAP Admin</h2>
+    <p>İstatistik paneline erişmek için<br>admin token girin</p>
+    <input type="password" id="tkInp" placeholder="Admin token..." autocomplete="off">
+    <button class="btn btn-r" onclick="doLogin()">Giriş Yap</button>
+    <div id="tkErr" class="login-err"></div>
+  </div>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="hidden">
-<div class="container">
-<h1>AZAP Admin Panel</h1>
-<p class="sub">Canlı Site İstatistikleri</p>
-<button class="refresh" onclick="loadStats()">Yenile</button>
-<button class="logout" onclick="doLogout()">Çıkış Yap</button>
-<div id="stats" class="grid">
-<div class="card"><h3>Şu An Sitede</h3><div class="value" id="current">-</div></div>
-<div class="card"><h3>Toplam Bağlantı</h3><div class="value" id="total">-</div></div>
-<div class="card"><h3>Rekor Anlık</h3><div class="value" id="peak">-</div></div>
-<div class="card"><h3>Aktif Oda</h3><div class="value" id="rooms">-</div></div>
-<div class="card"><h3>Odada Oyuncu</h3><div class="value" id="players">-</div></div>
-<div class="card"><h3>Uptime</h3><div class="value" id="uptime">-</div></div>
+<!-- PANEL -->
+<div id="dash" class="hidden">
+<div class="page">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <div class="hdr-title">⚡ AZAP İstatistik Paneli</div>
+    <div class="hdr-sub">Son güncelleme: <span id="lastUpd" style="color:#64ffda">—</span> &nbsp;·&nbsp; Her 30 saniyede otomatik yenilenir</div>
+  </div>
+  <div class="hdr-right">
+    <button class="btn btn-g" onclick="loadAll()">🔄 Yenile</button>
+    <button class="btn btn-d" onclick="doLogout()">🚪 Çıkış</button>
+  </div>
 </div>
-<div class="chart-container">
-<div class="chart-title">Canlı Oyuncu Grafiği (Son 5 Dakika)</div>
-<canvas id="playerChart" height="80"></canvas>
+
+<!-- SUNUCU SAĞLIĞI -->
+<div class="sec">
+  <div class="sec-title">🖥️ Sunucu Sağlığı</div>
+  <div class="sg" id="srvCards"></div>
 </div>
-<div class="chart-container">
-<div class="chart-title">Oda & Oyuncu Dağılımı</div>
-<canvas id="roomChart" height="80"></canvas>
+
+<!-- KULLANICI ANALİZİ -->
+<div class="sec">
+  <div class="sec-title">👥 Kullanıcı Analizi</div>
+  <div class="sg" id="usrCards"></div>
 </div>
-<p class="sub">Son güncelleme: <span class="time" id="lastUpdate">-</span></p>
+
+<!-- OYUN & FİNANS -->
+<div class="sec">
+  <div class="sec-title red">🎮 Oyun &amp; Finansal Özet</div>
+  <div class="sg" id="gfCards"></div>
 </div>
+
+<!-- GRAFİKLER -->
+<div class="sec">
+  <div class="sec-title green">📈 Grafikler</div>
+  <div class="cg">
+    <div class="cbox"><div class="ct">Canlı Oyuncu (Son 5 Dakika)</div><canvas id="pChart" height="110"></canvas></div>
+    <div class="cbox"><div class="ct">Son 30 Gün Kayıt</div><canvas id="rChart" height="110"></canvas></div>
+  </div>
 </div>
+
+<!-- CANLI ODALAR -->
+<div class="sec">
+  <div class="sec-title green">🟢 Canlı Odalar <span id="rmCnt" style="color:#555577;font-weight:400;letter-spacing:0"></span></div>
+  <div class="tbl-wrap" id="rmWrap"><p class="empty">Şu an aktif oda yok</p></div>
+</div>
+
+<!-- LEADERBOARD HAVUZU -->
+<div class="sec">
+  <div class="sec-title gold">🏆 Liderboard Havuzu</div>
+  <div class="lb-grid" id="lbGrid"></div>
+</div>
+
+<!-- PREMİUM KULLANICILARI -->
+<div class="sec" id="premSec">
+  <div class="sec-title purple">👑 Aktif Premium Kullanıcılar</div>
+  <div id="premList"></div>
+</div>
+
+<!-- EN POPÜLER EŞYALAR -->
+<div class="sec" id="itmSec">
+  <div class="sec-title">🛍️ En Popüler Eşyalar (Top 10)</div>
+  <div class="tbl-wrap" id="itmWrap"></div>
+</div>
+
+</div><!-- /page -->
+</div><!-- /dash -->
 
 <script>
-let token = localStorage.getItem('azap_admin_token');
-const loginPage = document.getElementById('loginPage');
-const dashboard = document.getElementById('dashboard');
+var tk = localStorage.getItem('azap_admin_token');
+var pChart, rChart;
 
-function showDashboard(){
-  loginPage.classList.add('hidden');
-  dashboard.classList.remove('hidden');
-  initCharts();
-  loadStats();
+function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function fmtUp(s){ var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return d>0 ? d+'g '+h+'s '+m+'dk' : h+'s '+m+'dk '+(s%60)+'sn'; }
+function phaseName(p){ var m={'lobby':'Lobi','role_selection':'Rol Seç','role_reveal':'Rol Açıl','president_vote':'Başkan Oy','night':'Gece','morning_report':'Sabah','day_discussion':'Tartışma','voting':'Oylama','vote_result':'Oy Sonuç','mvp_vote':'MVP Oy','mvp_result':'MVP Sonuç','game_over':'Oyun Bitti','post_game':'Oyun Sonu'}; return m[p]||p; }
+function phaseCls(p){ if(p==='lobby'||p==='role_selection'||p==='role_reveal'||p==='president_vote') return 'ph-lobby'; if(p==='night'||p==='morning_report') return 'ph-night'; if(p==='day_discussion') return 'ph-day'; if(p==='voting'||p==='vote_result') return 'ph-vote'; return 'ph-over'; }
+function card(ico,val,lbl,cls){ return '<div class="sc '+(cls||'')+'"><div class="ico">'+ico+'</div><div class="val">'+val+'</div><div class="lbl">'+lbl+'</div></div>'; }
+function makeLb(title,rows,emptyMsg,barColor){
+  var h='<div class="lb-box"><div class="lb-hdr">'+title+'</div>';
+  if(!rows||!rows.length){ h+='<p class="empty">'+(emptyMsg||'Veri yok')+'</p></div>'; return h; }
+  var maxV=rows[0]._barV||1;
+  rows.forEach(function(r,i){
+    var rkCls=i===0?'r1':i===1?'r2':i===2?'r3':'';
+    var pct=r._barV?Math.round(r._barV/maxV*100):0;
+    h+='<div class="lb-row">';
+    h+='<div class="lb-rk '+rkCls+'">'+(i+1)+'</div>';
+    h+='<div class="lb-name">'+esc(r.username)+(r.premium?'<span class="bdg bdg-p">VIP</span>':'')+'</div>';
+    h+='<div class="lb-val">'+r._stat+'</div>';
+    if(r._barV){ h+='<div class="lb-bar"><div class="lb-bf" style="width:'+pct+'%;background:'+(barColor||'#64ffda')+'"></div></div>'; }
+    h+='</div>';
+  });
+  h+='</div>'; return h;
 }
-function showLogin(){
-  localStorage.removeItem('azap_admin_token');
-  loginPage.classList.remove('hidden');
-  dashboard.classList.add('hidden');
-}
+
+function showDash(){ document.getElementById('loginWrap').classList.add('hidden'); document.getElementById('dash').classList.remove('hidden'); initCharts(); loadAll(); }
+function showLogin(){ localStorage.removeItem('azap_admin_token'); document.getElementById('loginWrap').classList.remove('hidden'); document.getElementById('dash').classList.add('hidden'); }
 
 async function doLogin(){
-  const input = document.getElementById('tokenInput');
-  const t = input.value.trim();
-  if(!t){document.getElementById('loginError').textContent='Token girin';return;}
+  var t=document.getElementById('tkInp').value.trim();
+  if(!t){ document.getElementById('tkErr').textContent='Token girin'; return; }
   try{
-    const r = await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})});
-    const d = await r.json();
-    if(d.ok && d.admin){
-      token = t;
-      localStorage.setItem('azap_admin_token', token);
-      showDashboard();
-    } else {
-      document.getElementById('loginError').textContent = d.error || 'Geçersiz token';
-    }
-  }catch(e){document.getElementById('loginError').textContent='Hata: '+e.message;}
+    var r=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})});
+    var d=await r.json();
+    if(d.ok&&d.admin){ tk=t; localStorage.setItem('azap_admin_token',tk); showDash(); }
+    else document.getElementById('tkErr').textContent=d.error||'Geçersiz token';
+  }catch(e){ document.getElementById('tkErr').textContent='Hata: '+e.message; }
 }
-function doLogout(){showLogin();}
+function doLogout(){ showLogin(); }
+document.getElementById('tkInp').addEventListener('keypress',function(e){ if(e.key==='Enter') doLogin(); });
 
-// Enter tuşu
- document.getElementById('tokenInput').addEventListener('keypress', e => {if(e.key==='Enter')doLogin();});
-
-let playerChart, roomChart;
 function initCharts(){
-  playerChart = new Chart(document.getElementById('playerChart'),{
-    type:'line',
-    data:{labels:[],datasets:[{label:'Aktif Oyuncu',data:[],borderColor:'#64ffda',backgroundColor:'rgba(100,255,218,0.1)',fill:true,tension:0.4}]},
-    options:{responsive:true,scales:{x:{display:false},y:{beginAtZero:true,grid:{color:'#2d2d44'}}},plugins:{legend:{display:false}}}
-  });
-  roomChart = new Chart(document.getElementById('roomChart'),{
-    type:'bar',
-    data:{labels:['Aktif Oda','Odadaki Oyuncu'],datasets:[{data:[0,0],backgroundColor:['#ff6b6b','#4ecdc4']}]},
-    options:{responsive:true,scales:{y:{beginAtZero:true,grid:{color:'#2d2d44'}}},plugins:{legend:{display:false}}}
-  });
+  pChart=new Chart(document.getElementById('pChart'),{type:'line',data:{labels:[],datasets:[{label:'Aktif',data:[],borderColor:'#64ffda',backgroundColor:'rgba(100,255,218,.07)',fill:true,tension:0.4,pointRadius:2,pointHoverRadius:4}]},options:{responsive:true,animation:false,interaction:{mode:'index',intersect:false},scales:{x:{display:false},y:{beginAtZero:true,grid:{color:'#1a1a2e'},ticks:{color:'#555577',font:{size:10}}}},plugins:{legend:{display:false},tooltip:{callbacks:{title:function(items){return items[0].label;}}}}}});
+  rChart=new Chart(document.getElementById('rChart'),{type:'bar',data:{labels:[],datasets:[{label:'Kayıt',data:[],backgroundColor:'rgba(187,143,206,.55)',borderColor:'#bb8fce',borderWidth:1,borderRadius:3}]},options:{responsive:true,animation:false,scales:{x:{ticks:{color:'#555577',font:{size:10},maxRotation:45},grid:{display:false}},y:{beginAtZero:true,grid:{color:'#1a1a2e'},ticks:{color:'#555577',font:{size:10}}}},plugins:{legend:{display:false}}}});
 }
 
-function fmt(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h+'s '+m+'d '+(s%60)+'sn';}
-
-async function loadStats(){
-  if(!token){showLogin();return;}
+async function loadAll(){
+  if(!tk){ showLogin(); return; }
   try{
-    const r = await fetch('/admin/analytics?token='+encodeURIComponent(token));
-    const d = await r.json();
-    if(!d.ok){
-      if(d.error && (d.error.includes('Forbidden')||d.error.includes('token'))){showLogin();return;}
-      document.getElementById('stats').innerHTML='<div class="error">'+d.error+'</div>';return;
+    var res=await fetch('/admin/analytics?token='+encodeURIComponent(tk));
+    var d=await res.json();
+    if(!d.ok){ if(res.status===403){ showLogin(); } return; }
+    var s=d.stats;
+    document.getElementById('lastUpd').textContent=new Date().toLocaleTimeString('tr-TR');
+
+    /* SUNUCU KARTLARI */
+    document.getElementById('srvCards').innerHTML=
+      card('⏱️',fmtUp(s.server.uptime),'Uptime','c-teal')+
+      card('🔗',s.server.totalConnections.toLocaleString('tr-TR'),'Toplam Bağlantı','c-teal')+
+      card('👁️',s.server.currentActive,'Şu An Sitede','c-green')+
+      card('🚀',s.server.peakConcurrent,'Rekor Anlık','c-blue')+
+      card('🟢',s.live.activeRooms,'Aktif Oda','c-green')+
+      card('🎮',s.live.playersInRooms,'Odada Oyuncu','c-green');
+
+    /* KULLANICI KARTLARI */
+    document.getElementById('usrCards').innerHTML=
+      card('👥',s.users.total.toLocaleString('tr-TR'),'Toplam Kullanıcı','')+
+      card('📅',s.users.today,'Bugün Kayıt','c-teal')+
+      card('📆',s.users.thisWeek,'Bu Hafta','')+
+      card('🗓️',s.users.thisMonth,'Bu Ay (30g)','')+
+      card('👑',s.users.premium,'Aktif Premium','c-purple')+
+      card('🛡️',s.users.admins,'Admin','c-red')+
+      card('🛍️',s.users.withInventory,'Eşya Sahibi','')+
+      card('🚫',s.users.neverPlayed,'Hiç Oynamamış','');
+
+    /* OYUN & FİNANS KARTLARI */
+    document.getElementById('gfCards').innerHTML=
+      card('🎯',s.games.played.toLocaleString('tr-TR'),'Toplam Oyun','')+
+      card('🏆',s.games.won.toLocaleString('tr-TR'),'Toplam Galibiyet','c-green')+
+      card('💀',s.games.lost.toLocaleString('tr-TR'),'Toplam Mağlubiyet','c-red')+
+      card('❤️',s.games.mvps.toLocaleString('tr-TR'),'Toplam MVP','c-pink')+
+      card('📊','%'+s.games.avgWinRate,'Ort. Kazanma Oranı','c-green')+
+      card('🎲',s.games.avgGamesPerPlayer,'Kişi Başı Oyun','')+
+      card('💝','₺'+s.finance.totalDonations.toFixed(0),'Toplam Bağış','c-pink')+
+      card('💰',s.finance.totalCoins.toLocaleString('tr-TR'),'Toplam Altın','c-gold')+
+      card('📊',s.finance.avgCoins.toLocaleString('tr-TR'),'Kişi Başı Altın','c-gold')+
+      card('📦',s.inventory.totalItemsOwned.toLocaleString('tr-TR'),'Toplam Eşya','')+
+      card('🐛',s.reports.open,'Açık Bug','c-red')+
+      card('✅',s.reports.closed,'Çözülen Bug','c-green')+
+      card('📋',s.reports.total,'Toplam Rapor','');
+
+    /* OYUNCU GRAFİĞİ */
+    if(s.server.history&&s.server.history.length&&pChart){
+      var hist=s.server.history;
+      pChart.data.labels=hist.map(function(h){ return new Date(h.timestamp).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); });
+      pChart.data.datasets[0].data=hist.map(function(h){ return h.currentActive; });
+      pChart.update('none');
     }
 
-    document.getElementById('current').textContent=d.stats.currentActive;
-    document.getElementById('total').textContent=d.stats.totalConnections;
-    document.getElementById('peak').textContent=d.stats.peakConcurrent;
-    document.getElementById('rooms').textContent=d.stats.activeRooms;
-    document.getElementById('players').textContent=d.stats.playersInRooms;
-    document.getElementById('uptime').textContent=fmt(d.stats.uptimeSeconds);
-    document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('tr-TR');
-
-    // Sunucudan gelen history verisi ile grafikleri güncelle
-    if(d.stats.history && d.stats.history.length>0 && playerChart && roomChart){
-      const hist = d.stats.history;
-      playerChart.data.labels = hist.map(h => new Date(h.timestamp).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
-      playerChart.data.datasets[0].data = hist.map(h => h.currentActive);
-      playerChart.update('none');
-
-      roomChart.data.datasets[0].data = [d.stats.activeRooms, d.stats.playersInRooms];
-      roomChart.update('none');
+    /* KAYIT GRAFİĞİ */
+    if(s.registrationsByDay&&s.registrationsByDay.length&&rChart){
+      rChart.data.labels=s.registrationsByDay.map(function(d){ return new Date(d[0]).toLocaleDateString('tr-TR',{month:'short',day:'numeric'}); });
+      rChart.data.datasets[0].data=s.registrationsByDay.map(function(d){ return d[1]; });
+      rChart.update('none');
     }
-  }catch(e){document.getElementById('stats').innerHTML='<div class="error">Hata: '+e.message+'</div>';}
+
+    /* CANLI ODALAR */
+    document.getElementById('rmCnt').textContent='('+s.live.rooms.length+' oda)';
+    if(s.live.rooms.length){
+      var rh='<table class="dtbl"><thead><tr><th>Kod</th><th>Oyuncu</th><th>İzleyici</th><th>Faz</th><th>Tur</th></tr></thead><tbody>';
+      s.live.rooms.forEach(function(rm){
+        rh+='<tr><td><b style="color:#64ffda;font-family:monospace;letter-spacing:1px">'+esc(rm.code)+'</b></td>';
+        rh+='<td><b>'+rm.playerCount+'</b></td>';
+        rh+='<td>'+(rm.spectatorCount||0)+'</td>';
+        rh+='<td><span class="phase '+phaseCls(rm.phase)+'">'+phaseName(rm.phase)+'</span></td>';
+        rh+='<td>'+(rm.round>0?rm.round+'. tur':'—')+'</td></tr>';
+      });
+      rh+='</tbody></table>';
+      document.getElementById('rmWrap').innerHTML=rh;
+    } else {
+      document.getElementById('rmWrap').innerHTML='<p class="empty">Şu an aktif oda yok</p>';
+    }
+
+    /* LEADERBOARDlar */
+    var tp=s.topPlayers.map(function(p){ return Object.assign({},p,{_stat:'🎮 '+p.played+' / 🏆 '+p.won,_barV:p.played}); });
+    var tw=s.topWinners.map(function(p){ return Object.assign({},p,{_stat:'🏆 '+p.won+' (%'+p.winRate+')',_barV:p.won}); });
+    var twr=s.topWinRate.map(function(p){ return Object.assign({},p,{_stat:'%'+p.winRate+' — '+p.played+' oyun',_barV:p.winRate}); });
+    var tm=s.topMvps.map(function(p){ return Object.assign({},p,{_stat:'❤️ '+p.mvp+' MVP',_barV:p.mvp}); });
+    var tl=s.topLosers.map(function(p){ return Object.assign({},p,{_stat:'💀 '+p.lost+' mağl.',_barV:p.lost}); });
+    var td=s.topDonors.map(function(p){ return Object.assign({},p,{_stat:'₺'+p.totalDonated.toFixed(0),_barV:p.totalDonated}); });
+    var tr2=s.topRichest.map(function(p){ return Object.assign({},p,{_stat:p.coins.toLocaleString('tr-TR')+' 💰',_barV:p.coins}); });
+
+    document.getElementById('lbGrid').innerHTML=
+      makeLb('🎮 En Aktif Oyuncular',tp,'','#64ffda')+
+      makeLb('🏆 En Çok Kazananlar',tw,'','#27ae60')+
+      makeLb('📊 En Yüksek Kazanma Oranı <small style="font-weight:400;color:#555577">(min 5 oyun)</small>',twr,'Henüz 5+ oyun oynayan yok','#27ae60')+
+      makeLb('❤️ En Çok MVP Alanlar',tm,'','#e91e63')+
+      makeLb('💀 En Çok Kaybeden',tl,'','#ff6b6b')+
+      makeLb('💝 En Büyük Destekçiler',td,'Henüz bağış yapan yok','#e91e63')+
+      makeLb('💰 En Zenginler',tr2,'','#ffd700');
+
+    /* PREMİUM KULLANICILARI */
+    if(s.premiumUsers&&s.premiumUsers.length){
+      var ph='<div class="prem-list">';
+      s.premiumUsers.forEach(function(p){
+        ph+='<div class="prem-tag"><span class="pt-name">👑 '+esc(p.username)+'</span>';
+        ph+='<span class="pt-days">'+p.daysLeft+' gün</span>';
+        if(p.totalDonated>0) ph+='<span class="pt-don">₺'+p.totalDonated.toFixed(0)+'</span>';
+        ph+='</div>';
+      });
+      ph+='</div>';
+      document.getElementById('premList').innerHTML=ph;
+      document.getElementById('premSec').style.display='block';
+    } else {
+      document.getElementById('premSec').style.display='none';
+    }
+
+    /* EN POPÜLER EŞYALAR */
+    if(s.inventory.topItems&&s.inventory.topItems.length){
+      var maxC=s.inventory.topItems[0].count;
+      var ih='<div>';
+      s.inventory.topItems.forEach(function(item,i){
+        var pct=maxC>0?Math.round(item.count/maxC*100):0;
+        ih+='<div class="item-row">';
+        ih+='<span class="item-rk">'+(i+1)+'</span>';
+        ih+='<span class="item-id">'+esc(item.id)+'</span>';
+        ih+='<div class="item-bar"><div class="item-bf" style="width:'+pct+'%"></div></div>';
+        ih+='<span class="item-cnt">'+item.count+'</span>';
+        ih+='</div>';
+      });
+      ih+='</div>';
+      document.getElementById('itmWrap').innerHTML=ih;
+      document.getElementById('itmSec').style.display='block';
+    } else {
+      document.getElementById('itmSec').style.display='none';
+    }
+
+  }catch(e){ console.error('loadAll hatası:',e); }
 }
 
-// Sayfa yüklenince token varsa direkt dashboard
-if(token){showDashboard();}
-setInterval(()=>{if(!dashboard.classList.contains('hidden'))loadStats();},5000);
+if(tk){ showDash(); }
+setInterval(function(){ if(!document.getElementById('dash').classList.contains('hidden')) loadAll(); }, 30000);
 </script>
 </body></html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -1527,22 +1838,69 @@ io.on('connection', (socket) => {
   socket.on('admin:siteStats', (_, cb) => {
     if (!requireAdmin(cb)) return;
     const users = Accounts.listAll();
+    const now = Date.now();
+
+    // ── KULLANICI SAYILARI ──
     const totalUsers = users.length;
     const totalAdmins = users.filter(u => u.isAdmin).length;
     const activePremium = users.filter(u => u.premium?.active).length;
-    const totalDonations = users.reduce((s, u) => s + (u.totalDonated || 0), 0);
-    const totalCoinsSold = users.reduce((s, u) => s + (u.coins || 0), 0);
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const usersToday = users.filter(u => u.created >= todayStart.getTime()).length;
+    const usersThisWeek = users.filter(u => u.created >= weekAgo).length;
+    const usersThisMonth = users.filter(u => u.created >= monthAgo).length;
+    const neverPlayed = users.filter(u => !(u.stats?.played)).length;
+    const usersWithItems = users.filter(u => (u.inventory?.length || 0) > 0).length;
 
-    // Oyun istatistikleri
+    // ── FİNANS ──
+    const totalDonations = users.reduce((s, u) => s + (u.totalDonated || 0), 0);
+    const totalCoinsHeld = users.reduce((s, u) => s + (u.coins || 0), 0);
+    const avgCoins = totalUsers > 0 ? Math.round(totalCoinsHeld / totalUsers) : 0;
+
+    // ── OYUN İSTATİSTİKLERİ ──
     const totalGamesPlayed = users.reduce((s, u) => s + (u.stats?.played || 0), 0);
     const totalGamesWon = users.reduce((s, u) => s + (u.stats?.won || 0), 0);
+    const totalGamesLost = users.reduce((s, u) => s + (u.stats?.lost || 0), 0);
     const totalMVPs = users.reduce((s, u) => s + (u.stats?.mvp || 0), 0);
+    const avgWinRate = totalGamesPlayed > 0 ? Math.round((totalGamesWon / totalGamesPlayed) * 100) : 0;
+    const avgGamesPerPlayer = totalUsers > 0 ? (totalGamesPlayed / totalUsers).toFixed(1) : '0';
 
-    // Aktif odalar (live)
+    // ── ENVANTER ──
+    const itemCounts = {};
+    users.forEach(u => {
+      (u.inventory || []).forEach(it => {
+        const id = typeof it === 'string' ? it : it.id;
+        if (id) itemCounts[id] = (itemCounts[id] || 0) + 1;
+      });
+    });
+    const totalItemsOwned = users.reduce((s, u) => s + (u.inventory?.length || 0), 0);
+    const topItems = Object.entries(itemCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([id, count]) => ({ id, count }));
+
+    // ── CANLI ODALAR ──
     const activeRooms = rooms.size;
     const playersInRooms = [...rooms.values()].reduce((s, g) => s + g.players.size, 0);
+    const liveRoomsData = [...rooms.entries()].map(([code, g]) => ({
+      code,
+      playerCount: g.players.size,
+      spectatorCount: g.spectators?.size || 0,
+      phase: g.phase,
+      round: g.round || 0
+    })).slice(0, 25);
 
-    // En aktif oyuncular (top 10)
+    // ── SUNUCU SAĞLIĞI ──
+    const serverUptime = Math.floor((Date.now() - siteStats.startedAt) / 1000);
+    const serverStats = {
+      uptime: serverUptime,
+      totalConnections: siteStats.totalConnections,
+      currentActive: siteStats.currentActive,
+      peakConcurrent: siteStats.peakConcurrent
+    };
+
+    // ── EN AKTİF OYUNCULAR (top 10) ──
     const topPlayers = users
       .filter(u => u.stats?.played > 0)
       .map(u => ({
@@ -1556,7 +1914,7 @@ io.on('connection', (socket) => {
       .sort((a, b) => b.played - a.played)
       .slice(0, 10);
 
-    // Top kazananlar
+    // ── TOP KAZANANLAR (top 10) ──
     const topWinners = users
       .filter(u => u.stats?.won > 0)
       .map(u => ({
@@ -1568,22 +1926,54 @@ io.on('connection', (socket) => {
       .sort((a, b) => b.won - a.won)
       .slice(0, 10);
 
-    // Top destekçiler (bağışçılar)
+    // ── EN YÜKSEK KAZANMA ORANI (min 5 oyun) ──
+    const topWinRate = users
+      .filter(u => (u.stats?.played || 0) >= 5)
+      .map(u => ({
+        username: u.username,
+        played: u.stats.played,
+        won: u.stats.won,
+        winRate: Math.round((u.stats.won / u.stats.played) * 100)
+      }))
+      .sort((a, b) => b.winRate - a.winRate)
+      .slice(0, 10);
+
+    // ── TOP MVP (top 10) ──
+    const topMvps = users
+      .filter(u => (u.stats?.mvp || 0) > 0)
+      .map(u => ({ username: u.username, mvp: u.stats.mvp, played: u.stats.played || 0 }))
+      .sort((a, b) => b.mvp - a.mvp)
+      .slice(0, 10);
+
+    // ── EN ÇOK KAYBEDEN (top 10) ──
+    const topLosers = users
+      .filter(u => (u.stats?.lost || 0) > 0)
+      .map(u => ({ username: u.username, lost: u.stats.lost || 0, played: u.stats.played || 0 }))
+      .sort((a, b) => b.lost - a.lost)
+      .slice(0, 10);
+
+    // ── TOP BAĞIŞÇILAR (top 10) ──
     const topDonors = users
       .filter(u => u.totalDonated > 0)
       .map(u => ({ username: u.username, totalDonated: u.totalDonated }))
       .sort((a, b) => b.totalDonated - a.totalDonated)
       .slice(0, 10);
 
-    // En zenginler (coin)
+    // ── EN ZENGİNLER (top 10) ──
     const topRichest = users
       .filter(u => u.coins > 0)
       .map(u => ({ username: u.username, coins: u.coins }))
       .sort((a, b) => b.coins - a.coins)
       .slice(0, 10);
 
-    // Kayıt zaman serisi (son 30 gün)
-    const now = Date.now();
+    // ── PREMİUM KULLANICILARI LİSTESİ ──
+    const premiumUsers = users
+      .filter(u => u.premium?.active)
+      .map(u => ({ username: u.username, daysLeft: u.premium.daysLeft, totalDonated: u.totalDonated || 0 }))
+      .sort((a, b) => b.daysLeft - a.daysLeft)
+      .slice(0, 20);
+
+    // ── KAYIT ZAMAN SERİSİ (son 30 gün) ──
     const days30Ago = now - 30 * 24 * 60 * 60 * 1000;
     const dayBuckets = {};
     users.forEach(u => {
@@ -1594,7 +1984,7 @@ io.on('connection', (socket) => {
     const registrationsByDay = Object.entries(dayBuckets)
       .sort((a, b) => a[0].localeCompare(b[0]));
 
-    // Bug raporları
+    // ── BUG RAPORLARI ──
     const reports = Reports.list();
     const openReports = reports.filter(r => r.status === 'open' || !r.status).length;
     const closedReports = reports.length - openReports;
@@ -1602,12 +1992,19 @@ io.on('connection', (socket) => {
     cb?.({
       ok: true,
       stats: {
-        users: { total: totalUsers, admins: totalAdmins, premium: activePremium },
-        finance: { totalDonations: totalDonations, totalCoins: totalCoinsSold },
-        games: { played: totalGamesPlayed, won: totalGamesWon, mvps: totalMVPs },
-        live: { activeRooms, playersInRooms },
+        users: {
+          total: totalUsers, admins: totalAdmins, premium: activePremium,
+          today: usersToday, thisWeek: usersThisWeek, thisMonth: usersThisMonth,
+          neverPlayed, withInventory: usersWithItems
+        },
+        finance: { totalDonations, totalCoins: totalCoinsHeld, avgCoins },
+        games: { played: totalGamesPlayed, won: totalGamesWon, lost: totalGamesLost, mvps: totalMVPs, avgWinRate, avgGamesPerPlayer },
+        inventory: { totalItemsOwned, topItems },
+        live: { activeRooms, playersInRooms, rooms: liveRoomsData },
+        server: serverStats,
         reports: { open: openReports, closed: closedReports, total: reports.length },
-        topPlayers, topWinners, topDonors, topRichest,
+        topPlayers, topWinners, topWinRate, topMvps, topLosers,
+        topDonors, topRichest, premiumUsers,
         registrationsByDay
       }
     });
