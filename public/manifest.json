@@ -9,12 +9,12 @@
   "theme_color": "#c0392b",
   "lang": "tr",
   "categories": ["games", "social", "entertainment"],
-  "icons": [
+"icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
     }
-  ]
+]
+  
 }
