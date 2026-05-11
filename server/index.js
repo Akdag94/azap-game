@@ -10,6 +10,7 @@ const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
 const Reports = require('./reports');
 const { PHASES, TEAMS } = require('./gameConstants');
+const registerLegalRoutes = require('./legalPages');
 
 // Eski hali: const ADMIN_SECRET_KEY = 'azap-admin-2026-gizli-anahtar-degistir';
 // Yeni hali:
@@ -480,6 +481,13 @@ app.post('/admin/login', adminLimiter, express.json(), (req, res) => {
   res.json({ ok: true, admin: true, type: 'session' });
 });
 
+// Kullanıcı listesi (dashboard için)
+app.get('/admin/users', adminLimiter, (req, res) => {
+  if (!checkAdmin(req, res)) return;
+  const users = Accounts.listAll();
+  res.json({ ok: true, users });
+});
+
 // HTML Dashboard: kapsamlı admin istatistik paneli
 app.get('/admin/dashboard', adminLimiter, (req, res) => {
   const html = `<!DOCTYPE html>
@@ -581,6 +589,16 @@ a{color:inherit;text-decoration:none}
 .bdg{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:800;margin-left:4px;vertical-align:middle}
 .bdg-p{background:rgba(187,143,206,.2);color:#bb8fce}
 .bdg-a{background:rgba(255,107,107,.2);color:#ff6b6b}
+/* KULLANICI YÖNETİMİ */
+.usr-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.usr-toolbar input{background:#0a0a14;border:1px solid #1e1e30;border-radius:8px;padding:7px 12px;color:#e0e0ff;font-size:13px;outline:none;min-width:200px;transition:.15s}
+.usr-toolbar input:focus{border-color:#64ffda}
+.usr-toolbar select{background:#0a0a14;border:1px solid #1e1e30;border-radius:8px;padding:7px 12px;color:#e0e0ff;font-size:13px;outline:none;cursor:pointer}
+.usr-count{font-size:12px;color:#555577;margin-left:auto}
+.usr-badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:800}
+.ub-admin{background:rgba(255,107,107,.15);color:#ff6b6b}
+.ub-prem{background:rgba(187,143,206,.15);color:#bb8fce}
+.ub-don{background:rgba(233,30,99,.12);color:#e91e63}
 /* LOGIN */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a14}
 .login-box{background:#12121f;border:1px solid #1e1e30;border-radius:16px;padding:40px;width:100%;max-width:360px;text-align:center}
@@ -673,6 +691,42 @@ a{color:inherit;text-decoration:none}
   <div class="tbl-wrap" id="itmWrap"></div>
 </div>
 
+<!-- TÜM KULLANICILAR -->
+<div class="sec">
+  <div class="sec-title red">👥 Tüm Kullanıcılar <span id="usrLoadCnt" style="color:#555577;font-weight:400;letter-spacing:0;text-transform:none;font-size:11px"></span></div>
+  <div class="usr-toolbar">
+    <input type="text" id="usrSearch" placeholder="🔍 Kullanıcı ara..." oninput="filterUsers()">
+    <select id="usrFilter" onchange="filterUsers()">
+      <option value="all">Tümü</option>
+      <option value="admin">Adminler</option>
+      <option value="premium">Premium</option>
+      <option value="donor">Bağış yapan</option>
+      <option value="active">Oyun oynamış</option>
+      <option value="never">Hiç oynamamış</option>
+    </select>
+    <select id="usrSort" onchange="filterUsers()">
+      <option value="created_desc">En yeni kayıt</option>
+      <option value="created_asc">En eski kayıt</option>
+      <option value="played_desc">En çok oyun</option>
+      <option value="won_desc">En çok galibiyet</option>
+      <option value="coins_desc">En çok altın</option>
+      <option value="donated_desc">En çok bağış</option>
+    </select>
+    <button class="btn btn-g" onclick="loadUsers()">🔄 Yenile</button>
+    <span class="usr-count" id="usrFilterInfo"></span>
+  </div>
+  <div class="tbl-wrap">
+    <table class="dtbl" id="usrTable">
+      <thead><tr>
+        <th>#</th><th>Kullanıcı</th><th>Rozetler</th>
+        <th>Oyun</th><th>Galibiyet</th><th>MVP</th>
+        <th>Altın</th><th>Bağış</th><th>Kayıt</th>
+      </tr></thead>
+      <tbody id="usrTbody"><tr><td colspan="9" style="text-align:center;color:#555577;padding:24px">Yükleniyor...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 </div><!-- /page -->
 </div><!-- /dash -->
 
@@ -702,7 +756,7 @@ function makeLb(title,rows,emptyMsg,barColor){
   h+='</div>'; return h;
 }
 
-function showDash(){ document.getElementById('loginWrap').classList.add('hidden'); document.getElementById('dash').classList.remove('hidden'); initCharts(); loadAll(); }
+function showDash(){ document.getElementById('loginWrap').classList.add('hidden'); document.getElementById('dash').classList.remove('hidden'); initCharts(); loadAll(); loadUsers(); }
 function showLogin(){ localStorage.removeItem('azap_admin_token'); document.getElementById('loginWrap').classList.remove('hidden'); document.getElementById('dash').classList.add('hidden'); }
 
 async function doLogin(){
@@ -857,6 +911,69 @@ async function loadAll(){
   }catch(e){ console.error('loadAll hatası:',e); }
 }
 
+var allUsers=[];
+
+async function loadUsers(){
+  if(!tk){ showLogin(); return; }
+  try{
+    var res=await fetch('/admin/users?token='+encodeURIComponent(tk));
+    var d=await res.json();
+    if(!d.ok){ if(res.status===403){ showLogin(); } return; }
+    allUsers=d.users;
+    document.getElementById('usrLoadCnt').textContent='('+allUsers.length+' kullanıcı)';
+    filterUsers();
+  }catch(e){ console.error('loadUsers hatası:',e); }
+}
+
+function filterUsers(){
+  var q=(document.getElementById('usrSearch').value||'').toLowerCase();
+  var flt=document.getElementById('usrFilter').value;
+  var srt=document.getElementById('usrSort').value;
+  var list=allUsers.filter(function(u){
+    if(q && !u.username.toLowerCase().includes(q)) return false;
+    if(flt==='admin' && !u.isAdmin) return false;
+    if(flt==='premium' && !u.premium?.active) return false;
+    if(flt==='donor' && !(u.totalDonated>0)) return false;
+    if(flt==='active' && !(u.stats?.played>0)) return false;
+    if(flt==='never' && (u.stats?.played>0)) return false;
+    return true;
+  });
+  list.sort(function(a,b){
+    if(srt==='created_asc') return (a.created||0)-(b.created||0);
+    if(srt==='played_desc') return (b.stats?.played||0)-(a.stats?.played||0);
+    if(srt==='won_desc') return (b.stats?.won||0)-(a.stats?.won||0);
+    if(srt==='coins_desc') return (b.coins||0)-(a.coins||0);
+    if(srt==='donated_desc') return (b.totalDonated||0)-(a.totalDonated||0);
+    return (b.created||0)-(a.created||0); // created_desc default
+  });
+  document.getElementById('usrFilterInfo').textContent=list.length+' sonuç';
+  var html='';
+  if(!list.length){
+    html='<tr><td colspan="9" style="text-align:center;color:#555577;padding:24px;font-style:italic">Sonuç bulunamadı</td></tr>';
+  } else {
+    list.forEach(function(u,i){
+      var badges='';
+      if(u.isAdmin) badges+='<span class="usr-badge ub-admin">ADMİN</span> ';
+      if(u.premium?.active) badges+='<span class="usr-badge ub-prem">👑 VIP '+(u.premium.daysLeft||0)+'g</span> ';
+      if(u.totalDonated>0) badges+='<span class="usr-badge ub-don">💝</span>';
+      var wr=u.stats?.played>0?Math.round(u.stats.won/u.stats.played*100):0;
+      var created=u.created?new Date(u.created).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+      html+='<tr>';
+      html+='<td style="color:#555577;font-size:11px">'+(i+1)+'</td>';
+      html+='<td><b style="color:#dde">'+esc(u.username)+'</b></td>';
+      html+='<td>'+(badges||'<span style="color:#555577">—</span>')+'</td>';
+      html+='<td><b>'+(u.stats?.played||0)+'</b></td>';
+      html+='<td><span style="color:#27ae60">'+(u.stats?.won||0)+'</span>'+(u.stats?.played>0?' <span style="color:#555577;font-size:10px">%'+wr+'</span>':'')+'</td>';
+      html+='<td><span style="color:#e91e63">'+(u.stats?.mvp||0)+'</span></td>';
+      html+='<td style="color:#ffd700;font-weight:700">'+(u.coins||0).toLocaleString('tr-TR')+'</td>';
+      html+='<td>'+(u.totalDonated>0?'<span style="color:#e91e63;font-weight:700">₺'+u.totalDonated.toFixed(0)+'</span>':'<span style="color:#555577">—</span>')+'</td>';
+      html+='<td style="color:#555577;font-size:11px">'+created+'</td>';
+      html+='</tr>';
+    });
+  }
+  document.getElementById('usrTbody').innerHTML=html;
+}
+
 if(tk){ showDash(); }
 setInterval(function(){ if(!document.getElementById('dash').classList.contains('hidden')) loadAll(); }, 30000);
 </script>
@@ -864,6 +981,9 @@ setInterval(function(){ if(!document.getElementById('dash').classList.contains('
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
 });
+
+// Yasal sayfalar ve iletişim
+registerLegalRoutes(app);
 
 // SPA fallback — sadece güvenli yolları index.html'e yönlendir
 app.get('*', (req, res) => {

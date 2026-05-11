@@ -430,6 +430,17 @@ body.day .game-action-btn:hover{background:rgba(255,255,255,.9)}
 .lbl{font-size:.72rem;color:var(--dim);letter-spacing:2px;margin-bottom:5px}
 
 .entry-footer{text-align:center;padding:6px 0;color:var(--dim);font-family:'Fira Code',monospace;font-size:.6rem;letter-spacing:2px;flex-shrink:0}
+.legal-footer{text-align:center;padding:8px 10px 12px;font-size:.65rem;color:var(--dim);line-height:1.8;flex-shrink:0}
+.legal-footer a{color:var(--dim);text-decoration:none;transition:color .15s}.legal-footer a:hover{color:var(--hi)}
+.lf-sep{margin:0 5px;opacity:.4}
+/* Giriş başarı animasyonu */
+#AUTH_SUCCESS_OV{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .25s;background:rgba(0,0,0,.55);backdrop-filter:blur(6px)}
+#AUTH_SUCCESS_OV.show{pointer-events:all;opacity:1}
+.auth-success-ring{width:80px;height:80px;border-radius:50%;border:3px solid var(--hi);display:flex;align-items:center;justify-content:center;font-size:2.2rem;animation:authRingPop .5s cubic-bezier(.34,1.56,.64,1) both}
+.auth-success-txt{margin-top:14px;font-size:1.1rem;font-weight:700;color:var(--hi);letter-spacing:1px;animation:authTxtFade .4s .2s ease both}
+.auth-success-sub{margin-top:6px;font-size:.78rem;color:var(--dim);animation:authTxtFade .4s .35s ease both}
+@keyframes authRingPop{0%{transform:scale(0) rotate(-45deg);opacity:0}70%{transform:scale(1.15) rotate(5deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes authTxtFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 /* Music player */
 .music-player,.music-toggle,.yt-hidden,.tab-btn.music-on{display:none}
@@ -639,7 +650,7 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
   <!-- ALTIN SEKMESİ -->
   <div class="shop-pane" id="SHOP_PANE_gold">
     <div style="font-size:.78rem;color:var(--dim);margin-bottom:10px;line-height:1.4">
-      💡 Altın paketleri, bahis ve ileride gelecek mağaza eşyaları için kullanılır.
+      💡 Altın paketleri, oyun içi Altın Havuzu ve ileride gelecek mağaza eşyaları için kullanılır.
     </div>
     <div id="SHOP_GOLD_PACKAGES"></div>
   </div>
@@ -698,8 +709,15 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 
 </div>
 
-<div style="margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:5px;font-size:.7rem;color:var(--dim);text-align:center;line-height:1.5">
-🔒 Tüm ödemeler <strong>İyzico</strong> güvencesiyle. Kart bilgilerin AZAP'ta saklanmaz.
+<div style="margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:5px;font-size:.7rem;color:var(--dim);text-align:center;line-height:1.6">
+  🔒 Tüm ödemeler <strong>İyzico</strong> güvencesiyle işlenir. Kart bilgilerin AZAP'ta saklanmaz.<br>
+  <span style="display:inline-flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;justify-content:center">
+    <img src="https://www.mastercard.com.tr/content/dam/public/mastercardcom/eu/tr/logos/mc-logo-52.svg" alt="Mastercard" style="height:20px;opacity:.7">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/200px-Visa_Inc._logo.svg.png" alt="Visa" style="height:14px;opacity:.7">
+    <span style="color:#e91e63;font-weight:700;font-size:.75rem">TROY</span>
+  </span><br>
+  <a href="/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a> &nbsp;·&nbsp;
+  <a href="/yasal/iptal-iade" target="_blank" style="color:var(--hi);text-decoration:underline">İptal &amp; İade Koşulları</a>
 </div>
 </div></div>
 
@@ -877,6 +895,13 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
 <div id="SUIKAST_STATUS" style="text-align:center;margin-top:8px;font-size:.78rem;color:var(--dim)"></div>
 </div>
 </div>
+<!-- Giriş/Kayıt Başarı Animasyonu -->
+<div id="AUTH_SUCCESS_OV">
+  <div class="auth-success-ring" id="AUTH_SUCCESS_ICO">✓</div>
+  <div class="auth-success-txt" id="AUTH_SUCCESS_TXT">Giriş Başarılı</div>
+  <div class="auth-success-sub" id="AUTH_SUCCESS_SUB">Hoş geldin!</div>
+</div>
+
 <div class="hpan" id="HP">
 <div class="hph"><h3>Geçmiş Aksiyonlar</h3><button class="hcl" onclick="Q('HP').classList.remove('op')">✕</button></div>
 <div id="HC"></div>
@@ -941,6 +966,17 @@ Hoş geldin, <strong id="WN"></strong>
 </div>
 </div>
 <div class="entry-footer">⛧ AZAP — by Azad Akdağ ⛧</div>
+<div class="legal-footer">
+  <a href="/yasal/kullanim-kosullari" target="_blank">Kullanım Koşulları</a>
+  <span class="lf-sep">·</span>
+  <a href="/yasal/kvkk" target="_blank">Gizlilik & KVKK</a>
+  <span class="lf-sep">·</span>
+  <a href="/yasal/mesafeli-satis" target="_blank">Mesafeli Satış</a>
+  <span class="lf-sep">·</span>
+  <a href="/yasal/iptal-iade" target="_blank">İptal & İade</a>
+  <span class="lf-sep">·</span>
+  <a href="/iletisim" target="_blank">İletişim</a>
+</div>
 </div>
 
 <!-- Lobby -->
@@ -950,21 +986,21 @@ Hoş geldin, <strong id="WN"></strong>
 <div id="LS"></div>
 <button class="b b2 bs bw mt8" onclick="leaveRoom()">↩️ Lobiden Çık</button>
 
-<!-- BAHİS PANELİ - login + oyuncu olan herkese görünür -->
+<!-- ALTIN HAVUZU PANELİ - login + oyuncu olan herkese görünür -->
 <div id="BET_PANEL" style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:6px;padding:10px;margin-top:10px;display:none">
-  <div class="st" style="color:var(--gold);margin-bottom:6px">💰 Bahis (opsiyonel)</div>
+  <div class="st" style="color:var(--gold);margin-bottom:6px">💰 Altın Havuzu (opsiyonel)</div>
   <div style="font-size:.74rem;color:var(--dim);margin-bottom:6px;line-height:1.4">
-    Coin yatır. Oyunu kazanırsan tüm bahis havuzunu kazananlarla paylaşırsın (yatırdığın oran kadar pay alırsın). Kaybedersen kaybolur. Min 5, max 1000.
+    Altın yatır. Oyunu kazanırsan tüm havuzu kazananlarla paylaşırsın (yatırdığın oran kadar pay alırsın). Kaybedersen kaybolur. Min 5, max 1000.
   </div>
   <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
     <input class="inp" id="BET_AMOUNT" type="number" min="5" max="1000" placeholder="Miktar" style="flex:1;padding:6px 8px;font-size:.85rem">
     <button class="b bs" style="background:var(--gold);color:#000;border:none;font-weight:600" onclick="placeBet()">💰 Yatır</button>
   </div>
   <div style="display:flex;justify-content:space-between;font-size:.78rem">
-    <span>Bahsim: <strong id="MY_BET" style="color:var(--gold)">0</strong></span>
+    <span>Yatırdığım: <strong id="MY_BET" style="color:var(--gold)">0</strong></span>
     <span>Toplam havuz: <strong id="BET_POOL" style="color:var(--gold)">0</strong></span>
   </div>
-  <button class="b bs mt8" style="width:100%;border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem;display:none" id="BET_CANCEL_BTN" onclick="cancelBet()">Bahsi Geri Çek</button>
+  <button class="b bs mt8" style="width:100%;border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem;display:none" id="BET_CANCEL_BTN" onclick="cancelBet()">Altını Geri Çek</button>
   <div id="BET_LIST" style="margin-top:8px;font-size:.72rem;color:var(--dim)"></div>
 </div>
 
@@ -1265,6 +1301,19 @@ function setAM(m){
   Q('TR').classList.toggle('on',m==='register');
   Q('AB').textContent=m==='login'?'Giriş Yap':'Kayıt Ol';
 }
+function showAuthSuccess(ico, title, sub, cb){
+  const ov=Q('AUTH_SUCCESS_OV');
+  Q('AUTH_SUCCESS_ICO').textContent=ico;
+  Q('AUTH_SUCCESS_TXT').textContent=title;
+  Q('AUTH_SUCCESS_SUB').textContent=sub;
+  ov.classList.add('show');
+  // ring'i yeniden tetikle
+  const ring=ov.querySelector('.auth-success-ring');
+  ring.style.animation='none'; void ring.offsetWidth; ring.style.animation='';
+  ov.querySelector('.auth-success-txt').style.animation='none'; void ov.querySelector('.auth-success-txt').offsetWidth; ov.querySelector('.auth-success-txt').style.animation='';
+  ov.querySelector('.auth-success-sub').style.animation='none'; void ov.querySelector('.auth-success-sub').offsetWidth; ov.querySelector('.auth-success-sub').style.animation='';
+  setTimeout(()=>{ ov.classList.remove('show'); if(cb) cb(); }, 1600);
+}
 function doAuth(){
   const u=Q('AU').value.trim(),p=Q('AP').value;
   if(!u||!p)return toast('Alanları doldur!',1);
@@ -1272,14 +1321,18 @@ function doAuth(){
   io2.emit(AM==='login'?'auth:login':'auth:register',{username:u,password:p,rememberMe},r=>{
     if(r.success){
       user=r.user;
-      // Token varsa localStorage'a kaydet (otomatik giriş için)
       if(r.token){
         try{ localStorage.setItem('azap_token', r.token); }catch{}
       }
       updateUserUI();
-      toast(AM==='login'?'Giriş başarılı!':'Hesap oluşturuldu!');
-      setTimeout(()=>{ show('S1'); setupDraggableButtons(); }, 300);
       updateRoleInfoBtn();
+      const isReg = AM==='register';
+      showAuthSuccess(
+        isReg ? '🎉' : '✓',
+        isReg ? 'Hesap Oluşturuldu!' : 'Giriş Başarılı',
+        'Hoş geldin, ' + user.username + '!',
+        ()=>{ show('S1'); setupDraggableButtons(); }
+      );
     }else toast(r.error,1);
   });
 }
@@ -2262,7 +2315,7 @@ function renderLobby(){
   sp.innerHTML=gs.spectators?.length?`<div class="lbl mt8">👁️ İzleyiciler</div>`+gs.spectators.map(s=>`<div class="pi" style="opacity:.5">${avHTML(s.avatar,'sm','👁️')}<span class="pi-name"><span>${s.name}</span></span></div>`).join(''):'';
   Q('SP2').style.display=io2.id===gs.leaderId?'block':'none';
   Q('BS').disabled=gs.players.length<4;
-  // Bahis paneli sadece login olmuş ve oyuncu olarak katılmış kişiye görünür
+  // Altın Havuzu paneli sadece login olmuş ve oyuncu olarak katılmış kişiye görünür
   const bp=Q('BET_PANEL');
   if(bp){
     const isPlayer = gs.players.some(p=>p.id===me);
