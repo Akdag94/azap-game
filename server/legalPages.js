@@ -4,7 +4,7 @@
 const SITE_NAME = 'AZAP';
 const SITE_URL  = 'https://azap.online';
 const OWNER     = 'Azad Akdağ';
-const EMAIL     = 'azdakdag1@gmail.com';   // gerçek e-posta ile değiştir
+const EMAIL     = 'destek@azap.online';   // gerçek e-posta ile değiştir
 const ADDRESS   = 'Türkiye';              // tam adres eklenirse buraya
 
 function legalHtml(title, body) {
