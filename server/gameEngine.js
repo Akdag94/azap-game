@@ -126,6 +126,86 @@ class GameEngine {
   }
   removePlayer(id) { this.players.delete(id); this.actionHistory.delete(id); }
   removeSpectator(id) { this.spectators.delete(id); }
+  // Aktif oyunda bağlantısı kopmuş oyuncuyu username ile bul, yeni socket ID ile güncelle
+  rejoinPlayer(newId, username) {
+    for (const [oldId, p] of this.players) {
+      if (p.username === username) {
+        if (oldId === newId) return { ok: true, alreadySame: true };
+        const data = { ...p, id: newId };
+        this.players.delete(oldId);
+        this.players.set(newId, data);
+        this.migratePlayerId(oldId, newId);
+        // leaderId güncelle
+        if (this.leaderId === oldId) this.leaderId = newId;
+        return { ok: true, player: data, oldId };
+      }
+    }
+    return { ok: false };
+  }
+  migratePlayerId(oldId, newId) {
+    const moveSet = (set) => {
+      if (set?.has(oldId)) {
+        set.delete(oldId);
+        set.add(newId);
+      }
+    };
+    const moveMapKey = (map, patchValue) => {
+      if (!map?.has(oldId)) return;
+      const val = map.get(oldId);
+      map.delete(oldId);
+      map.set(newId, patchValue ? patchValue(val) : val);
+    };
+    const replace = (v) => v === oldId ? newId : v;
+    const patchAction = (a) => a && typeof a === 'object' ? {
+      ...a,
+      pid: replace(a.pid),
+      targetId: replace(a.targetId),
+      killTargetId: replace(a.killTargetId),
+      abilityTargetId: replace(a.abilityTargetId),
+      target1Id: replace(a.target1Id),
+      target2Id: replace(a.target2Id)
+    } : a;
+
+    moveMapKey(this.actionHistory);
+    moveMapKey(this.nightActions, patchAction);
+    moveMapKey(this.hainKillVotesLive, replace);
+    moveMapKey(this.hainAbilityChoices, patchAction);
+    moveMapKey(this.presidentVotes, replace);
+    moveMapKey(this.votes, replace);
+    moveMapKey(this.voteTally);
+    moveMapKey(this.nightReports);
+    moveMapKey(this.mvpVotes, replace);
+    moveMapKey(this.cellatTarget, replace);
+    moveMapKey(this.koruyucuTargets, replace);
+    moveMapKey(this.locked, replace);
+    moveMapKey(this.silenced, replace);
+    moveMapKey(this.bombs, b => b && typeof b === 'object' ? { ...b, ownerId: replace(b.ownerId) } : b);
+    moveMapKey(this.imprisoned, replace);
+    moveMapKey(this.buzcuLeft);
+    moveMapKey(this.frozen);
+    moveMapKey(this.infected, info => info && typeof info === 'object' ? { ...info, byId: replace(info.byId) } : info);
+    moveMapKey(this.virusInactiveRounds);
+    moveMapKey(this.ambushTrap);
+    moveMapKey(this.hackedTarget, replace);
+    moveMapKey(this.steelArmor, replace);
+    moveMapKey(this.plagued, replace);
+    moveMapKey(this.yamyamAbilities);
+    moveMapKey(this.sabotageTargets, t => t && typeof t === 'object' ? { ...t, opponentId: replace(t.opponentId) } : t);
+
+    [
+      this.blocked, this.gaziUsed, this.savciUsed, this.serifUsed, this.serifPendingSuicide,
+      this.doktorSelfUsed, this.cellatWon, this.gardiyanUsed, this.engizitorUsed,
+      this.olumsuzUsed, this.sabotageVotes
+    ].forEach(moveSet);
+
+    this.deadThisNight = this.deadThisNight.map(replace);
+    this.roleSelectionOrder = this.roleSelectionOrder.map(replace);
+    moveMapKey(this.roleSelectionPicks);
+    moveMapKey(this.roleSelectionTimers);
+    this.sabotagePairs.forEach(pair => {
+      if (Array.isArray(pair.players)) pair.players = pair.players.map(replace);
+    });
+  }
   alive() { return [...this.players.values()].filter(p => p.isAlive); }
   rk(roleId) { return Object.keys(ROLES).find(k => ROLES[k].id === roleId); }
   ro(roleId) { const k = this.rk(roleId); return k ? ROLES[k] : null; }
@@ -654,6 +734,35 @@ class GameEngine {
     const acts = [...this.nightActions.values()];
     const rep = new Map();
     this.players.forEach((_, id) => rep.set(id, []));
+
+    // Gardiyan sokağa çıkma yasağı: bu gece gardiyan dışındaki tüm roller engellenir.
+    // Bu yüzden bilgi rolleri rapor alamaz, saldırılar işlemez, tek kullanımlık haklar harcanmaz.
+    acts.filter(a => a.role === 'gardiyan' && a.action === 'shield').forEach(a => {
+      if (this.gardiyanUsed.has(a.pid)) return;
+      const insane = this.isInsane(a.pid);
+      this.gardiyanUsed.add(a.pid);
+      if (insane) {
+        rep.get(a.pid)?.push({ i: '🛡️', t: 'Sokağa çıkma yasağı ilan ettin! Ama sahte...' });
+        this.hist(a.pid, 'Sokağa Çıkma Yasağı', '-', 'Sahte');
+        return;
+      }
+      this.gardiyanShield = true;
+      this.players.forEach((p, pid) => {
+        if (!p.isAlive) return;
+        this.blocked.add(pid);
+        p.isShielded = true;
+        rep.get(pid)?.push({ i: '🛡️', t: 'Bu gece SOKAĞA ÇIKMA YASAĞI vardı! Hiç kimse rol kullanamadı.' });
+      });
+      this.hist(a.pid, 'Sokağa Çıkma Yasağı', '-', 'Başarılı');
+      this.log(`🛡️ Gardiyan ${this.pn(a.pid)} sokağa çıkma yasağı ilan etti.`);
+    });
+
+    if (this.gardiyanShield) {
+      this.players.forEach(p => { p.isImmortal = false; });
+      this.nightReports = rep;
+      this.phase = PHASES.MORNING_REPORT;
+      return rep;
+    }
 
     // 1. POLİS + ÇİLİNGİR
     acts.filter(a => a.role === 'polis' && a.targetId).forEach(a => {

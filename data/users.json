@@ -1,4 +1,67 @@
 {
+  "123": {
+    "username": "123",
+    "hash": "$2a$08$BqB1vfU2E4jiF6rpldobeeZaQZcg3nnhxIHhnPMtg2SfF7FcLM0N2",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778549909993,
+    "premium": {
+      "active": false,
+      "expiresAt": 0,
+      "since": null
+    },
+    "totalDonated": 0,
+    "payments": []
+  },
+  "1234": {
+    "username": "1234",
+    "hash": "$2a$08$iMQXtWOrjSR/.YuBzwV4PuPM4EpShtjrsox4zU3/1ikzOgZZ91/u6",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778549929430,
+    "premium": {
+      "active": false,
+      "expiresAt": 0,
+      "since": null
+    },
+    "totalDonated": 0,
+    "payments": []
+  },
+  "12345": {
+    "username": "12345",
+    "hash": "$2a$08$qZKIosROvWcAiMue9TZ8YeXY/xT4UE1yJbSFvVO.JeuR2y.TnzaO.",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778549951855,
+    "premium": {
+      "active": false,
+      "expiresAt": 0,
+      "since": null
+    },
+    "totalDonated": 0,
+    "payments": []
+  },
   "azadakdag": {
     "username": "azadakdag",
     "hash": "$2a$08$r9bmPvIfQeSCuqd7sv/zXOvGPtdiqdpQWS70suE2X5dWHXdxnofp.",
@@ -9,7 +72,7 @@
       "lost": 0,
       "mvp": 0
     },
-    "coins": 100,
+    "coins": 105,
     "inventory": [],
     "created": 1778433699703,
     "isAdmin": true,
@@ -22,21 +85,119 @@
     "payments": [],
     "tokens": [
       {
-        "token": "6213bf7b190ac12e830d2008e9e892c8a1e99248b18ae60c",
-        "created": 1778433951176
+        "token": "979036b7b15194f9e7ec6b1304e31d4799f38dd17c45b670",
+        "created": 1778548132288
       },
       {
-        "token": "6436558b303726d2d16983cbc65fd65b72b1450bee518958",
-        "created": 1778442310168
+        "token": "089b6fa2147c5ce20a949dd2cab30a74711a5b4e44370f34",
+        "created": 1778549082761
       },
       {
-        "token": "edb7049330cadd7ae4b33b377e1c875e5fbcc78c5557e6fc",
-        "created": 1778442526022
+        "token": "31aabe9d643b4ee0c7c7a9a35e29b88361e4cb324ba04a50",
+        "created": 1778549616999
       },
       {
-        "token": "3403e85d4d72707a3155a0d9c9ac9a0e28c7cca926675dff",
-        "created": 1778495547039
+        "token": "aa9fdad89c07d0e576a850c8c312ced7c19425466a667cc2",
+        "created": 1778552276140
       }
     ]
+  },
+  "deneme": {
+    "username": "deneme",
+    "hash": "$2a$08$E3IZ63xHmRouSeI.Yn8FluynOpDjdYUW6yEFfgZPqR9UM26PNW5uO",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778546281908
+  },
+  "deneme12": {
+    "username": "deneme12",
+    "hash": "$2a$08$JoH6rbrusRTb7pY0gZyo/uzWXn5ZjmkzEjv/FDvFtgzpY5DWyORg2",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778548574974
+  },
+  "deneme1234": {
+    "username": "deneme1234",
+    "hash": "$2a$08$WMUl2pei/cxs1blGw5.8f.Cdb8Bj/ZZlsJ6kDaXjPHyZY.pt29dYq",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778548592070
+  },
+  "deneme12345": {
+    "username": "deneme12345",
+    "hash": "$2a$08$I3nfQGDlqlmBK6pU0iGlTuJpcXyZM8qMYJHglARf9H7DFVBrATQdm",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778548606742
+  },
+  "azadakdagdeneme1": {
+    "username": "azadakdagdeneme1",
+    "hash": "$2a$08$XoIA6lquaelaRoJoBeRYaOCzWxCGZmp9GPBwsk5nC55ybxcUNuhaO",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778549497360
+  },
+  "azzadiill": {
+    "username": "azzadiill",
+    "hash": "$2a$08$djbUVvG.gp3K806K1aDWqe4mIWX6/ZHg4/P6XObiZq4OON0DIBENO",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778549512692
+  },
+  "azadoo": {
+    "username": "azadoo",
+    "hash": "$2a$08$CD.6lIDhf94HVFGuaUe.xORzrLAC5t4YfVD5.u4RZDpgkrIMBH8N2",
+    "avatar": null,
+    "stats": {
+      "played": 0,
+      "won": 0,
+      "lost": 0,
+      "mvp": 0
+    },
+    "coins": 100,
+    "inventory": [],
+    "created": 1778549522952
   }
 }

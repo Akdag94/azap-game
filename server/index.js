@@ -97,6 +97,10 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
     }
   }
 }));
+app.use('/vendor/three', express.static(path.join(__dirname, '..', 'node_modules', 'three'), {
+  dotfiles: 'deny',
+  setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=86400')
+}));
 app.use(express.json({ limit: '1mb' }));
 
 // ── ÖDEME PAKETLERİ KATALOĞU ──
@@ -1056,7 +1060,19 @@ function clearTimer(rc) {
   if (_emitTimers.has(rc)) { clearTimeout(_emitTimers.get(rc)); _emitTimers.delete(rc); }
   _emitPending.delete(rc);
 }
+function eligibleVotingCount(g) {
+  return g.alive().filter(p => !g.frozen.has(p.id) && io.sockets.sockets.has(p.id)).length;
+}
 
+function maybeResolveVoteIfEveryoneOnlineVoted(rc, g) {
+  if (!g || g.phase !== PHASES.VOTING) return;
+  const eligibleIds = g.alive().filter(p => !g.frozen.has(p.id) && io.sockets.sockets.has(p.id)).map(p => p.id);
+  const votedEligible = eligibleIds.filter(id => g.votes.has(id)).length;
+  if (eligibleIds.length > 0 && votedEligible >= eligibleIds.length) {
+    clearTimer(rc);
+    resolveVote(rc);
+  }
+}
 // Faz akışı
 function afterStart(rc) {
   const g = rooms.get(rc); if (!g) return;
@@ -1570,6 +1586,55 @@ io.on('connection', (socket) => {
     cb({ ok: true, code, spectator: true }); emit(code);
   });
 
+  // Son odaya geri dönme kontrolü
+  socket.on('room:checkRejoin', ({ code } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ ok: false });
+    if (typeof code !== 'string' || code.length !== 4) return cb?.({ ok: false });
+    const g = rooms.get(code.toUpperCase());
+    if (!g) return cb?.({ ok: false, reason: 'expired' });
+    // Lobide veya aktif oyunda — oyun game_over/post_game sonrası hâlâ varsa da kabul et
+    const isFinished = g.phase === PHASES.GAME_OVER;
+    if (isFinished) return cb?.({ ok: false, reason: 'finished' });
+    // Aktif oyunda bu kullanıcı daha önce bu odadaydı mı?
+    const isActive = g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME;
+    if (isActive) {
+      const wasPlayer = [...g.players.values()].some(p => p.username === u);
+      if (!wasPlayer) return cb?.({ ok: false, reason: 'not_player' });
+    }
+    cb?.({ ok: true, code: code.toUpperCase(), phase: g.phase, canJoin: true, isActive });
+  });
+
+  // Odaya yeniden katıl
+  socket.on('room:rejoin', ({ code, playerName } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    if (typeof code !== 'string' || code.length !== 4) return cb?.({ ok: false, err: 'Kod geçersiz' });
+    const g = rooms.get(code.toUpperCase());
+    if (!g) return cb?.({ ok: false, err: 'Oda artık yok!' });
+    const rc = code.toUpperCase();
+    const isActive = g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME;
+    if (isActive) {
+      // Aktif oyun: eski kaydı yeni socket ID ile güncelle
+      const res = g.rejoinPlayer(socket.id, u);
+      if (!res.ok) return cb?.({ ok: false, err: 'Bu odada kayıtlı oyuncu bulunamadı.' });
+      prooms.set(socket.id, rc); socket.join(rc);
+      cb?.({ ok: true, code: rc, active: true });
+      // Yeni sokete mevcut state + priv gönder
+      emit(rc);
+      const priv = g.privateState(socket.id);
+      if (priv) socket.emit('priv', priv);
+    } else {
+      // Lobi / post_game: normal addPlayer
+      const cleanName = sanitizePlayerName(playerName);
+      if (!cleanName) return cb?.({ ok: false, err: 'İsim gerekli' });
+      const stats = Accounts.getStats(u);
+      if (!g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin)) return cb?.({ ok: false, err: 'Oda dolu!' });
+      prooms.set(socket.id, rc); socket.join(rc);
+      cb?.({ ok: true, code: rc, active: false }); emit(rc);
+    }
+  });
+
   socket.on('room:leave', () => {
     const rc = prooms.get(socket.id);
     if (rc) {
@@ -1883,12 +1948,7 @@ io.on('connection', (socket) => {
     if (ok) {
       emitVoteTally(rc);
       if (g.phase === PHASES.VOTING) {
-        // Oylayabilecek (canlı VE karantinada/donmuş olmayan) oyuncu sayısı
-        const eligibleVoters = g.alive().filter(p => !g.frozen.has(p.id)).length;
-        if (g.votes.size >= eligibleVoters) {
-          clearTimer(rc);
-          resolveVote(rc);
-        }
+        maybeResolveVoteIfEveryoneOnlineVoted(rc, g);
       }
     }
   });
@@ -2239,6 +2299,8 @@ io.on('connection', (socket) => {
             if (g.leaderId === socket.id && g.players.size > 0) g.leaderId = [...g.players.keys()][0];
             emit(rc);
           }
+        } else {
+          maybeResolveVoteIfEveryoneOnlineVoted(rc, g);
         }
       }
       prooms.delete(socket.id);
