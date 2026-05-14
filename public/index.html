@@ -1210,8 +1210,7 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="srow"><span>🗳️ Oylama</span><input type="range" min="30" max="240" value="90" step="10" id="SV" oninput="uSet()"><span class="sval" id="VV">90s</span></div>
 
 <div class="st mt8">Takım Sayıları</div>
-<div class="srow"><label style="display:flex;gap:5px;align-items:center;font-size:.78rem;cursor:pointer"><input type="checkbox" id="MC" onchange="uSet()"> Manuel ayarla</label></div>
-<div id="MCA" style="display:none">
+<div id="MCA">
 <div class="srow"><span>🧛 Hain</span><input type="range" min="1" max="4" value="1" id="HC2" oninput="uSet()"><span class="sval" id="VH">1</span></div>
 <div class="srow"><span>⚖️ Tarafsız</span><input type="range" min="0" max="4" value="0" id="TC2" oninput="uSet()"><span class="sval" id="VT">0</span></div>
 </div>
@@ -1228,7 +1227,7 @@ Hoş geldin, <strong id="WN"></strong>
 <label style="font-size:.78rem;cursor:pointer"><input type="radio" name="rsm" value="pick" onchange="uSet()"> Oyuncular seçsin</label>
 </div>
 
-<div class="st mt8">Roller</div>
+<div class="st mt8" style="display:flex;align-items:center;justify-content:space-between">Roller<label style="font-size:.68rem;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:400"><input type="checkbox" id="DEMO_TOGGLE" onchange="demoRolesEnabled=this.checked;buildRG();uSet()"> Demo roller</label></div>
 <div class="rgrid" id="RG"></div>
 
 <button class="b b1 bw mt12" id="BS" onclick="startGame()">Oyunu Başlat</button>
@@ -2527,8 +2526,7 @@ function uSet(){
   Q('VI').textContent='%'+ins;Q('VN').textContent=ni+'s';
   Q('VD').textContent=di>=60?Math.floor(di/60)+'dk'+(di%60?di%60+'s':''):di+'s';
   Q('VV').textContent=vo+'s';
-  const mc=Q('MC').checked;Q('MCA').style.display=mc?'block':'none';
-  if(mc){Q('VH').textContent=Q('HC2').value;Q('VT').textContent=Q('TC2').value;}
+  Q('VH').textContent=Q('HC2').value;Q('VT').textContent=Q('TC2').value;
   const hkm=document.querySelector('input[name=hkm]:checked')?.value||'multi';
   const rsm=document.querySelector('input[name=rsm]:checked')?.value||'auto';
   const er=[...document.querySelectorAll('.rchip.on')].map(c=>c.dataset.key);
@@ -2539,7 +2537,7 @@ function uSet(){
       enabledRoles:er,insanityRate:+ins,
       config:{nightDuration:+ni,discussionDuration:+di,votingDuration:+vo},
       hainKillMode:hkm,roleSelectionMode:rsm,
-      manualCounts:mc,hainCount:mc?+Q('HC2').value:undefined,tarafsizCount:mc?+Q('TC2').value:undefined
+      manualCounts:true,hainCount:+Q('HC2').value,tarafsizCount:+Q('TC2').value
     });
   },200);
 }
