@@ -1084,6 +1084,11 @@ function maybeResolveVoteIfEveryoneOnlineVoted(rc, g) {
   const eligibleIds = g.alive().filter(p => !g.frozen.has(p.id) && io.sockets.sockets.has(p.id)).map(p => p.id);
   const votedEligible = eligibleIds.filter(id => g.votes.has(id)).length;
   if (eligibleIds.length > 0 && votedEligible >= eligibleIds.length) {
+    if (g.sabotagePending && !g.hasActiveSabotage?.()) {
+      triggerPendingSabotageNow(rc);
+      return;
+    }
+    if (g.hasActiveSabotage?.()) return;
     clearTimer(rc);
     resolveVote(rc);
   }
@@ -1150,27 +1155,28 @@ function toDay(rc) {
   emit(rc);
   startTimer(rc, g.config.DISCUSSION_DURATION, () => toVote(rc));
 
-  // ── HAIN SABOTAJI (pending varsa SABAH OLUNCA DİREKT başlat) ──
-  // Frontend her hedef için kendi rastgele delay'ini uygulayacak
+  // ── HAIN/VAMPİR SABOTAJI ──
+  // Gündüz veya oylama boyunca rastgele zamanda başlayabilir.
   if (g.sabotagePending) {
+    const triggerAt = crypto.randomInt(0, (g.config.DISCUSSION_DURATION + g.config.VOTING_DURATION) * 1000 + 1);
     setTimeout(() => {
       if (!rooms.has(rc)) return;
       if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
       if (g.sabotageActive) return;
-      const ok = g.triggerSabotage(false);
+      const ok = g.triggerSabotage(!!g.sabotagePendingFromSystem);
       if (ok) {
         io.to(rc).emit('sabotage:start', {
           targetIds: [...g.sabotageTargets.keys()],
-          fromSystem: false
+          fromSystem: !!g.sabotagePendingFromSystem
         });
+        watchSabotage(rc);
         emit(rc);
       }
-    }, 500); // 0.5sn — neredeyse anında başlasın
+    }, triggerAt);
   } else {
     // ── SİSTEM RANDOM SABOTAJI (~%20 ihtimal, hain sabotajı yoksa) ──
     if (crypto.randomInt(0, 100) < 20) {
-      // Sistem sabotajı için biraz daha bekleme makul (anında olmasın, oyun akışı için)
-      const triggerAt = crypto.randomInt(5000, 35001); // 5-35sn arası rastgele
+      const triggerAt = crypto.randomInt(0, (g.config.DISCUSSION_DURATION + g.config.VOTING_DURATION) * 1000 + 1);
       setTimeout(() => {
         if (!rooms.has(rc)) return;
         if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
@@ -1181,25 +1187,48 @@ function toDay(rc) {
             targetIds: [...g.sabotageTargets.keys()],
             fromSystem: true
           });
+          watchSabotage(rc);
           emit(rc);
         }
       }, triggerAt);
     }
   }
 }
+
+function triggerPendingSabotageNow(rc) {
+  const g = rooms.get(rc); if (!g) return false;
+  if (!g.sabotagePending || g.hasActiveSabotage?.()) return false;
+  if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return false;
+  const ok = g.triggerSabotage(!!g.sabotagePendingFromSystem, true);
+  if (ok) {
+    io.to(rc).emit('sabotage:start', {
+      targetIds: [...g.sabotageTargets.keys()],
+      fromSystem: !!g.sabotagePendingFromSystem,
+      forced: true
+    });
+    watchSabotage(rc);
+    emit(rc);
+  }
+  return ok;
+}
+
 function toVote(rc) {
   const g = rooms.get(rc); if (!g) return;
-  // Sabotaj aktifse oylama başlamaz, 5 saniyede bir kontrol et
-  if (g.sabotageActive) {
-    setTimeout(() => toVote(rc), 5000);
-    return;
-  }
   g.startVoting();
   emit(rc);
   startTimer(rc, g.config.VOTING_DURATION, () => resolveVote(rc));
 }
 function resolveVote(rc) {
   const g = rooms.get(rc); if (!g) return;
+  if (g.sabotagePending && !g.hasActiveSabotage?.()) {
+    triggerPendingSabotageNow(rc);
+  }
+  if (g.hasActiveSabotage?.()) {
+    clearTimer(rc);
+    emit(rc);
+    setTimeout(() => resolveVote(rc), 1000);
+    return;
+  }
   const res = g.resolveVoting();
   io.to(rc).emit('voteResult', res); emit(rc);
   let wc = g.checkWin();
@@ -1224,8 +1253,23 @@ function resolveVote(rc) {
   if (wc.over) {
     setTimeout(() => endGame(rc, wc, res), g.config.RESULT_DURATION * 1000);
   } else {
-    startTimer(rc, g.config.RESULT_DURATION, () => { g.nextRound(); emit(rc); startTimer(rc, g.config.NIGHT_DURATION, () => resolveNight(rc)); });
+    startTimer(rc, g.config.RESULT_DURATION, () => toNextNightAfterVote(rc));
   }
+}
+
+function toNextNightAfterVote(rc) {
+  const g = rooms.get(rc); if (!g) return;
+  if (g.sabotagePending && !g.hasActiveSabotage?.()) {
+    triggerPendingSabotageNow(rc);
+  }
+  if (g.hasActiveSabotage?.()) {
+    emit(rc);
+    setTimeout(() => toNextNightAfterVote(rc), 1000);
+    return;
+  }
+  g.nextRound();
+  emit(rc);
+  startTimer(rc, g.config.NIGHT_DURATION, () => resolveNight(rc));
 }
 function endGame(rc, wc, res) {
   const g = rooms.get(rc); if (!g) return;
@@ -1373,6 +1417,7 @@ function resolveMvp(rc) {
 // Emit throttling - aynı odaya kısa süre içinde birden fazla emit gelirse birleştir
 const _emitTimers = new Map(); // rc -> timeout id
 const _emitPending = new Set(); // rc set
+const sabotageWatchers = new Map(); // rc -> interval id
 
 function emit(rc) {
   // Aynı oda için 50ms içinde tekrarlanan emit'leri tek bir gerçek emit'e indir
@@ -1388,6 +1433,25 @@ function emit(rc) {
       _emitImmediate(rc);
     }
   }, 50));
+}
+
+function watchSabotage(rc) {
+  if (sabotageWatchers.has(rc)) return;
+  const int = setInterval(() => {
+    const g = rooms.get(rc);
+    if (!g) {
+      clearInterval(int);
+      sabotageWatchers.delete(rc);
+      return;
+    }
+    emit(rc);
+    if (!g.hasActiveSabotage?.()) {
+      clearInterval(int);
+      sabotageWatchers.delete(rc);
+      emit(rc);
+    }
+  }, 1000);
+  sabotageWatchers.set(rc, int);
 }
 
 function _emitImmediate(rc) {
@@ -1919,6 +1983,13 @@ io.on('connection', (socket) => {
         });
       });
     }
+  });
+
+  socket.on('sabotage:begin', (_, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc); if (!g) return;
+    const ok = g.recordSabotageClick(socket.id);
+    cb?.({ ok });
+    if (ok) emit(rc);
   });
 
   // Sabotaj mini oyun sonucu

@@ -80,9 +80,7 @@ class GameEngine {
     this.gardiyanUsed = new Set();
     // Engizitör (Masum, henüz IMPLEMENTED:false)
     this.engizitorUsed = new Set();
-    // Ölümsüz (Masum, henüz IMPLEMENTED:false)
-    this.olumsuzUsed = new Set();
-    this.olumsuzPending = new Map();
+    // Ölümsüz kaldırıldı
     // Buzcu (Masum): 2 hak, karantinalar
     this.buzcuLeft = new Map();
     this.frozen = new Map();           // pid -> 1 (sonraki gündüz oylama dışı)
@@ -104,8 +102,11 @@ class GameEngine {
     this.sabotagePendingFromSystem = false; // hain değil, sistem mi tetikliyor
     this.sabotageActive = false;    // şu an mini oyun çalışıyor mu
     this.sabotageStartedAt = 0;     // ne zaman başladı (timer ertelemesi için)
+    this.sabotagePlayers = new Map(); // pid -> { clicked, isDead }
+    this.sabotageDeaths = new Set();
     this.sabotageTargets = new Map(); // pid -> { gameType, opponentType, opponentId, completed, won }
     this.sabotagePairs = new Map(); // gameId -> { players: [pid1, pid2], gameType, ... } (PvP eşleşmeler)
+    this.sabotageTimers = new Map();
   }
 
   addPlayer(id, name, username, wins, avatar, mvp, isAdmin) {
@@ -195,7 +196,7 @@ class GameEngine {
     [
       this.blocked, this.gaziUsed, this.savciUsed, this.serifUsed, this.serifPendingSuicide,
       this.doktorSelfUsed, this.cellatWon, this.gardiyanUsed, this.engizitorUsed,
-      this.olumsuzUsed, this.sabotageVotes
+      this.sabotageVotes
     ].forEach(moveSet);
 
     this.deadThisNight = this.deadThisNight.map(replace);
@@ -631,20 +632,6 @@ class GameEngine {
       }
     });
     this.serifPendingSuicide.clear();
-
-    // Ölümsüz dirilişi: önceki gece "ölü görünmüş" olanlar şimdi gerçekten geri döner
-    this.olumsuzPending.forEach((revRound, pid) => {
-      if (revRound === this.round) {
-        const p = this.players.get(pid);
-        if (p) {
-          p.isAlive = true;
-          this.log(`🪦 ${p.name} (Ölümsüz) geri döndü!`);
-          // Tüm oyunculara bildirim için report
-          // (Sabaha rapor gidecek)
-        }
-        this.olumsuzPending.delete(pid);
-      }
-    });
 
     this.sabotageVotes.clear();
     this.log(`🌙 Gece ${this.round}`);
@@ -1440,20 +1427,6 @@ class GameEngine {
       });
     });
 
-    // ── ÖLÜMSÜZ ──
-    // Ölü ama henüz canlanmamış olanlar için: bu gece öldüyse, ertesi gece dönsün
-    this.deadThisNight.forEach(did => {
-      const p = this.players.get(did);
-      if (p?.role === 'olumsuz' && !this.olumsuzUsed.has(did)) {
-        this.olumsuzUsed.add(did);
-        // Ertesi gece dirilecek (round + 1)
-        this.olumsuzPending.set(did, this.round + 1);
-        // Ölmüş gibi görünür ama gerçekte dirilecek
-        // (oyuna sabaha "ölü" olarak duyurulur, dödünce otomatik canlanır)
-        rep.get(did)?.push({ i: '🪦', t: 'Öldün... ama Ölümsüzlüğün seni geri getirecek!' });
-      }
-    });
-
     // ── HACKER FİLTRESİ ──
     // Hacker hedefi olan ve bilgi toplayan rolün raporlarını sil
     // Bilgi toplayan roller: gazeteci, savcı, psikolog, dedikoducu, ajan, takipçi, polis (bilgi alır), köstebek, kostebek
@@ -1601,18 +1574,19 @@ class GameEngine {
   // resolveNight sonunda: HERHANGİ bir hain oy verdiyse pending olur
   _checkSabotageActivation() {
     const aliveHain = this.alive().filter(p => p.actualTeam === TEAMS.HAIN);
-    if (aliveHain.length === 0 || this.sabotageVotes.size === 0) {
+    const vampirVar = aliveHain.some(p => p.role === 'vampir');
+    if (aliveHain.length === 0 || (!vampirVar && this.sabotageVotes.size === 0)) {
       this.sabotagePending = false;
       return false;
     }
-    // 1 hainin oyu yeter
     this.sabotagePending = true;
+    this.sabotagePendingFromSystem = vampirVar && this.sabotageVotes.size === 0;
     return true;
   }
 
   // Gündüzde rastgele bir anda çağrılır (index.js setTimeout)
   // fromSystem: true ise oyun kendiliğinden başlatır (hainler de hedef olabilir)
-  triggerSabotage(fromSystem = false) {
+  triggerSabotage(fromSystem = false, forceImmediate = false) {
     if (!this.sabotagePending && !fromSystem) return false;
     if (this.phase !== PHASES.DAY_DISCUSSION && this.phase !== PHASES.VOTING) return false;
     if (this.sabotageActive) return false; // çakışma engellendi
@@ -1642,6 +1616,8 @@ class GameEngine {
     this.sabotagePendingFromSystem = fromSystem;
     this.sabotageStartedAt = Date.now();
     this.sabotageTargets.clear();
+    this.sabotagePlayers.clear();
+    this._clearSabotageTimers();
     this.sabotagePairs.clear();
 
     // Eşleşme: HER hedef AI'a karşı oynar (PvP iptal — kullanıcı isteği)
@@ -1653,14 +1629,74 @@ class GameEngine {
         gameType: gType,
         opponentType: 'ai',
         fromSystem,
+        promptAt: Date.now() + (forceImmediate ? 0 : crypto.randomInt(0, 15001)),
+        started: false,
+        startedAt: null,
+        deadlineAt: null,
+        status: 'scheduled',
         completed: false,
         won: false
       });
     }
 
+    for (const [pid, data] of this.sabotageTargets) {
+      this.sabotagePlayers.set(pid, { clicked: false, isDead: false });
+      const promptDelay = Math.max(0, data.promptAt - Date.now());
+      const promptTimer = setTimeout(() => {
+        const t = this.sabotageTargets.get(pid);
+        if (!this.sabotageActive || !t || t.completed || t.started) return;
+        t.status = 'prompted';
+        t.deadlineAt = Date.now() + 10000;
+        const deathTimer = setTimeout(() => this._resolveSabotageNoStart(pid), 10000);
+        this.sabotageTimers.set(`${pid}:death`, deathTimer);
+      }, promptDelay);
+      this.sabotageTimers.set(`${pid}:prompt`, promptTimer);
+    }
+
     const targetNames = [...this.sabotageTargets.keys()].map(id => this.pn(id));
     this.log(`🚨 ${fromSystem ? 'SİSTEM' : 'HAIN'} SABOTAJI! ${targetNames.join(', ')} mini oyun çözmeli.`);
     return true;
+  }
+
+  _resolveSabotageNoStart(pid) {
+    if (!this.sabotageActive) return;
+    const t = this.sabotageTargets.get(pid);
+    const data = this.sabotagePlayers.get(pid);
+    if (!t || t.completed || t.started || data?.clicked) return;
+    const p = this.players.get(pid);
+    if (p?.isAlive && p.actualTeam !== TEAMS.HAIN) {
+      p.isAlive = false;
+      this.sabotageDeaths.add(pid);
+      this.deadThisNight.push(pid);
+      this.log(`💀 ${p.name} gündüz vakti öldü.`);
+    }
+    t.completed = true;
+    t.won = false;
+    t.status = 'timeout';
+    this._maybeEndSabotage();
+  }
+
+  recordSabotageClick(pid) {
+    if (!this.sabotageActive) return false;
+    const target = this.sabotageTargets.get(pid);
+    if (!target || target.completed) return false;
+    const data = this.sabotagePlayers.get(pid);
+    if (!data) return false;
+    data.clicked = true;
+    target.started = true;
+    target.startedAt = Date.now();
+    target.status = 'started';
+    const deathTimer = this.sabotageTimers.get(`${pid}:death`);
+    if (deathTimer) {
+      clearTimeout(deathTimer);
+      this.sabotageTimers.delete(`${pid}:death`);
+    }
+    return true;
+  }
+
+  _clearSabotageTimers() {
+    this.sabotageTimers?.forEach(t => clearTimeout(t));
+    this.sabotageTimers?.clear();
   }
 
   _initPvPGameState(gameType) {
@@ -1682,6 +1718,7 @@ class GameEngine {
     if (target.opponentType !== 'ai') return false; // AI moduysa sadece direkt kaydedilir
     target.completed = true;
     target.won = won;
+    target.status = 'completed';
     this._maybeEndSabotage();
     return true;
   }
@@ -1789,12 +1826,16 @@ class GameEngine {
   }
 
   _maybeEndSabotage() {
-    // Tüm hedefler tamamlandı mı?
     const allDone = [...this.sabotageTargets.values()].every(t => t.completed);
     if (allDone) {
       this.sabotageActive = false;
+      this._clearSabotageTimers();
       this.log(`🚨 Sabotaj tamamlandı. ${[...this.sabotageTargets.values()].filter(t => t.won).length} oyuncu kazandı.`);
     }
+  }
+
+  hasActiveSabotage() {
+    return this.sabotageActive && [...this.sabotageTargets.values()].some(t => !t.completed);
   }
 
   // Hain "sahte" oyun: coin yok, sadece eğlence (dummy state, no team game)
@@ -1854,6 +1895,11 @@ class GameEngine {
     if (this.votes.has(vid)) return false;
     if (tid === 'skip' || tid === null) {
       this.votes.set(vid, 'skip');
+      // Muhtar skip oyu da 2 oy sayılsın
+      const w = this.getVoteWeight(vid);
+      if (w !== 1) {
+        this.voteTally.set('__skip__', (this.voteTally.get('__skip__') || 0) + (w - 1));
+      }
       return true;
     }
     const t = this.players.get(tid);
@@ -1876,10 +1922,16 @@ class GameEngine {
   getVoteTally() {
     const r = {};
     this.voteTally.forEach((c, pid) => { if (c !== 0) r[pid] = c; });
-    // Skip oy sayısı
+    // Skip oy sayısı (Muhtar'ın 2 oy sayılması dahil)
     let skipCount = 0;
-    this.votes.forEach(tid => { if (tid === 'skip') skipCount++; });
-    if (skipCount > 0) r['__skip__'] = skipCount;
+    let skipWeight = 0;
+    this.votes.forEach((tid, voterId) => { 
+      if (tid === 'skip') {
+        skipCount++;
+        skipWeight += this.getVoteWeight(voterId);
+      }
+    });
+    if (skipCount > 0) r['__skip__'] = skipWeight;
     return r;
   }
 
@@ -1914,6 +1966,7 @@ class GameEngine {
     }
     else if (elim) {
       elim.isAlive = false;
+      this.deadThisNight.push(elim.id); // Gündüz ölenleri de ekle (sabah raporunda gösterilmek için)
       result.eliminated = { id: elim.id, name: elim.name };
       result.message = `${elim.name} mahalle dışına itildi!`;
       if (elim.role === 'dodo') result.dodoWins = true;
@@ -2053,8 +2106,6 @@ class GameEngine {
     this.gardiyanShield = false;
     this.gardiyanUsed.clear();
     this.engizitorUsed.clear();
-    this.olumsuzUsed.clear();
-    this.olumsuzPending.clear();
     this.buzcuLeft.clear();
     this.frozen.clear();
     this.infected.clear();
@@ -2067,8 +2118,11 @@ class GameEngine {
     this.sabotagePending = false;
     this.sabotageActive = false;
     this.sabotageStartedAt = 0;
+    this.sabotagePlayers.clear();
+    this.sabotageDeaths.clear();
     this.sabotageTargets.clear();
     this.sabotagePairs.clear();
+    this._clearSabotageTimers();
     this.presidentId = null;
     this.presidentVotes.clear();
     this.roleSelectionPicks.clear();
@@ -2248,6 +2302,10 @@ class GameEngine {
               gameType: t.gameType,
               opponentType: t.opponentType,
               fromSystem: !!t.fromSystem,
+              promptAt: t.promptAt || null,
+              deadlineAt: t.deadlineAt || null,
+              started: !!t.started,
+              status: t.status || 'scheduled',
               completed: t.completed,
               won: t.won
             };

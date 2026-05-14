@@ -463,6 +463,16 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 .role-guide-h .nm{font-family:'Cinzel Decorative',serif;font-size:.92rem;font-weight:700}
 .role-guide-tag{font-size:.58rem;padding:1px 6px;border-radius:10px;letter-spacing:1px;text-transform:uppercase}
 .role-guide-d{color:var(--dim);font-size:.82rem;line-height:1.4}
+.guide-hero{padding:14px;border:1px solid rgba(201,169,110,.24);border-radius:10px;background:linear-gradient(145deg,rgba(201,169,110,.10),rgba(139,0,0,.08));margin-bottom:10px}
+.guide-hero h3{font-family:'Cinzel Decorative',serif;color:var(--hi);font-size:1.05rem;letter-spacing:2px;margin-bottom:6px}
+.guide-hero p,.guide-card p,.guide-card li{color:var(--dim);font-size:.84rem;line-height:1.55}
+.guide-card{padding:12px;background:rgba(255,255,255,.035);border:1px solid var(--brd);border-radius:8px;margin-bottom:9px}
+.guide-card h3{font-family:'Cinzel Decorative',serif;color:var(--txt);font-size:.94rem;letter-spacing:1.5px;margin-bottom:7px}
+.guide-card ul,.guide-card ol{padding-left:18px;margin:6px 0}
+.guide-card li{margin-bottom:5px}
+.guide-link{color:var(--hi);text-decoration:none;border-bottom:1px solid rgba(201,169,110,.35)}
+.guide-role-full{margin-top:5px;color:var(--dim);font-size:.78rem;line-height:1.5}
+.guide-note{padding:9px;border-radius:7px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.22);color:#d9a19a;font-size:.8rem;line-height:1.5;margin-top:7px}
 
 /* Game over */
 .goc{text-align:center;padding:22px 14px;background:var(--bg3);border-radius:10px;border:1px solid var(--brd);margin:10px 0}
@@ -685,7 +695,7 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 
 <!-- Modals -->
 <div class="mdl-bg" id="MDL_GUIDE"><div class="mdl">
-<div class="mdl-h"><h2>📜 Roller Rehberi</h2><button class="mdl-cl" onclick="closeModal('MDL_GUIDE')">✕</button></div>
+<div class="mdl-h"><h2>📜 AZAP Rehberi</h2><button class="mdl-cl" onclick="closeModal('MDL_GUIDE')">✕</button></div>
 <div id="GUIDE_CONTENT"></div>
 </div></div>
 
@@ -1118,7 +1128,7 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
   </div>
   <button class="auth-submit" id="AB" onclick="doAuth()">Giriş Yap</button>
   <div class="auth-divider">veya</div>
-  <button class="auth-guide-btn" onclick="openModal('MDL_GUIDE');renderGuide()">📜 Roller Rehberi</button>
+  <button class="auth-guide-btn" onclick="openModal('MDL_GUIDE');renderGuide()">📜 AZAP Rehberi</button>
 </div>
 </div>
 
@@ -1156,7 +1166,7 @@ Hoş geldin, <strong id="WN"></strong>
 </div>
 <div class="lg-btn-row" style="margin-top:0">
   <button class="lg-btn" onclick="openModal('MDL_GUIDE');renderGuide()">
-    <span class="lg-btn-icon">📜</span> Rehber
+    <span class="lg-btn-icon">📜</span> AZAP Rehberi
   </button>
   <button class="lg-btn" style="border-color:rgba(192,57,43,.3);color:#e8a0a0" onclick="doLogout()">
     <span class="lg-btn-icon">🚪</span> Çıkış
@@ -1618,8 +1628,6 @@ const RDEF={
     full:'Oyun boyunca 1 kez "Sokağa Çıkma Yasağı" ilan edersin. O gece HİÇBİR ölüm gerçekleşemez — hain saldırısı, seri katil, bomba bile etkisiz. Ertesi sabah herkes yasağın olduğunu öğrenir. Kritik gecede masumlara büyük avantaj.'},
   ENGIZITOR:{e:'⚖️',n:'Engizitör',t:'masum',d:'Gündüz infaz hakkı (oyun boyunca 1 kez).',
     full:'Tartışma fazında butona basıp ANINDA birini infaz edersin (oylama yapılmaz). Hain veya tarafsız ise hedef ölür. Masum ise SEN ölürsün. Kullanmadan önce çok emin olmalısın. Tartışma sırasında çıkan butonla aktif edersin.'},
-  OLUMSUZ:{e:'🪦',n:'Ölümsüz',t:'masum',d:'1 kez canlanır.',
-    full:'Pasif rol. İlk öldürüldüğünde herkes öldü sanır (sabah raporunda ölü görünür) ama ertesi gece geri dönersin. Sadece 1 kez canlanırsın. İkinci ölümünde gerçekten ölürsün. Diriliş diğer oyuncuları şoke eder.'},
   // KOSTEBEK ve VIRUS geçici olarak devre dışı bırakıldı
   PUSUCU:{e:'🪤',n:'Pusucu',t:'hain',d:'Pusu kurar; gelenler ölür.',
     full:'O gece evine gelen oyunculardan biri rastgele ölür (hain takım arkadaşların bile dahil — dikkat!). Diğer hainler ana cinayeti yaparken sen arkayı kollarsın. Gazeteci/Takipçi/Polis seni hedef alırsa pusuya düşer.'},
@@ -1630,7 +1638,28 @@ const RDEF={
   // VIRUS geçici olarak devre dışı
   // DELI en sonda
   DELI:{e:'🤡',n:'Deli',t:'deli',d:'Bir masum rol gibi görünür ama tüm sonuçları sahtedir.',
-    full:'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'}
+    full:'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'},
+  // YAKINDA EKLENECEK ROLLER (Henüz aktif değil)
+  VAMPIR:{e:'🧛',n:'Vampir',t:'hain',d:'Gece öldürür, sabotaj pasifi var.',
+    full:'Gece birini öldürebilirsin. Öldürsen de öldürmesen de ertesi gün sabotaj başlatır. Sabotaj: 10 saniye içinde başlamazsan (masum/tarafsız) ölürsün. Hainler sabotaja girmezseniz de ölmez.'}
+};
+
+// DEMO ROLLER (İsteğe bağlı oyun havuzuna eklenebilir)
+const RDEF_DEMO={
+  INFAZCI:{e:'🔨',n:'İnfazcı (Demo)',t:'masum',d:'Birini zindana kapatır + 1 infaz hakkı.',
+    full:'Gece bir kişiyi zindana kapatırsın. Zindandaki kişi yetenek kullanamaz, dışarıdan saldırılamaz. Ayrıca oyun boyunca 1 kez zindandakini direkt infaz edebilirsin.'},
+  GARDIYAN:{e:'🛡️',n:'Gardiyan (Demo)',t:'masum',d:'1 kez tüm köyü gece korur.',
+    full:'Oyun boyunca 1 kez "Sokağa Çıkma Yasağı" ilan edersin. O gece HİÇBİR ölüm gerçekleşemez — hain saldırısı, seri katil, bomba bile etkisiz.'},
+  ENGIZITOR:{e:'⚖️',n:'Engizitör (Demo)',t:'masum',d:'Gündüz infaz hakkı (1 kez).',
+    full:'Tartışma fazında butona basıp ANINDA birini infaz edersin. Hain/tarafsız ise hedef ölür, masum ise SEN ölürsün.'},
+  BUZCU:{e:'❄️',n:'Buzcu (Demo)',t:'masum',d:'2 kez birini karantinaya alır.',
+    full:'Oyun boyunca 2 kullanım hakkın var. Karantinaya aldığın oyuncu oylamaya katılamaz, saldırıdan etkilenmez, yetenek kullanamaz.'},
+  KOSTEBEK:{e:'🦔',n:'Köstebek (Demo)',t:'hain',d:'Hain Savcı (her gece kullanılabilir).',
+    full:'Her gece birini incelersin. 2 rol seçeneği gösterilir, biri kesinlikle doğru. Hain sohbetinde paylaşıp suikastçıya hedef gösterirsin.'},
+  PUSUCU:{e:'🪤',n:'Pusucu (Demo)',t:'hain',d:'Pusu kurar; gelenler ölür.',
+    full:'O gece evine gelen oyunculardan biri rastgele ölür (hain takım arkadaşların bile dahil). Diğer hainler ana cinayeti yaparken sen arkayı kollarsın.'},
+  VEBA:{e:'☠️',n:'Veba (Demo)',t:'tarafsız',d:'Hastalık yayar; herkes hastayken kazanır.',
+    full:'Her gece bir kişiye hastalık bulaştırırsın. Hayattaki HERKES hastalandığında, tüm hastalar anında ölür ve sen TEK BAŞINA kazanırsın.'}
 };
 
 // id -> emoji+name lookup
@@ -1822,11 +1851,17 @@ function dismissRejoin(){
 // Otomatik rejoin - sayfa yenilendiğinde veya reconnect olduğunda sessizce dene
 function tryAutoRejoin(){
   console.log('[tryAutoRejoin] Başladı');
-  // Son 5 saniye içinde kullanıcı bilerek çıktıysa rejoin yapma
+  // Son 30 saniye içinde kullanıcı bilerek çıktıysa rejoin yapma
   var leftTime=null;
   try{leftTime=parseInt(localStorage.getItem('azap_left_time'),10);}catch{}
-  if(leftTime && (Date.now()-leftTime)<5000){
-    console.log('[tryAutoRejoin] Son 5sn içinde çıkılmış, rejoin yapılmıyor');
+  if(leftTime && (Date.now()-leftTime)<30000){
+    console.log('[tryAutoRejoin] Son 30sn içinde çıkılmış, rejoin yapılmıyor');
+    return;
+  }
+  // Ölü veya izleyici durumunda rejoin yapma (kullanıcı bilerek çıkmış)
+  if(isDead||isSpec){
+    console.log('[tryAutoRejoin] Ölü/izleyici durumunda, rejoin yapılmıyor');
+    clearLastRoom();
     return;
   }
   var saved=null;
@@ -2287,20 +2322,90 @@ function renderGuide(){
   const teams=['masum','hain','tarafsız','deli'];
   const titles={masum:'🌅 Masumlar (Yeşil)',hain:'🧛 Hainler (Kırmızı)',tarafsız:'⚖️ Tarafsızlar (Mavi)',deli:'🤡 Deli (Mor)'};
   const colorVars={masum:'masum',hain:'hain',tarafsız:'tarafsiz',deli:'deli'};
-  c.innerHTML='';
+  const guideDemoKeys=new Set(Object.keys(RDEF_DEMO));
+  c.innerHTML=`
+    <div class="guide-hero">
+      <h3>AZAP Nedir?</h3>
+      <p>AZAP, Türkçe oynanan çevrimiçi bir sosyal dedüksiyon oyunudur. Oyuncular gizli roller alır; bazıları köyü korumaya, bazıları köyü içeriden çökertmeye, bazıları ise kendi özel kazanma şartını tamamlamaya çalışır. Oyun; konuşma, blöf, gözlem, zamanlama ve doğru oylama üzerine kurulur.</p>
+      <p style="margin-top:6px">Ben Azad Akdağ. Bu oyunu sosyal çıkarım oyunlarını Türkçe, hızlı, mobil uyumlu ve rol çeşitliliği yüksek bir deneyime dönüştürmek için geliştiriyorum. Bana daha detaylı ulaşmak istersen <a class="guide-link" href="https://azatakdag.com" target="_blank" rel="noopener">azatakdag.com</a> üzerinden hakkımda bilgi alabilir ve iletişim kurabilirsin.</p>
+    </div>
+    <div class="guide-card">
+      <h3>🎯 Oyunun Amacı</h3>
+      <p>Her oyuncu oyuna gizli bir rolle başlar. Masumlar hainleri ve tehlikeli tarafsızları bulup oylamayla saf dışı bırakmaya çalışır. Hainler gece öldürerek, gündüz manipüle ederek ve bilgi akışını bozarak çoğunluğu ele geçirmeye çalışır. Tarafsız roller ise çoğu zaman kendi özel kazanma koşulunu kovalar.</p>
+      <ul>
+        <li><b>Masumlar:</b> Hainleri ve köye tehdit olan rolleri bulup oylamayla elemelidir.</li>
+        <li><b>Hainler:</b> Masumları azaltmalı, şüpheyi dağıtmalı ve kritik rolleri susturmalıdır.</li>
+        <li><b>Tarafsızlar:</b> Kendi rolünde yazan özel kazanma şartına göre oynamalıdır.</li>
+      </ul>
+    </div>
+    <div class="guide-card">
+      <h3>🚪 En Baştan Nasıl Oynanır?</h3>
+      <ol>
+        <li><b>Giriş / Kayıt:</b> Ana ekranda hesabın varsa giriş yap. Hesabın yoksa kayıt ol. Hesap, istatistiklerini ve altın/mağaza ilerlemeni saklamak için kullanılır.</li>
+        <li><b>Profil:</b> Giriş yaptıktan sonra ismini, avatarını ve güncel durumunu kontrol edebilirsin.</li>
+        <li><b>Lobi Kurma veya Katılma:</b> Oda kurarak arkadaşlarına 4 haneli kodu verebilir ya da sana verilen kodla bir lobiye katılabilirsin.</li>
+        <li><b>Lobi Hazırlığı:</b> Oyuncular hazır olur. Lobi kurucusu oyuncu sayısını, rol havuzunu ve bazı oyun ayarlarını düzenleyebilir.</li>
+        <li><b>Rol Dağıtımı:</b> Oyun başlayınca sana gizli rolün verilir. Rol açıklamanı dikkatle oku; takımını, yeteneğini ve kazanma şartını bilmen gerekir.</li>
+        <li><b>Gece:</b> Gece aksiyonun varsa hedef seçersin. Hainler kendi aralarında konuşup saldırı veya sabotaj planlayabilir.</li>
+        <li><b>Sabah / Gündüz:</b> Gece olanlar raporlanır. Gündüz tartışma başlar; herkes konuşarak şüphelerini açıklar.</li>
+        <li><b>Oylama:</b> Oyuncular birini asmaya veya pas geçmeye oy verir. Çoğunluk sağlanırsa hedef elenir.</li>
+        <li><b>Döngü:</b> Oyun gece-gündüz şeklinde devam eder. Bir takım veya özel rol kazanma şartını tamamladığında oyun biter.</li>
+      </ol>
+    </div>
+    <div class="guide-card">
+      <h3>🧠 Meta Nedir? Neden Yapılmamalı?</h3>
+      <p><b>Meta</b>, oyunun içindeki bilgi ve davranışlar yerine oyun dışı bilgilere dayanarak karar vermektir. Örneğin “Bu kişi hep hain olunca böyle konuşur”, “Discord’da sesi değişti”, “Ekran görüntüsü atsın”, “Ben koddan biliyorum” gibi oyun dışı çıkarımlar metadır.</p>
+      <div class="guide-note">Meta yapmak oyunun dedüksiyon yapısını bozar. AZAP’ta iyi oyun; rol raporları, konuşmalar, oylama davranışları, çelişkiler ve strateji üzerinden oynanır. Oyun dışı kanıt istemek veya kullanmak adil değildir.</div>
+    </div>
+    <div class="guide-card">
+      <h3>📜 Temel Kurallar</h3>
+      <ul>
+        <li>Rolünü ekran görüntüsüyle kanıtlamaya çalışma; rol iddiası sözlü stratejidir, ekran kanıtı değildir.</li>
+        <li>Ölüysen yaşayan oyunculara bilgi verme. Ölümden sonra oyunu dışarıdan etkilemek oyunun dengesini bozar.</li>
+        <li>Küfür, hakaret, hedef gösterme ve kişisel saldırı yapma. Sert tartışma olabilir ama saygı korunmalı.</li>
+        <li>Bilerek oyunu sabote etme; takımına zarar vermek, AFK kalmak veya bilerek yanlış oynamak diğer oyuncuların eğlencesini bozar.</li>
+        <li>Oyun içi bilgilerle konuş: gece raporların, oylama davranışları, suskunluklar, çelişkiler ve rol iddiaları en değerli ipuçlarıdır.</li>
+      </ul>
+      <p>Kurala göre oynanan oyun daha akıcı, daha adil ve çok daha keyifli olur.</p>
+    </div>
+    <div class="guide-card">
+      <h3>💡 Yeni Oyuncuya Hızlı Tavsiyeler</h3>
+      <ul>
+        <li>Rolünü okumadan aksiyon kullanma; bazı roller tek kullanımlıktır.</li>
+        <li>Masumsan bilgi saklamak bazen doğru olabilir ama kritik bilgiyi çok geç açıklamak köyü kaybettirebilir.</li>
+        <li>Hainsen sadece yalan söylemek yetmez; başkalarının şüphelerini yönlendirmeyi öğrenmelisin.</li>
+        <li>Tarafsızsan kazanma şartını iyi oku; her tarafsız rol aynı şekilde oynanmaz.</li>
+        <li>Birini suçlarken nedenini söyle: “şüpheli” demek yerine davranış, oy, rapor veya çelişki göster.</li>
+      </ul>
+    </div>
+    <div class="guide-card">
+      <h3>🎭 Detaylı Roller Rehberi</h3>
+      <p>Aşağıda roller takımına göre listelenmiştir. Her rolün kısa açıklaması ve mümkünse detaylı oynanış bilgisi yer alır.</p>
+    </div>
+  `;
   teams.forEach(team=>{
-    const items=Object.entries(RDEF).filter(([k,v])=>v.t===team);
+    const items=Object.entries(RDEF).filter(([k,v])=>v.t===team && k!=='DELI' && k!=='VAMPIR' && !guideDemoKeys.has(k));
     if(items.length===0)return;
     const sec=document.createElement('div');
     sec.innerHTML=`<div class="st mt8" style="color:var(--${colorVars[team]||'dim'})">${titles[team]||team}</div>`;
     items.forEach(([k,v])=>{
       const d=document.createElement('div');
       d.className=`role-guide-item team-${team}`;
-      d.innerHTML=`<div class="role-guide-h"><span class="em">${v.e}</span><span class="nm">${v.n}</span><span class="role-guide-tag rtag ${team}">${team.toUpperCase()}</span></div><div class="role-guide-d">${v.d}</div>`;
+      d.innerHTML=`<div class="role-guide-h"><span class="em">${v.e}</span><span class="nm">${v.n}</span><span class="role-guide-tag rtag ${team}">${team.toUpperCase()}</span></div><div class="role-guide-d">${v.d}</div>${v.full?`<div class="guide-role-full">${v.full}</div>`:''}`;
       sec.appendChild(d);
     });
     c.appendChild(sec);
   });
+  const upcoming=document.createElement('div');
+  upcoming.innerHTML=`<div class="st mt8" style="color:var(--hi)">⏳ Yakında / Demo Roller</div><div class="guide-card"><p>Bu bölümdeki roller aktif rol havuzuna otomatik eklenmez. Lobi kurucusu ileride “demo rolleri dahil et” seçeneğini açarsa bu roller oyun havuzunda görünebilir; kapalıysa görünmez ve oyuna girmez.</p></div>`;
+  Object.entries({...RDEF_DEMO,VAMPIR:RDEF.VAMPIR}).forEach(([k,v])=>{
+    if(!v)return;
+    const d=document.createElement('div');
+    d.className=`role-guide-item team-${v.t}`;
+    d.innerHTML=`<div class="role-guide-h"><span class="em">${v.e}</span><span class="nm">${v.n}</span><span class="role-guide-tag rtag ${v.t}">${v.t.toUpperCase()}</span></div><div class="role-guide-d">${v.d}</div>${v.full?`<div class="guide-role-full">${v.full}</div>`:''}`;
+    upcoming.appendChild(d);
+  });
+  c.appendChild(upcoming);
 }
 
 // ── ROOM ──
@@ -2412,15 +2517,28 @@ function enterDeathSpectate(){
 
 function startGame(){io2.emit('start',null,r=>{if(!r.ok)toast(r.err,1);});}
 
+let demoRolesEnabled=false; // Demo rolleri dahil etme durumu
+
 function buildRG(){
   const g=Q('RG');g.innerHTML='';
-  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='KOSTEBEK').forEach(([k,v])=>{
+  // Ana roller (DELI hariç)
+  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='VAMPIR').forEach(([k,v])=>{
     const d=document.createElement('div');
     d.className=`rchip on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
     d.innerHTML=`<span>${v.e}</span>${v.n}`;
     d.onclick=()=>{d.classList.toggle('on');uSet();};
     g.appendChild(d);
   });
+  // Demo rolleri (eğer aktifse)
+  if(demoRolesEnabled){
+    Object.entries(RDEF_DEMO).forEach(([k,v])=>{
+      const d=document.createElement('div');
+      d.className=`rchip demo on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
+      d.innerHTML=`<span>${v.e}</span>${v.n}<small style="font-size:.65rem;opacity:.7;margin-left:4px">(DEMO)</small>`;
+      d.onclick=()=>{d.classList.toggle('on');uSet();};
+      g.appendChild(d);
+    });
+  }
 }
 
 function uSet(){
@@ -2897,6 +3015,10 @@ function renderRole(){
   } else if(ps.cellatTarget){
     x.innerHTML=`<div style="padding:8px;background:rgba(211,84,0,.06);border:1px solid rgba(211,84,0,.15);border-radius:5px">
       <div class="lbl" style="color:var(--tarafsiz)">⛓️ Hedefin: <strong>${ps.cellatTarget}</strong></div></div>`;
+  } else if(ps.koruyucuTarget){
+    x.innerHTML=`<div style="padding:8px;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.25);border-radius:5px">
+      <div class="lbl" style="color:#2ecc71">😇 Koruman Gereken: <strong>${ps.koruyucuTarget}</strong></div>
+      <div style="font-size:.7rem;color:var(--dim);margin-top:4px">Hayatta kalırsa sen de kazanırsın!</div></div>`;
   } else x.innerHTML='';
 }
 
@@ -2964,6 +3086,9 @@ function renderTL(){
   const list=Q('NTL');if(!gs||!ps)return;
   const r=ps.role;
   if(['muhtar','dodo','cellat','yamyam','kurban','koruyucu','engizitor','olumsuz'].includes(r)){
+    if(r==='koruyucu'&&ps.koruyucuTarget){
+      list.innerHTML=`<div class="tc" style="padding:16px;color:#2ecc71"><div>😇 Koruman Gereken: <strong>${ps.koruyucuTarget}</strong></div><div style="font-size:.75rem;color:var(--dim);margin-top:6px">O hayatta kalırsa sen de kazanırsın!</div></div>`;return;
+    }
     list.innerHTML=`<div class="tc" style="padding:16px;color:var(--dim)">${r==='yamyam'&&ps.yamyamAbilities?.length?'Toplanan: '+ps.yamyamAbilities.join(', '):'Bu gece aksiyonun yok.'}</div>`;return;}
   if(r==='gazi'){
     list.innerHTML=ps.gaziUsed?'<div class="tc" style="padding:16px;color:var(--dim)">Hakkını kullandın.</div>'
@@ -3307,28 +3432,35 @@ io2.on('toast', d => {
 // ── SABOTAJ MİNİ OYUNLAR ──
 let _saboGame = null; // mevcut oyun durumu
 let _saboShown = false; // bu sabotaj turunda gösterildi mi (tekrar açma)
+let _saboPromptTimer = null;
 
 function sabotageCheck(){
   if(!ps?.sabotageGame || ps.sabotageGame.completed){
     Q('SABO_OV').classList.remove('sh');
     _saboShown = false;
+    if(_saboPromptTimer){clearTimeout(_saboPromptTimer);_saboPromptTimer=null;}
     return;
   }
   if(gs?.phase !== 'morning_report' && gs?.phase !== 'day_discussion' && gs?.phase !== 'voting') return;
   if(_saboShown) return;
-  _saboShown = true;
-  // ── HER HEDEF İÇİN FARKLI ZAMANDA: 0-15 saniye arası random delay ──
-  const randomDelay = Math.floor(Math.random() * 15000);
-  setTimeout(() => {
+  const promptAt = ps.sabotageGame.promptAt || Date.now();
+  const wait = Math.max(0, promptAt - Date.now());
+  if(_saboPromptTimer) return;
+  _saboPromptTimer = setTimeout(() => {
+    _saboPromptTimer = null;
     // Hâlâ aktif mi (faz değişti mi, sabotaj sona erdi mi)
     if(!ps?.sabotageGame || ps.sabotageGame.completed) return;
     if(gs?.phase !== 'morning_report' && gs?.phase !== 'day_discussion' && gs?.phase !== 'voting') return;
+    _saboShown = true;
     startSabotageGame(ps.sabotageGame.gameType);
-  }, randomDelay);
+  }, wait);
 }
 
 function startSabotageGame(gameType){
   Q('SABO_OV').classList.add('sh');
+  if(!window._saboFakeMode){
+    io2.emit('sabotage:begin', null, ()=>{});
+  }
   const sub = Q('SABO_SUB');
   if(gameType === 'xox'){
     sub.textContent = 'XOX — Bilgisayara karşı kazanmaya çalış!';

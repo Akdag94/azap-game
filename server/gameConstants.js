@@ -59,9 +59,6 @@ const ROLES = {
   ENGIZITOR: { id:'engizitor', name:'Engizitör', team:TEAMS.MASUM, emoji:'⚖️',
     desc:'Tartışma fazında kendini ifşa edip oylama olmadan birini infaz edebilir (oyun boyunca 1 kez). Hain/tarafsız ise hedef ölür. Masum ise kendisi ölür.',
     canBeHain:false, canBeChosen:true, hasNightAction:false, implemented:true },
-  OLUMSUZ: { id:'olumsuz', name:'Ölümsüz', team:TEAMS.MASUM, emoji:'🪦',
-    desc:'Pasif rol. İlk öldürüldüğünde herkes öldü sanır ama ertesi gece geri döner. Sadece 1 kez canlanır.',
-    canBeHain:false, canBeChosen:true, hasNightAction:false, implemented:true },
   BUZCU: { id:'buzcu', name:'Buzcu', team:TEAMS.MASUM, emoji:'❄️',
     desc:'Oyun boyunca 2 kez bir oyuncuyu karantinaya alır. Karantinadaki oyuncu ertesi gündüz oylamaya katılamaz, kendisine oy verilemez, gece saldırılardan etkilenmez ve yetenek kullanamaz.',
     canBeHain:false, canBeChosen:true, hasNightAction:true, implemented:true },
@@ -88,6 +85,9 @@ const ROLES = {
   HACKER: { id:'hacker', name:'Hacker', team:TEAMS.HAIN, emoji:'💻',
     desc:'Bir bilgi toplayan masum rolü hackler. O kişi rolünü kullanırsa o gece hiçbir bilgi raporu gelmez (sadece bilgi toplayan rolleri etkiler).',
     canBeChosen:true, hasNightAction:true, implemented:true },
+  VAMPIR: { id:'vampir', name:'Vampir', team:TEAMS.HAIN, emoji:'🧛',
+    desc:'Gece birini öldürebilir. Öldürsün veya öldürmesin, ertesi gün sabotaj başlatır.',
+    canBeChosen:true, hasNightAction:true, hasSabotage:true, implemented:true },
 
   // ── TARAFSIZLAR (mavi) ──
   DODO: { id:'dodo', name:'Dodo', team:TEAMS.TARAFSIZ, emoji:'🦤',
@@ -116,6 +116,7 @@ const PHASES = {
   LOBBY:'lobby', ROLE_SELECTION:'role_selection', ROLE_REVEAL:'role_reveal',
   PRESIDENT_VOTE:'president_vote', NIGHT:'night',
   MORNING_REPORT:'morning_report', DAY_DISCUSSION:'day_discussion',
+  SABOTAGE:'sabotage', // Vampir sabotajı
   VOTING:'voting', VOTE_RESULT:'vote_result',
   MVP_VOTE:'mvp_vote', MVP_RESULT:'mvp_result',
   GAME_OVER:'game_over', POST_GAME:'post_game'
@@ -127,7 +128,8 @@ const DEFAULT_CONFIG = {
   VOTING_DURATION: 90, ROLE_REVEAL_DURATION: 15,
   REPORT_DURATION: 10, RESULT_DURATION: 8,
   PRESIDENT_VOTE_DURATION: 25, ROLE_SELECTION_DURATION: 20,
-  MVP_VOTE_DURATION: 30, MVP_RESULT_DURATION: 12
+  MVP_VOTE_DURATION: 30, MVP_RESULT_DURATION: 12,
+  SABOTAGE_DURATION: 10 // Vampir sabotajı süresi
 };
 
 module.exports = { TEAMS, ROLES, PHASES, DEFAULT_CONFIG };
