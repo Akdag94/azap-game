@@ -2501,7 +2501,7 @@ let demoRolesEnabled=false; // Demo rolleri dahil etme durumu
 
 function buildRG(){
   const g=Q('RG');g.innerHTML='';
-  // Ana roller (DELI hariç)
+  // Ana roller (DELI ve VAMPIR hariç)
   Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='VAMPIR').forEach(([k,v])=>{
     const d=document.createElement('div');
     d.className=`rchip on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
@@ -2509,16 +2509,21 @@ function buildRG(){
     d.onclick=()=>{d.classList.toggle('on');uSet();};
     g.appendChild(d);
   });
-  // Demo rolleri (eğer aktifse)
-  if(demoRolesEnabled){
-    Object.entries(RDEF_DEMO).forEach(([k,v])=>{
-      const d=document.createElement('div');
-      d.className=`rchip demo on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
-      d.innerHTML=`<span>${v.e}</span>${v.n}<small style="font-size:.65rem;opacity:.7;margin-left:4px">(DEMO)</small>`;
-      d.onclick=()=>{d.classList.toggle('on');uSet();};
-      g.appendChild(d);
-    });
-  }
+  // Demo bölüm ayırıcı
+  const sep=document.createElement('div');
+  sep.style.cssText='grid-column:1/-1;font-size:.62rem;color:var(--dim);padding:6px 0 2px;border-top:1px solid var(--brd);margin-top:4px;letter-spacing:1.5px;font-family:"Cinzel Decorative",serif';
+  sep.textContent='\u2697\ufe0f DEMO ROLLER';
+  g.appendChild(sep);
+  // Demo roller + VAMPIR (her zaman göster, on/off durumu demoRolesEnabled'a bağlı)
+  const demoAll={...RDEF_DEMO};
+  if(RDEF.VAMPIR) demoAll.VAMPIR={...RDEF.VAMPIR,n:'Vampir (Demo)'};
+  Object.entries(demoAll).forEach(([k,v])=>{
+    const d=document.createElement('div');
+    d.className=`rchip demo ${demoRolesEnabled?'on':''} ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`.trim();d.dataset.key=k;
+    d.innerHTML=`<span>${v.e}</span>${v.n}`;
+    d.onclick=()=>{d.classList.toggle('on');uSet();};
+    g.appendChild(d);
+  });
 }
 
 function uSet(){
