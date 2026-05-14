@@ -119,6 +119,22 @@ const PAYMENT_PACKAGES = {
 // Bağış (donate) önerilen miktarlar — kullanıcı kendi miktarını da girebilir
 const DONATION_PRESETS = [10, 25, 50, 100, 250, 500];
 
+// ── KOZMETİK EŞYA KATALOĞU (coin ile satın alınır) ──
+const COSMETIC_CATALOG = {
+  // Kartlıklar (isim kartı çerçeveleri)
+  frame_gold:   { cat:'frame', name:'Altın Çerçeve',  emoji:'🖼️', price:500,  rarity:'rare',      desc:'İsminin etrafında parlak altın çerçeve.',      preview:{border:'2px solid #ffd700',shadow:'0 0 12px rgba(255,215,0,.5)',bg:'linear-gradient(135deg,rgba(255,215,0,.12),rgba(184,134,11,.08))',anim:'shimmer'} },
+  frame_rgb:    { cat:'frame', name:'RGB Çerçeve',    emoji:'🌈', price:800,  rarity:'epic',      desc:'Renk değiştiren neon çerçeve.',                preview:{border:'2px solid #ff0000',shadow:'0 0 10px rgba(255,0,0,.4)',bg:'linear-gradient(135deg,rgba(255,0,0,.08),rgba(0,0,255,.08))',anim:'rgbShift'} },
+  frame_fire:   { cat:'frame', name:'Alev Çerçeve',   emoji:'🔥', price:1500, rarity:'legendary', desc:'Gerçek ateş efektiyle yanan çerçeve.',          preview:{border:'2px solid #ff6600',shadow:'0 0 20px rgba(255,100,0,.6), inset 0 0 10px rgba(255,150,0,.3)',bg:'linear-gradient(180deg,rgba(255,100,0,.2),rgba(255,50,0,.1))',anim:'realFire'} },
+  // Petler - smooth, göz yormayan animasyonlar
+  pet_cat:      { cat:'pet',   name:'Kedi',           emoji:'🐱', price:800,  rarity:'rare',      desc:'Yanında oturan, ara sıra kıpırdayan kedi.',     preview:{sprite:'🐱',anim:'catIdle'} },
+  pet_ghost:    { cat:'pet',   name:'Hayalet',        emoji:'👻', price:1200, rarity:'epic',      desc:'Yavaş süzülen, gizemli hayalet.',               preview:{sprite:'👻',anim:'ghostDrift'} },
+  pet_dog:      { cat:'pet',   name:'Köpek',          emoji:'🐕', price:2000, rarity:'legendary', desc:'Mutlu sallanan kuyruklu köpek.',                preview:{sprite:'🐕',anim:'dogHappy'} },
+  // Yazı tipleri
+  font_gothic:  { cat:'font',  name:'Gotik Yazı',     emoji:'✒️', price:500,  rarity:'rare',      desc:'Ortaçağ tarzı dekoratif yazı tipi.',            preview:{family:'"Cinzel Decorative",serif',weight:'700'} },
+  font_cursive: { cat:'font',  name:'El Yazısı',      emoji:'🖋️', price:600,  rarity:'rare',      desc:'Zarif el yazısı stili.',                        preview:{family:'"Segoe Script","Apple Chancery",cursive',weight:'400'} },
+  font_pixel:   { cat:'font',  name:'Piksel Yazı',    emoji:'👾', price:750,  rarity:'epic',      desc:'Retro 8-bit piksel yazı tipi.',                 preview:{family:'"Courier New",monospace',weight:'700',size:'.72rem'} }
+};
+
 // Paket katalog endpoint'i (frontend mağazada gösterir)
 app.get('/api/shop/packages', apiLimiter, (req, res) => {
   res.json({
@@ -126,6 +142,11 @@ app.get('/api/shop/packages', apiLimiter, (req, res) => {
     donationPresets: DONATION_PRESETS,
     paymentEnabled: !!process.env.IYZICO_API_KEY
   });
+});
+
+// Kozmetik eşya kataloğu endpoint'i
+app.get('/api/shop/cosmetics', apiLimiter, (req, res) => {
+  res.json({ items: COSMETIC_CATALOG });
 });
 
 // ── İYZİCO ÖDEME OLUŞTURMA ──
@@ -163,18 +184,13 @@ app.post('/api/payment/create', paymentLimiter, async (req, res) => {
     payload = pkg;
   }
 
-  // İyzico bağlı değilse: dev modunda direkt simüle et
+  // İyzico bağlı değilse hata döndür
   if (!process.env.IYZICO_API_KEY) {
-    return res.json({
-      ok: true,
-      devMode: true,
-      message: 'İyzico bağlı değil — dev modunda simülasyon.',
-      paymentInfo: { username, packageId, amount, label, type }
-    });
+    return res.status(503).json({ ok: false, error: 'Ödeme sistemi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.' });
   }
 
   // TODO: Gerçek İyzico Checkout Form
-  return res.status(501).json({ ok: false, error: 'İyzico entegrasyonu henüz tamamlanmadı' });
+  return res.status(501).json({ ok: false, error: 'Ödeme sistemi henüz hazır değil.' });
 });
 
 // İyzico callback (ödeme tamamlandığında)
@@ -185,33 +201,7 @@ app.post('/api/payment/callback', async (req, res) => {
   res.json({ ok: true });
 });
 
-// DEV MODE: ödeme simülasyonu — production'da OTOMATİK ENGELLENİR
-app.post('/api/payment/dev-complete', paymentLimiter, (req, res) => {
-  // SADECE: İyzico bağlı değil (NODE_ENV development) ise çalışır
-  if (process.env.IYZICO_API_KEY) {
-    return res.status(403).json({ ok: false, error: 'Production modunda devre dışı' });
-  }
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({ ok: false, error: 'Production modunda devre dışı' });
-  }
-  const { username, packageId, donationAmount } = req.body || {};
-  // Validation
-  if (typeof username !== 'string' || username.length < 2 || username.length > 16) {
-    return res.status(400).json({ ok: false, error: 'Kullanıcı geçersiz' });
-  }
-  if (!Accounts.getStats(username)) return res.status(404).json({ ok: false, error: 'Kullanıcı yok' });
-  if (packageId !== 'donation' && !PAYMENT_PACKAGES[packageId]) {
-    return res.status(400).json({ ok: false, error: 'Paket geçersiz' });
-  }
-  if (packageId === 'donation') {
-    const amt = parseFloat(donationAmount);
-    if (!amt || amt < 5 || amt > 5000 || isNaN(amt)) {
-      return res.status(400).json({ ok: false, error: 'Bağış geçersiz' });
-    }
-  }
-  applyPayment(username, packageId, donationAmount);
-  res.json({ ok: true });
-});
+// DEV MODE kaldırıldı — tüm ödemeler İyzico üzerinden yapılır
 
 // Ödeme başarılı sonrası uygulama
 function applyPayment(username, packageId, donationAmount) {
@@ -1584,9 +1574,38 @@ io.on('connection', (socket) => {
     if (r.success) {
       // Kullanıcıya güncel stats gönder
       const stats = Accounts.getStats(u);
+      const rc = prooms.get(socket.id);
+      const g = rc ? rooms.get(rc) : null;
+      if (g) {
+        const player = g.players.get(socket.id);
+        if (player) player.cosmetics = stats?.equipped || {};
+        const spectator = g.spectators?.get(socket.id);
+        if (spectator) spectator.cosmetics = stats?.equipped || {};
+        emit(rc);
+      }
       socket.emit('statsUpdate', stats);
+      cb?.({ ok: true, inventory: r.inventory, equipped: stats?.equipped || {} });
+    } else {
+      cb?.({ ok: false, err: r.error });
     }
-    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+  // Kozmetik eşya satın alma (coin ile)
+  socket.on('shop:buyCosmetic', ({ itemId } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    if (typeof itemId !== 'string' || !COSMETIC_CATALOG[itemId]) return cb?.({ ok: false, err: 'Eşya bulunamadı' });
+    const item = COSMETIC_CATALOG[itemId];
+    const stats = Accounts.getStats(u);
+    if (!stats) return cb?.({ ok: false, err: 'Kullanıcı yok' });
+    if (stats.inventory?.some(it => (typeof it === 'string' ? it : it.id) === itemId)) {
+      return cb?.({ ok: false, err: 'Bu eşya zaten envanterinde' });
+    }
+    const spend = Accounts.spendCoins(u, item.price);
+    if (!spend.success) return cb?.({ ok: false, err: spend.error || 'Yetersiz altın' });
+    Accounts.addToInventory(u, itemId);
+    const newStats = Accounts.getStats(u);
+    socket.emit('statsUpdate', newStats);
+    cb?.({ ok: true, coins: newStats.coins, inventory: newStats.inventory });
   });
   socket.on('auth:leaderboard', (_, cb) => cb(Accounts.leaderboard()));
   socket.on('auth:changePassword', ({ oldPass, newPass } = {}, cb) => {
@@ -1633,8 +1652,9 @@ io.on('connection', (socket) => {
     const cleanName = sanitizePlayerName(playerName);
     if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı' });
     const stats = Accounts.getStats(u);
+    const cosm = Accounts.getEquipped(u);
     const code = genCode(), g = new GameEngine(code, socket.id);
-    g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin);
+    g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin, cosm);
     rooms.set(code, g); prooms.set(socket.id, code); socket.join(code);
     cb?.({ ok: true, code }); emit(code);
   });
@@ -1649,7 +1669,8 @@ io.on('connection', (socket) => {
     if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
     if (g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME) return cb?.({ ok: false, err: 'Oyun başlamış!' });
     const stats = Accounts.getStats(u);
-    if (!g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin)) return cb?.({ ok: false, err: 'Oda dolu!' });
+    const cosm = Accounts.getEquipped(u);
+    if (!g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin, cosm)) return cb?.({ ok: false, err: 'Oda dolu!' });
     prooms.set(socket.id, code.toUpperCase()); socket.join(code.toUpperCase());
     cb?.({ ok: true, code: code.toUpperCase() }); emit(code.toUpperCase());
   });
@@ -1660,7 +1681,8 @@ io.on('connection', (socket) => {
     const g = rooms.get(code);
     if (!g) return cb({ ok: false, err: 'Oda yok!' });
     const stats = Accounts.getStats(u);
-    g.addSpectator(socket.id, u, u, stats?.avatar);
+    const cosm = Accounts.getEquipped(u);
+    g.addSpectator(socket.id, u, u, stats?.avatar, cosm);
     prooms.set(socket.id, code); socket.join(code);
     cb({ ok: true, code, spectator: true }); emit(code);
   });
@@ -1697,6 +1719,7 @@ io.on('connection', (socket) => {
       // Aktif oyun: eski kaydı yeni socket ID ile güncelle
       const res = g.rejoinPlayer(socket.id, u);
       if (!res.ok) return cb?.({ ok: false, err: 'Bu odada kayıtlı oyuncu bulunamadı.' });
+      if (res.player) res.player.cosmetics = Accounts.getEquipped(u);
       prooms.set(socket.id, rc); socket.join(rc);
       cb?.({ ok: true, code: rc, active: true });
       // Yeni sokete mevcut state + priv gönder
@@ -1708,7 +1731,8 @@ io.on('connection', (socket) => {
       const cleanName = sanitizePlayerName(playerName);
       if (!cleanName) return cb?.({ ok: false, err: 'İsim gerekli' });
       const stats = Accounts.getStats(u);
-      if (!g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin)) return cb?.({ ok: false, err: 'Oda dolu!' });
+      const cosm = Accounts.getEquipped(u);
+      if (!g.addPlayer(socket.id, cleanName, u, stats?.stats?.won || 0, stats?.avatar, stats?.stats?.mvp || 0, !!stats?.isAdmin, cosm)) return cb?.({ ok: false, err: 'Oda dolu!' });
       prooms.set(socket.id, rc); socket.join(rc);
       cb?.({ ok: true, code: rc, active: false }); emit(rc);
     }

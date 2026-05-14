@@ -114,6 +114,8 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 .av-md{width:40px;height:40px;font-size:1.2rem}
 .av-sm{width:22px;height:22px;font-size:.7rem}
 .av-xl{width:80px;height:80px;font-size:2rem}
+/* Ana menü avatar köşeli */
+#WAV_SLOT .av,#PROF_AV{border-radius:13px !important}
 
 /* ── AURORA ARKA PLAN ── */
 #AURORA_BG{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:0;transition:opacity 1s}
@@ -645,6 +647,54 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 /* Bağış preset */
 .donate-preset{padding:10px 4px;background:var(--bg2);border:1px solid var(--brd);border-radius:5px;cursor:pointer;text-align:center;font-weight:600;color:var(--txt);transition:all .15s;font-size:.85rem}
 .donate-preset:hover{background:rgba(233,30,99,.1);border-color:#e91e63;color:#e91e63}
+/* ── KOZMETİK MAĞAZA & ENVANTER ── */
+.ci-grid{display:grid;grid-template-columns:1fr;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px;position:relative}
+.ci-card{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--brd);border-radius:13px;transition:all .18s;position:relative;box-sizing:border-box}
+.ci-card:hover{border-color:var(--hi);background:var(--bg3)}
+.ci-card.owned{border-color:var(--gold);background:rgba(255,215,0,.05)}
+.ci-preview{width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;position:relative;overflow:hidden;background:var(--bg3);border:1px solid var(--brd)}
+.ci-preview .av{border-radius:13px !important}
+.ci-info{flex:1;min-width:0}
+.ci-name{font-weight:600;font-size:.82rem;color:var(--txt)}
+.ci-desc{font-size:.68rem;color:var(--dim);margin-top:2px;line-height:1.3}
+.ci-meta{display:flex;align-items:center;gap:6px;margin-top:3px}
+.ci-rarity{font-size:.6rem;padding:1px 5px;border-radius:3px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.ci-rarity.rare{background:rgba(59,130,246,.15);color:#60a5fa}
+.ci-rarity.epic{background:rgba(168,85,247,.15);color:#a855f7}
+.ci-rarity.legendary{background:rgba(245,158,11,.15);color:#f59e0b}
+.ci-price{font-size:.72rem;color:var(--gold);font-weight:700}
+.ci-actions{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0}
+.ci-buy{padding:5px 12px;border:none;border-radius:4px;font-size:.72rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+.ci-buy.buy{background:linear-gradient(135deg,#d4a017,#b8860b);color:#000}
+.ci-buy.buy:hover{filter:brightness(1.15)}
+.ci-buy.owned-btn{background:var(--bg3);color:var(--safe);border:1px solid var(--safe);cursor:default;font-size:.68rem}
+.ci-buy.equip{background:linear-gradient(135deg,var(--safe),#1e7c3f);color:#fff}
+.ci-buy.unequip{background:var(--bg3);color:var(--dim);border:1px solid var(--brd)}
+.ci-filter{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.ci-filter-btn{padding:4px 10px;background:var(--bg2);border:1px solid var(--brd);color:var(--dim);font-size:.7rem;cursor:pointer;border-radius:4px;transition:all .15s}
+.ci-filter-btn.active{background:rgba(255,215,0,.1);border-color:var(--gold);color:var(--gold)}
+.ci-search{width:100%;padding:6px 10px;background:var(--bg2);border:1px solid var(--brd);color:var(--txt);font-size:.78rem;border-radius:5px;margin-bottom:8px;outline:none}
+.ci-search:focus{border-color:var(--hi)}
+.inv-equipped-preview{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px;background:linear-gradient(135deg,rgba(255,215,0,.07),rgba(139,0,0,.08));border:1px solid rgba(255,215,0,.22);border-radius:13px}
+.inv-preview-avatar{position:relative;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.inv-preview-avatar .av{border-radius:13px !important}
+.inv-preview-pet{position:absolute;right:-10px;bottom:-8px;font-size:1.05rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.inv-preview-text{min-width:0;flex:1}
+.inv-preview-name{font-weight:700;font-size:.84rem;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inv-preview-hint{font-size:.68rem;color:var(--dim);margin-top:2px;line-height:1.25}
+/* Frame animasyonları */
+@keyframes shimmer{0%,100%{box-shadow:0 0 8px rgba(255,215,0,.3), inset 0 0 0 rgba(255,215,0,0)}50%{box-shadow:0 0 20px rgba(255,215,0,.6), inset 0 0 10px rgba(255,215,0,.2)}}
+@keyframes rgbShift{0%{border-color:#ff0000;box-shadow:0 0 8px rgba(255,0,0,.3)}25%{border-color:#00ff00;box-shadow:0 0 8px rgba(0,255,0,.3)}50%{border-color:#0000ff;box-shadow:0 0 8px rgba(0,0,255,.3)}75%{border-color:#ff00ff;box-shadow:0 0 8px rgba(255,0,255,.3)}100%{border-color:#ff0000;box-shadow:0 0 8px rgba(255,0,0,.3)}}
+@keyframes realFire{0%,100%{border-color:#ff6600;box-shadow:0 0 15px rgba(255,100,0,.4), inset 0 0 8px rgba(255,150,0,.2)}20%{border-color:#ff8800;box-shadow:0 0 25px rgba(255,150,0,.6), inset 0 0 12px rgba(255,200,0,.3)}40%{border-color:#ff4400;box-shadow:0 0 20px rgba(255,80,0,.5), inset 0 0 10px rgba(255,100,0,.25)}60%{border-color:#ffaa00;box-shadow:0 0 30px rgba(255,200,0,.7), inset 0 0 15px rgba(255,220,50,.35)}80%{border-color:#ff5500;box-shadow:0 0 22px rgba(255,100,0,.55), inset 0 0 11px rgba(255,120,0,.28)}}
+/* Pet animasyonları - smooth, göz yormayan */
+@keyframes catIdle{0%,90%,100%{transform:translateY(0) scaleY(1)}5%{transform:translateY(-2px) scaleY(1.02)}10%{transform:translateY(0) scaleY(1)}15%{transform:translateY(-1px) scaleY(1.01)}20%{transform:translateY(0) scaleY(1)}}
+@keyframes ghostDrift{0%,100%{transform:translateY(0) translateX(0);opacity:.9}50%{transform:translateY(-6px) translateX(3px);opacity:1}}
+@keyframes dogHappy{0%,100%{transform:rotate(0) translateY(0)}10%{transform:rotate(-5deg) translateY(-2px)}20%{transform:rotate(5deg) translateY(0)}30%{transform:rotate(-3deg) translateY(-1px)}40%{transform:rotate(3deg) translateY(0)}50%,90%{transform:rotate(0) translateY(0)}}
+/* Frame önizleme - tüm kart gibi, köşeli 13px, üst üste binme yok */
+.frame-preview-card{padding:10px 12px;border-radius:13px;display:flex;align-items:center;justify-content:center;min-height:52px;font-size:.78rem;font-weight:600;color:var(--txt);background:var(--bg3);width:100%;height:100%;box-sizing:border-box}
+.frame-preview-card span{font-size:.72rem}
+/* Font önizleme - gerçek font */
+.font-preview-text{font-size:.9rem;color:var(--txt);padding:6px 10px;display:block;line-height:1.2}
 
 /* SABOTAJ MİNİ OYUN OVERLAY */
 .sabo-overlay{position:fixed;inset:0;background:rgba(20,5,5,.95);backdrop-filter:blur(8px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;animation:saboFade .3s}
@@ -697,10 +747,12 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 
 <div class="mdl-bg" id="MDL_PROFILE"><div class="mdl">
 <div class="mdl-h"><h2>👤 Profilim</h2><button class="mdl-cl" onclick="closeModal('MDL_PROFILE')">✕</button></div>
-<div class="profile-section mb8">
+<div class="profile-section mb8" style="display:flex;align-items:center;gap:15px">
+<div id="PROF_AV_WRAP">
 <label class="av-edit"><div class="av av-lg" id="PROF_AV"></div>
 <input type="file" class="av-upload" id="AV_UPLOAD" accept="image/*" onchange="uploadAvatar()"></label>
-<div class="profile-actions">
+</div>
+<div class="profile-actions" style="flex:1">
 <div style="font-family:'Cinzel Decorative',serif;font-size:1rem" id="PROF_NAME">-</div>
 <div style="font-size:.75rem;color:var(--dim)">Fotoğrafa tıklayarak değiştir</div>
 </div>
@@ -717,7 +769,25 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 
 <!-- Envanter -->
 <div class="st mt12">🎒 Envanter</div>
-<div id="PROF_INVENTORY" style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px;min-height:60px;font-size:.82rem"></div>
+<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px;min-height:60px">
+<div class="ci-filter" id="INV_FILTER">
+  <button class="ci-filter-btn active" data-cat="all" onclick="invFilter('all')">Tümü</button>
+  <button class="ci-filter-btn" data-cat="frame" onclick="invFilter('frame')">🖼️ Kartlık</button>
+  <button class="ci-filter-btn" data-cat="pet" onclick="invFilter('pet')">🐾 Pet</button>
+  <button class="ci-filter-btn" data-cat="font" onclick="invFilter('font')">✒️ Yazı Tipi</button>
+</div>
+<div id="INV_EQUIPPED_PREVIEW" class="inv-equipped-preview"></div>
+<input class="ci-search" id="INV_SEARCH" placeholder="Eşya ara..." oninput="invFilter()">
+<div id="PROF_INVENTORY" class="ci-grid" style="max-height:220px"></div>
+</div>
+
+<div class="st mt12">⚙️ Ayarlar</div>
+<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px">
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.78rem">
+<input type="checkbox" id="HIDE_COSMETICS" onchange="_hideOtherCosmetics=this.checked;try{localStorage.setItem('azap_hide_cosmetics',this.checked?'1':'0')}catch{}">
+<span>Diğer oyuncuların kozmetik efektlerini gizle</span>
+</label>
+</div>
 
 <div class="st mt12">Şifre Değiştir</div>
 <div style="display:flex;flex-direction:column;gap:6px">
@@ -803,16 +873,16 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 
   <!-- EŞYALAR SEKMESİ -->
   <div class="shop-pane" id="SHOP_PANE_items" style="display:none">
-    <div style="text-align:center;padding:30px 10px">
-      <div style="font-size:3rem;margin-bottom:10px">🚧</div>
-      <div style="font-size:1.05rem;color:var(--gold);font-weight:600">YAKINDA</div>
-      <div style="font-size:.78rem;color:var(--dim);margin-top:8px;line-height:1.5">
-        🖼️ Özel avatar çerçeveleri (altın, neon, alev)<br>
-        ✒️ Premium yazı tipleri (gotik, italik, kaligrafik)<br>
-        🎨 İsim renkleri (kırmızı, altın, gradient)<br>
-        ✨ Özel emojiler ve efektler<br><br>
-        Hazır olduğunda altınlarınla satın alabilirsin.
-      </div>
+    <div class="ci-filter" id="SHOP_ITEM_FILTER">
+      <button class="ci-filter-btn active" data-cat="all" onclick="shopFilterItems('all')">Tümü</button>
+      <button class="ci-filter-btn" data-cat="frame" onclick="shopFilterItems('frame')">🖼️ Kartlık</button>
+      <button class="ci-filter-btn" data-cat="pet" onclick="shopFilterItems('pet')">🐾 Pet</button>
+      <button class="ci-filter-btn" data-cat="font" onclick="shopFilterItems('font')">✒️ Yazı Tipi</button>
+    </div>
+    <input class="ci-search" id="SHOP_ITEM_SEARCH" placeholder="Eşya ara..." oninput="shopFilterItems()">
+    <div class="ci-grid" id="SHOP_ITEM_GRID"></div>
+    <div style="font-size:.62rem;color:var(--dim);margin-top:8px;line-height:1.4;text-align:center">
+      Satın alma işlemi ile <a href="/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a>'ni kabul etmiş olursunuz.
     </div>
   </div>
 
@@ -1060,6 +1130,7 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
   <span>DEMO SÜRÜMÜ &mdash; Henüz tam çıkış yapmadık, test aşamasındayız</span>
   <button onclick="document.getElementById('DEMO_BANNER').style.display='none'">✕</button>
 </div>
+<script>setTimeout(()=>{const db=document.getElementById('DEMO_BANNER');if(db)db.style.display='none';},30000);</script>
 
 <!-- Aurora Arka Plan -->
 <div id="AURORA_BG">
@@ -1981,13 +2052,14 @@ function shopSwitchTab(tab){
   if(tab === 'gold') renderShopGoldPackages();
   if(tab === 'premium') renderShopPremiumPackages();
   if(tab === 'donate') renderShopDonatePresets();
+  if(tab === 'items') renderShopItems();
 }
 
 async function shopBuy(packageId){
   if(!user){toast('Giriş yap!',1);return;}
   const pkg = _shopPackages?.[packageId];
   if(!pkg){toast('Paket yok',1);return;}
-  if(!confirm(`${pkg.label} satın alacaksın.\nFiyat: ₺${pkg.price.toFixed(2)}\nDevam?`))return;
+  if(!confirm(`${pkg.label} satın alacaksın.\nFiyat: ₺${pkg.price.toFixed(2)}\nSatın alma işlemi ile Mesafeli Satış Sözleşmesi'ni kabul etmiş olursunuz.\nDevam?`))return;
   try{
     const r = await fetch('/api/payment/create',{
       method:'POST',
@@ -1995,31 +2067,14 @@ async function shopBuy(packageId){
       body: JSON.stringify({ username: user.username, packageId })
     });
     const d = await r.json();
-    if(d.devMode){
-      // İyzico bağlanmadığında dev modu
-      if(confirm('🚧 DEV MODU\nİyzico henüz bağlı değil. Test için ödeme tamamlanmış sayılsın mı?')){
-        const r2 = await fetch('/api/payment/dev-complete',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ username: user.username, packageId })
-        });
-        if((await r2.json()).ok){
-          toast('✅ Ödeme tamamlandı (dev)!');
-          // Stats yenile
-          io2.emit('auth:stats',null,r=>{
-            if(r){user=r;updateUserUI();updateShopHeader();}
-          });
-        }
-      }
-    } else if(d.checkoutFormContent){
-      // Gerçek İyzico Checkout Form
+    if(d.checkoutFormContent){
       const w = window.open('','iyzico','width=500,height=700');
       w.document.write(d.checkoutFormContent);
     } else {
-      toast(d.error || 'Ödeme başlatılamadı',1);
+      toast(d.error || 'Satın alma gerçekleşmedi.',1);
     }
   }catch(e){
-    toast('Ödeme hatası: '+e.message,1);
+    toast('Satın alma gerçekleşmedi.',1);
   }
 }
 
@@ -2036,29 +2091,14 @@ async function shopDonate(){
       body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt })
     });
     const d = await r.json();
-    if(d.devMode){
-      if(confirm('🚧 DEV MODU\nİyzico bağlı değil. Test için bağış tamamlanmış sayılsın mı?')){
-        const r2 = await fetch('/api/payment/dev-complete',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt })
-        });
-        if((await r2.json()).ok){
-          toast('💝 Bağış için teşekkürler!');
-          Q('SHOP_DONATE_AMOUNT').value = '';
-          io2.emit('auth:stats',null,r=>{
-            if(r){user=r;updateUserUI();}
-          });
-        }
-      }
-    } else if(d.checkoutFormContent){
+    if(d.checkoutFormContent){
       const w = window.open('','iyzico','width=500,height=700');
       w.document.write(d.checkoutFormContent);
     } else {
-      toast(d.error || 'Ödeme başlatılamadı',1);
+      toast(d.error || 'Bağış gerçekleşmedi.',1);
     }
   }catch(e){
-    toast('Bağış hatası: '+e.message,1);
+    toast('Bağış gerçekleşmedi.',1);
   }
 }
 
@@ -2077,7 +2117,7 @@ function updateShopHeader(){
 
 async function openShopModal(){
   if(!user){toast('Önce giriş yap!',1);return;}
-  await loadShopCatalog();
+  await Promise.all([loadShopCatalog(), loadCosmeticCatalog()]);
   io2.emit('auth:stats',null,r=>{
     if(r){user=r;}
     updateShopHeader();
@@ -2086,12 +2126,203 @@ async function openShopModal(){
   });
 }
 
-// Envanter eşya kullan/kullanma
+// ── KOZMETİK MAĞAZA ──
+let _cosmeticCatalog = null;
+let _cosmeticCatalogPromise = null;
+let _shopItemCat = 'all';
+
+async function loadCosmeticCatalog(){
+  if(_cosmeticCatalog) return;
+  if(_cosmeticCatalogPromise) return _cosmeticCatalogPromise;
+  _cosmeticCatalogPromise = (async()=>{
+  try{
+    const r = await fetch('/api/shop/cosmetics');
+    const d = await r.json();
+    _cosmeticCatalog = d.items;
+  }catch(e){ console.error('Kozmetik katalog yüklenemedi', e); }
+  finally{ _cosmeticCatalogPromise = null; }
+  })();
+  return _cosmeticCatalogPromise;
+}
+
+function cosmeticPreviewHTML(id, item){
+  if(!item) return '<span>?</span>';
+  if(item.cat==='frame'){
+    const p=item.preview||{};
+    const animStyle=p.anim?`animation:${p.anim} 1.5s ease-in-out infinite;`:'';
+    return `<div class="frame-preview-card" style="border:${p.border||'1px solid var(--brd)'};box-shadow:${p.shadow||'none'};background:${p.bg||'var(--bg3)'};${animStyle}"><span>Azat</span></div>`;
+  }
+  if(item.cat==='pet'){
+    const p=item.preview||{};
+    const anim=p.anim||'petBounce';
+    return `<div class="pet-box" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><span style="font-size:1.8rem;animation:${anim} 1.2s ease-in-out infinite;display:inline-block">${p.sprite||item.emoji}</span></div>`;
+  }
+  if(item.cat==='font'){
+    const p=item.preview||{};
+    const family=p.family?p.family.replace(/"/g,"'"):'inherit';
+    return `<div class="font-preview-text" style="font-family:${family};font-weight:${p.weight||'400'};font-size:${p.size||'.85rem'};text-align:center">AZAP</div>`;
+  }
+  return `<span>${item.emoji}</span>`;
+}
+
+async function renderShopItems(){
+  await loadCosmeticCatalog();
+  if(!_cosmeticCatalog) return;
+  const grid = Q('SHOP_ITEM_GRID');
+  if(!grid) return;
+  const cat = _shopItemCat || 'all';
+  const search = (Q('SHOP_ITEM_SEARCH')?.value||'').toLowerCase();
+  const ownedIds = new Set((user?.inventory||[]).map(it=>typeof it==='string'?it:it.id));
+  let html = '';
+  Object.entries(_cosmeticCatalog).forEach(([id,item])=>{
+    if(cat!=='all' && item.cat!==cat) return;
+    if(search && !item.name.toLowerCase().includes(search) && !item.desc.toLowerCase().includes(search)) return;
+    const owned = ownedIds.has(id);
+    const canBuy = (user?.coins||0) >= item.price;
+    html += `<div class="ci-card${owned?' owned':''}">
+      <div class="ci-preview">${cosmeticPreviewHTML(id,item)}</div>
+      <div class="ci-info">
+        <div class="ci-name">${item.emoji} ${esc(item.name)}</div>
+        <div class="ci-desc">${esc(item.desc)}</div>
+        <div class="ci-meta">
+          <span class="ci-rarity ${item.rarity}">${item.rarity}</span>
+          <span class="ci-price">💰 ${item.price}</span>
+        </div>
+      </div>
+      <div class="ci-actions">
+        ${owned
+          ? '<button class="ci-buy owned-btn">✓ Envanterinde</button>'
+          : `<button class="ci-buy buy${canBuy?'':' disabled'}" ${canBuy?`onclick="shopBuyCosmetic('${id}')"`:'disabled style="opacity:.5;cursor:not-allowed"'}>Satın Al</button>`
+        }
+      </div>
+    </div>`;
+  });
+  grid.innerHTML = html || '<div style="text-align:center;color:var(--dim);padding:20px;font-size:.82rem">Eşya bulunamadı.</div>';
+}
+
+function shopFilterItems(cat){
+  if(cat) _shopItemCat = cat;
+  document.querySelectorAll('#SHOP_ITEM_FILTER .ci-filter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cat===(_shopItemCat||'all'));
+  });
+  renderShopItems();
+}
+
+function shopBuyCosmetic(itemId){
+  if(!user){toast('Giriş yap!',1);return;}
+  const item = _cosmeticCatalog?.[itemId];
+  if(!item){toast('Eşya bulunamadı',1);return;}
+  if(!confirm(`${item.emoji} ${item.name} satın alacaksın.\nFiyat: 💰 ${item.price} altın\nSatın alma işlemi ile Mesafeli Satış Sözleşmesi'ni kabul etmiş olursunuz.\nDevam?`))return;
+  io2.emit('shop:buyCosmetic',{itemId},r=>{
+    if(r?.ok){
+      toast(`✅ ${item.emoji} ${item.name} satın alındı!`);
+      user.coins = r.coins;
+      user.inventory = r.inventory;
+      updateUserUI();
+      updateShopHeader();
+      renderShopItems();
+    } else {
+      toast(r?.err || 'Satın alma gerçekleşmedi.',1);
+    }
+  });
+}
+
+// ── ENVANTER ──
+let _invCat = 'all';
+
+function invFilter(cat){
+  if(cat) _invCat = cat;
+  document.querySelectorAll('#INV_FILTER .ci-filter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cat===(_invCat||'all'));
+  });
+  renderInventory();
+}
+
+function equippedFromInventory(items){
+  const equipped = {};
+  (items||[]).forEach(it=>{
+    const obj = typeof it==='string'?{id:it,equipped:false}:it;
+    if(!obj?.equipped) return;
+    const info = _cosmeticCatalog?.[obj.id];
+    const cat = info?.cat || obj.id.split('_')[0];
+    equipped[cat] = obj.id;
+  });
+  return equipped;
+}
+
+function renderInventoryPreview(items){
+  const box = Q('INV_EQUIPPED_PREVIEW');
+  if(!box) return;
+  const equipped = equippedFromInventory(items);
+  const fw = cosmeticFrameWrap(equipped, true);
+  const petItem = equipped.pet ? _cosmeticCatalog?.[equipped.pet] : null;
+  const fontItem = equipped.font ? _cosmeticCatalog?.[equipped.font] : null;
+  const petPreview = petItem?.preview || {};
+  const fontPreview = fontItem?.preview || {};
+  const fontFamily = fontPreview.family ? fontPreview.family.replace(/"/g,"'") : 'inherit';
+  let avatar = avHTML(user?.avatar,'lg','👤');
+  if(fw){
+    avatar = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatar}</div>`;
+  }
+  const pet = petItem ? `<span class="inv-preview-pet" style="animation:${petPreview.anim||'catIdle'} 3s ease-in-out infinite">${petPreview.sprite||petItem.emoji}</span>` : '';
+  const activeNames = ['frame','pet','font'].map(cat=>equipped[cat] ? _cosmeticCatalog?.[equipped[cat]]?.name : null).filter(Boolean);
+  box.innerHTML = `<div class="inv-preview-avatar">${avatar}${pet}</div>
+    <div class="inv-preview-text">
+      <div class="inv-preview-name" style="font-family:${fontFamily};font-weight:${fontPreview.weight||'700'};font-size:${fontPreview.size||'.84rem'}">${esc(user?.username||'Profil')}</div>
+      <div class="inv-preview-hint">${activeNames.length ? activeNames.map(esc).join(' • ') : 'Kullandığın frame, pet ve yazı tipi burada önizlenir.'}</div>
+    </div>`;
+}
+
+async function renderInventory(){
+  await loadCosmeticCatalog();
+  const inv = Q('PROF_INVENTORY');
+  if(!inv) return;
+  // Önceki içeriği temizle (üst üste binme sorununu önlemek için)
+  inv.innerHTML = '';
+  const items = (user?.inventory||[]).map(it=>typeof it==='string'?{id:it,equipped:false}:it);
+  renderInventoryPreview(items);
+  const cat = _invCat || 'all';
+  const search = (Q('INV_SEARCH')?.value||'').toLowerCase();
+  const filtered = items.filter(it=>{
+    const info = _cosmeticCatalog?.[it.id];
+    if(!info) return false;
+    if(cat!=='all' && info.cat!==cat) return false;
+    if(search && !info.name.toLowerCase().includes(search) && !info.desc.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  if(filtered.length===0){
+    inv.innerHTML='<div style="color:var(--dim);text-align:center;padding:12px;font-size:.78rem">'+
+      (items.length===0?'Henüz eşyan yok. Mağazadan satın alabilirsin.':'Bu filtrede eşya yok.')+'</div>';
+    return;
+  }
+  inv.innerHTML = filtered.map(it=>{
+    const info = _cosmeticCatalog?.[it.id] || {emoji:'📦',name:it.id,desc:'',cat:'?',rarity:'rare'};
+    const eq = !!it.equipped;
+    return `<div class="ci-card${eq?' owned':''}">
+      <div class="ci-preview">${cosmeticPreviewHTML(it.id,info)}</div>
+      <div class="ci-info">
+        <div class="ci-name">${info.emoji} ${esc(info.name)}</div>
+        <div class="ci-desc">${esc(info.desc)}</div>
+        <div class="ci-meta"><span class="ci-rarity ${info.rarity}">${info.rarity}</span>${eq?'<span style="color:var(--safe);font-size:.68rem;font-weight:600">AKTİF</span>':''}</div>
+      </div>
+      <div class="ci-actions">
+        <button class="ci-buy ${eq?'unequip':'equip'}" onclick="toggleEquipItem('${esc(it.id)}',${!eq})">${eq?'Kaldır':'Kullan'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function toggleEquipItem(itemId, equipped){
   io2.emit('inventory:equip', { itemId, equipped }, r => {
     if(r?.ok){
       toast(equipped ? '✓ Eşya aktif edildi' : 'Eşya pasifleştirildi');
-      openProfile(); // yeniden render
+      // Server'dan dönen güncel envanteri hemen uygula (kategori otomatik kaldırma için)
+      if(r.inventory && user){
+        user.inventory = r.inventory;
+        user.equipped = r.equipped || equippedFromInventory(r.inventory);
+      }
+      updateUserUI();
+      renderInventory(); // Sadece envanteri yenile, tüm profili değil
     } else {
       toast(r?.err || 'Hata!', 1);
     }
@@ -2168,7 +2399,13 @@ function doLogout(){
 function updateUserUI(){
   if(!user)return;
   Q('WN').textContent=user.username;
-  Q('WAV_SLOT').innerHTML=avHTML(user.avatar,'md','👤');
+  // Ana menüde avatar + frame (köşeli 13px)
+  const fw = cosmeticFrameWrap(user.equipped, true);
+  let avatarHtml = avHTML(user.avatar,'md','👤');
+  if(fw){
+    avatarHtml = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:4px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatarHtml}</div>`;
+  }
+  Q('WAV_SLOT').innerHTML=avatarHtml;
   // Coin göster
   const tc = Q('TOP_COINS');
   if(tc){
@@ -2181,7 +2418,16 @@ function openProfile(){
   io2.emit('auth:stats',null,r=>{
     if(!r)return;user=r;
     Q('PROF_NAME').textContent=r.username;
-    Q('PROF_AV').outerHTML=avHTML(r.avatar,'lg','👤').replace('class="av av-lg"','class="av av-lg" id="PROF_AV"');
+    // Profil modalında avatar + frame (köşeli 13px) - doğrudan avatar üzerinde
+    const fw = cosmeticFrameWrap(r.equipped, true);
+    const avWrap = Q('PROF_AV_WRAP');
+    if(avWrap){
+      let profAvatar = avHTML(r.avatar,'lg','👤');
+      if(fw){
+        profAvatar = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${profAvatar}</div>`;
+      }
+      avWrap.innerHTML = `<label class="av-edit">${profAvatar.replace('class="av av-lg"','class="av av-lg" id="PROF_AV"')}<input type="file" class="av-upload" id="AV_UPLOAD" accept="image/*" onchange="uploadAvatar()"></label>`;
+    }
     Q('MOD_SP').textContent=r.stats.played;
     Q('MOD_SW').textContent=r.stats.won;
     Q('MOD_SL').textContent=r.stats.lost;
@@ -2201,30 +2447,10 @@ function openProfile(){
     } else {
       Q('MOD_DONATED_ROW').style.display='none';
     }
-    // Envanter render
-    const inv = Q('PROF_INVENTORY');
-    if(inv){
-      const items = r.inventory || [];
-      if(items.length === 0){
-        inv.innerHTML = '<div style="color:var(--dim);text-align:center;padding:8px;font-size:.78rem">Henüz eşyan yok. Mağazadan satın alabilirsin (yakında).</div>';
-      } else {
-        inv.innerHTML = items.map(it => {
-          // Migration: string -> obj
-          const item = typeof it === 'string' ? { id: it, equipped: false } : it;
-          const itemId = item.id;
-          const equipped = !!item.equipped;
-          // Kategori bazlı emoji
-          const cat = itemId.split('_')[0];
-          const catEmoji = {frame:'🖼️',font:'✒️',color:'🎨',effect:'✨'}[cat] || '📦';
-          // Görünen isim
-          const name = itemId.replace(/_/g,' ');
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:${equipped?'rgba(184,134,11,.1)':'var(--bg3)'};border:1px solid ${equipped?'var(--gold)':'var(--brd)'};border-radius:5px;margin-bottom:5px">
-            <span>${catEmoji} ${esc(name)}</span>
-            <button class="b bs" style="padding:4px 10px;font-size:.7rem;${equipped?'background:var(--gold);color:#000':'background:var(--bg2);color:var(--dim);border:1px solid var(--brd)'}" onclick="toggleEquipItem('${esc(itemId)}',${!equipped})">${equipped?'✓ Aktif':'Kullan'}</button>
-          </div>`;
-        }).join('');
-      }
-    }
+    // Envanter render (yeni kozmetik UI)
+    renderInventory();
+    // Kozmetik ayar checkbox'ını mevcut değere ayarla
+    const hcBox=Q('HIDE_COSMETICS');if(hcBox)hcBox.checked=_hideOtherCosmetics;
     openModal('MDL_PROFILE');
   });
 }
@@ -2678,7 +2904,15 @@ function renderPV(){
     const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
     const tally=gs.presidentVoteTally?.[p.id]||0;
     const nameStyle=isT?'color:var(--hain);font-weight:600':(isMe?'color:var(--hi)':'');
-    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="${nameStyle}">${p.name}${isMe?' (SEN)':''}${isT?' 🧛':''}</span></span><span class="vc" data-pvc="${p.id}">${tally}</span>`;
+    const fw=cosmeticFrameWrap(p.cosmetics,isMe);
+    const petS=cosmeticPetHTML(p.cosmetics,isMe);
+    const nameH=cosmeticNameHTML(p.name,p.cosmetics,isMe);
+    // Frame sadece avatar etrafına - köşeli çerçeve
+    let avatarHtml = avHTML(p.avatar,'sm');
+    if(fw){
+      avatarHtml = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:3px;margin:1px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatarHtml}</div>`;
+    }
+    d.innerHTML=`${avatarHtml}<span class="vb-name"><span style="${nameStyle}">${nameH}${isMe?' (SEN)':''}${isT?' 🧛':''}${petS}</span></span><span class="vc" data-pvc="${p.id}">${tally}</span>`;
     // Kendine de oy verilebilir
     d.onclick=()=>pVote(p.id);
     grid.appendChild(d);
@@ -2943,18 +3177,77 @@ function renderH(){
 }
 
 // ── RENDERS ──
+// ── KOZMETİK RENDER HELPER ──
+let _hideOtherCosmetics = false;
+try{_hideOtherCosmetics=localStorage.getItem('azap_hide_cosmetics')==='1';}catch{}
+
+function cosmeticNameHTML(name, cosm, isMe){
+  if(!cosm||(!isMe && _hideOtherCosmetics)) return esc(name);
+  let style='';
+  if(cosm.font && _cosmeticCatalog?.[cosm.font]){
+    const p=_cosmeticCatalog[cosm.font].preview||{};
+    // Font family'deki escape karakterlerini temizle
+    let family=p.family||'inherit';
+    family=family.replace(/\\"/g,'"').replace(/"/g,"'");
+    style+=`font-family:${family};`;
+    if(p.weight) style+=`font-weight:${p.weight};`;
+    if(p.size) style+=`font-size:${p.size};`;
+  }
+  return `<span style="${style}">${esc(name)}</span>`;
+}
+
+// Frame tüm kartı sarar - border+shadow+bg+anim
+function cosmeticFrameWrap(cosm, isMe){
+  if(!cosm||(!isMe && _hideOtherCosmetics)||!cosm.frame) return null;
+  const item = _cosmeticCatalog?.[cosm.frame];
+  if(!item) return null;
+  const p=item.preview||{};
+  return {
+    border: p.border||'1px solid var(--brd)',
+    shadow: p.shadow||'none',
+    bg: p.bg||'transparent',
+    anim: p.anim||null
+  };
+}
+// Eski fonksiyon (name span için style)
+function cosmeticFrameStyle(cosm, isMe){
+  const w=cosmeticFrameWrap(cosm,isMe);
+  if(!w) return '';
+  let s=`border:${w.border};box-shadow:${w.shadow};background:${w.bg};padding:3px 8px;border-radius:6px;`;
+  if(w.anim) s+=`animation:${w.anim} 1.5s ease-in-out infinite;`;
+  return s;
+}
+
+function cosmeticPetHTML(cosm, isMe){
+  if(!cosm||(!isMe && _hideOtherCosmetics)||!cosm.pet) return '';
+  const item = _cosmeticCatalog?.[cosm.pet];
+  if(!item) return '';
+  const p=item.preview||{};
+  const anim=p.anim||'catIdle';
+  const sprite=p.sprite||item.emoji;
+  return `<span style="display:inline-block;font-size:1.1rem;margin-left:4px;vertical-align:middle;animation:${anim} 3s ease-in-out infinite;line-height:1">${sprite}</span>`;
+}
+
 function renderLobby(){
   if(!gs)return;
+  if(!_cosmeticCatalog){
+    loadCosmeticCatalog().then(()=>{ if(gs?.phase==='lobby') renderLobby(); });
+  }
   Q('LP').innerHTML='';
   const isLeader = me===gs.leaderId;
   gs.players.forEach(p=>{
     const li=document.createElement('li');li.className='pi fade';
     const isMe=p.id===me;
     const showKick = isLeader && !isMe;
-    li.innerHTML=`${avHTML(p.avatar,'sm')}<span class="pi-name"><span>${p.name}${isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':''}</span></span>
-      ${p.id===gs.leaderId?'<span class="badge badge-l">LİDER</span>':''}
-      <span class="wins-badge">🏆${p.wins||0}<span class="heart">❤️${p.mvp||0}</span></span>
-      ${showKick?`<button class="kick-btn" data-pid="${p.id}" title="Oyuncuyu at">🚫</button>`:''}`;
+    const fw = cosmeticFrameWrap(p.cosmetics, isMe);
+    const petSprite = cosmeticPetHTML(p.cosmetics, isMe);
+    const nameHtml = cosmeticNameHTML(p.name, p.cosmetics, isMe);
+    // Frame sadece avatar etrafına - köşeli çerçeve (avatarla aynı şekil)
+    let avatarHtml = avHTML(p.avatar,'sm');
+    if(fw){
+      avatarHtml = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:4px;margin:2px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatarHtml}</div>`;
+    }
+    li.innerHTML=`${avatarHtml}<span class="pi-name"><span>${nameHtml}${isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':''}${petSprite}</span></span>${p.id===gs.leaderId?'<span class="badge badge-l">LİDER</span>':''}<span class="wins-badge">🏆${p.wins||0}<span class="heart">❤️${p.mvp||0}</span></span>${showKick?`<button class="kick-btn" data-pid="${p.id}" title="Oyuncuyu at">🚫</button>`:''}`;
     Q('LP').appendChild(li);
   });
   // Kick butonlarına event ekle
@@ -4544,8 +4837,10 @@ io2.on('connect',()=>{
           loadYouTubeAPI();
           setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); setupDraggableButtons(); }, 300);
           updateRoleInfoBtn();
+        } else {
+          user = { ...user, ...r.user };
+          updateUserUI();
         }
-        // user zaten doluysa sadece sunucu authed map'i tazelendi (sessizce)
         // Bağlantı sonrası rejoin kontrolü (sayfa yenilenme/reconnect durumları için)
         setTimeout(()=>{
           tryAutoRejoin();

@@ -109,11 +109,12 @@ class GameEngine {
     this.sabotageTimers = new Map();
   }
 
-  addPlayer(id, name, username, wins, avatar, mvp, isAdmin) {
+  addPlayer(id, name, username, wins, avatar, mvp, isAdmin, cosmetics) {
     if (this.players.size >= this.config.MAX_PLAYERS) return false;
     if (this.phase !== PHASES.LOBBY && this.phase !== PHASES.POST_GAME) return false;
     this.players.set(id, {
       id, name, username, wins: wins || 0, mvp: mvp || 0, avatar: avatar || null,
+      cosmetics: cosmetics || {},
       role: null, actualTeam: null, displayedRole: null,
       isAlive: true, isInsane: false, isTempInsane: false,
       isShielded: false, isImmortal: false, isSilenced: false,
@@ -122,8 +123,8 @@ class GameEngine {
     this.actionHistory.set(id, []);
     return true;
   }
-  addSpectator(id, name, username, avatar) {
-    this.spectators.set(id, { id, name, username, avatar: avatar || null });
+  addSpectator(id, name, username, avatar, cosmetics) {
+    this.spectators.set(id, { id, name, username, avatar: avatar || null, cosmetics: cosmetics || {} });
   }
   removePlayer(id) { this.players.delete(id); this.actionHistory.delete(id); }
   removeSpectator(id) { this.spectators.delete(id); }
@@ -2154,6 +2155,7 @@ class GameEngine {
   publicState() {
     const players = [...this.players.values()].map(p => ({
       id: p.id, name: p.name, username: p.username, avatar: p.avatar,
+      cosmetics: p.cosmetics || {},
       wins: p.wins, mvp: p.mvp, isAlive: p.isAlive, isPresident: p.id === this.presidentId
     }));
     return {
@@ -2164,7 +2166,7 @@ class GameEngine {
       hainCount: this.hainCount, tarafsizCount: this.tarafsizCount,
       roleSelectionMode: this.roleSelectionMode,
       players, presidentId: this.presidentId,
-      spectators: [...this.spectators.values()].map(s => ({ id: s.id, name: s.name, avatar: s.avatar })),
+      spectators: [...this.spectators.values()].map(s => ({ id: s.id, name: s.name, avatar: s.avatar, cosmetics: s.cosmetics || {} })),
       deadThisNight: this.deadThisNight,
       voteTally: this.phase === PHASES.VOTING ? Object.fromEntries(this.voteTally) : {},
       // Rol seçim aşaması: sıra gizli, sadece tamamlanan seçimler ve toplam ilerleme görünür
@@ -2354,6 +2356,7 @@ class GameEngine {
       phase: this.phase, round: this.round,
       players: [...this.players.values()].map(p => ({
         id: p.id, name: p.name, username: p.username, avatar: p.avatar,
+        cosmetics: p.cosmetics || {},
         role: p.role, roleName: this.ro(p.role)?.name, roleEmoji: this.ro(p.role)?.emoji,
         team: p.actualTeam, isAlive: p.isAlive, isInsane: p.isInsane,
         isSilenced: p.isSilenced, isPresident: p.id === this.presidentId

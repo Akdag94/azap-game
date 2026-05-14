@@ -40,6 +40,19 @@ function isPremiumActive(u) {
   return true;
 }
 
+function getEquippedFromUser(u) {
+  ensureStats(u);
+  const equipped = {};
+  u.inventory.forEach(it => {
+    const item = typeof it === 'string' ? { id: it, equipped: false } : it;
+    if (item.equipped) {
+      const category = item.id.split('_')[0];
+      equipped[category] = item.id;
+    }
+  });
+  return equipped;
+}
+
 module.exports = {
   register(username, password) {
     const db = read(), key = username.toLowerCase().trim();
@@ -48,7 +61,7 @@ module.exports = {
     if (db[key]) return { success: false, error: 'Bu kullanıcı adı alınmış.' };
     db[key] = { username: username.trim(), hash: bcrypt.hashSync(password, 8), avatar: null, stats: { played: 0, won: 0, lost: 0, mvp: 0 }, coins: 100, inventory: [], created: Date.now() };
     write(db);
-    return { success: true, user: { username: db[key].username, avatar: null, stats: db[key].stats, coins: 100, inventory: [], premium: { active: false, daysLeft: 0 } } };
+    return { success: true, user: { username: db[key].username, avatar: null, stats: db[key].stats, coins: 100, inventory: [], equipped: {}, premium: { active: false, daysLeft: 0 } } };
   },
   login(username, password, rememberMe) {
     const db = read(), key = username.toLowerCase().trim(), u = db[key];
@@ -63,7 +76,7 @@ module.exports = {
       if (u.tokens.length > 5) u.tokens = u.tokens.slice(-5);
     }
     write(db);
-    return { success: true, user: { username: u.username, avatar: u.avatar || null, stats: u.stats, coins: u.coins, inventory: u.inventory, premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin }, token };
+    return { success: true, user: { username: u.username, avatar: u.avatar || null, stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin }, token };
   },
 
   // Token ile otomatik giriş
@@ -74,7 +87,7 @@ module.exports = {
       const u = db[key];
       if (u.tokens?.some(t => t.token === token)) {
         ensureStats(u);
-        return { success: true, user: { username: u.username, avatar: u.avatar || null, stats: u.stats, coins: u.coins, inventory: u.inventory, premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin } };
+        return { success: true, user: { username: u.username, avatar: u.avatar || null, stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin } };
       }
     }
     return { success: false };
@@ -115,9 +128,11 @@ module.exports = {
     if (!u) return null;
     ensureStats(u);
     const isActive = isPremiumActive(u);
+    const equipped = getEquippedFromUser(u);
     return {
       username: u.username, avatar: u.avatar || null,
       stats: u.stats, coins: u.coins, inventory: u.inventory,
+      equipped,
       premium: {
         active: isActive,
         expiresAt: u.premium.expiresAt,
@@ -200,15 +215,7 @@ module.exports = {
     const db = read(), key = username?.toLowerCase()?.trim();
     if (!db[key]) return {};
     ensureStats(db[key]);
-    const equipped = {};
-    db[key].inventory.forEach(it => {
-      const item = typeof it === 'string' ? { id: it, equipped: false } : it;
-      if (item.equipped) {
-        const category = item.id.split('_')[0];
-        equipped[category] = item.id;
-      }
-    });
-    return equipped;
+    return getEquippedFromUser(db[key]);
   },
 
   // ── PREMIUM ÜYELİK ──
