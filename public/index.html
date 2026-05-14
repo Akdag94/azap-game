@@ -2501,8 +2501,9 @@ let demoRolesEnabled=false; // Demo rolleri dahil etme durumu
 
 function buildRG(){
   const g=Q('RG');g.innerHTML='';
-  // Ana roller (DELI ve VAMPIR hariç)
-  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='VAMPIR').forEach(([k,v])=>{
+  // Ana roller (DELI, VAMPIR ve demo roller hariç)
+  const _demoKeys=new Set(Object.keys(RDEF_DEMO));
+  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='VAMPIR' && !_demoKeys.has(k)).forEach(([k,v])=>{
     const d=document.createElement('div');
     d.className=`rchip on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
     d.innerHTML=`<span>${v.e}</span>${v.n}`;
