@@ -225,6 +225,10 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 .wins-badge{font-size:.62rem;color:var(--hi);font-family:'Fira Code',monospace;flex-shrink:0;display:flex;gap:3px;align-items:center}
 .heart{color:#ff5577}
 
+/* Kick butonu stili */
+.kick-btn{background:transparent;border:none;cursor:pointer;font-size:.9rem;padding:2px 4px;margin-left:4px;opacity:.6;transition:opacity .2s}
+.kick-btn:hover{opacity:1;background:rgba(139,0,0,.2);border-radius:3px}
+
 .sbox{margin-top:10px;padding:11px;background:var(--bg3);border-radius:6px;border:1px solid var(--brd)}
 .st{font-family:'Cinzel Decorative',serif;font-size:.78rem;margin-bottom:8px;margin-top:2px;color:var(--acc);letter-spacing:2px}
 .srow{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:.8rem}
@@ -1618,14 +1622,15 @@ const RDEF={
     full:'Pasif rol. İlk öldürüldüğünde herkes öldü sanır (sabah raporunda ölü görünür) ama ertesi gece geri dönersin. Sadece 1 kez canlanırsın. İkinci ölümünde gerçekten ölürsün. Diriliş diğer oyuncuları şoke eder.'},
   KOSTEBEK:{e:'🦔',n:'Köstebek',t:'hain',d:'Hain Savcı (her gece kullanılabilir).',
     full:'Her gece birini incelersin. 2 rol seçeneği gösterilir, biri kesinlikle doğru (hain rolleri seçenek olarak gelmez). Hain sohbetinde paylaşıp suikastçıya hedef gösterir veya tehlikeli polisin kim olduğunu tespit edersin.'},
-  VIRUS:{e:'🦠',n:'Virüs',t:'hain',d:'Bulaştırma + ölüm.',
-    full:'Bir oyuncuya virüs bulaştırırsın. O ertesi gece rol kullanırsa, kullandığı kişi ölür. Kendine bulaştıramazsın. 2 gece üst üste aksiyon yapmazsan kendin ölürsün — pasif kalamazsın!'},
+  // VIRUS geçici olarak devre dışı bırakıldı
   PUSUCU:{e:'🪤',n:'Pusucu',t:'hain',d:'Pusu kurar; gelenler ölür.',
     full:'O gece evine gelen oyunculardan biri rastgele ölür (hain takım arkadaşların bile dahil — dikkat!). Diğer hainler ana cinayeti yaparken sen arkayı kollarsın. Gazeteci/Takipçi/Polis seni hedef alırsa pusuya düşer.'},
   HACKER:{e:'💻',n:'Hacker',t:'hain',d:'Bilgi rolünü engeller.',
     full:'Bir bilgi toplayan masum (Polis, Savcı, Psikolog, Gazeteci, Takipçi, Dedikoducu, Ajan, Çilingir) hacklersin. Rolünü kullanırsa o gece raporu silinir, "İletişim ağı bozuldu!" mesajı alır. Saldırı/koruma raporları etkilenmez (sadece bilgi rolleri).'},
   VEBA:{e:'☠️',n:'Veba',t:'tarafsız',d:'Hastalık yayar; herkes hastayken kazanır.',
     full:'Her gece bir kişiye hastalık bulaştırırsın (haberi olmaz). Hayattaki HERKES hastalandığında, tüm hastalar anında ölür ve sen TEK BAŞINA kazanırsın. Çok gizli oynamak ve şüphe çekmemek kritik. Sadece sen kazanırsın — kimseyle paylaşmazsın.'},
+  // VIRUS geçici olarak devre dışı
+  // DELI en sonda
   DELI:{e:'🤡',n:'Deli',t:'deli',d:'Bir masum rol gibi görünür ama tüm sonuçları sahtedir.',
     full:'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'}
 };
@@ -1818,17 +1823,23 @@ function dismissRejoin(){
 
 // Otomatik rejoin - sayfa yenilendiğinde veya reconnect olduğunda sessizce dene
 function tryAutoRejoin(){
+  console.log('[tryAutoRejoin] Başladı');
   var saved=null;
-  try{saved=JSON.parse(localStorage.getItem('azap_last_room'));}catch{}
-  if(!saved||!saved.code)return;
+  try{saved=JSON.parse(localStorage.getItem('azap_last_room'));}catch(e){console.log('[tryAutoRejoin] localStorage hatası:',e);}
+  console.log('[tryAutoRejoin] saved:',saved);
+  if(!saved||!saved.code){console.log('[tryAutoRejoin] saved veya code yok, çıkılıyor');return;}
   // Rejoin modal açıkken tekrar deneme
-  if(Q('REJOIN_MODAL').classList.contains('on'))return;
+  if(Q('REJOIN_MODAL').classList.contains('on')){console.log('[tryAutoRejoin] Modal açık, çıkılıyor');return;}
+  console.log('[tryAutoRejoin] room:checkRejoin gönderiliyor, kod:',saved.code);
   io2.emit('room:checkRejoin',{code:saved.code},function(r){
-    if(!r||!r.ok){clearLastRoom();return;}
+    console.log('[tryAutoRejoin] room:checkRejoin cevabı:',r);
+    if(!r||!r.ok){console.log('[tryAutoRejoin] checkRejoin başarısız:',r);clearLastRoom();return;}
     // Oda aktif — otomatik rejoin dene (kullanıcıya sormadan)
     if(r.isActive){
       var name=saved.name||user?.username||'Oyuncu';
+      console.log('[tryAutoRejoin] Oda aktif, room:rejoin gönderiliyor, isim:',name);
       io2.emit('room:rejoin',{code:saved.code,playerName:name},function(rejoinRes){
+        console.log('[tryAutoRejoin] room:rejoin cevabı:',rejoinRes);
         if(rejoinRes?.ok){
           me=io2.id;
           Q('LC').textContent=rejoinRes.code;
@@ -1836,12 +1847,14 @@ function tryAutoRejoin(){
           io2.emit('state:request');
           io2.emit('priv:request');
         } else {
+          console.log('[tryAutoRejoin] rejoin başarısız:',rejoinRes);
           clearLastRoom();
           // Başarısızsa modal göster (manuel rejoin için)
           checkRejoin();
         }
       });
     } else {
+      console.log('[tryAutoRejoin] Oda lobide, modal gösteriliyor');
       // Lobi durumu — modal göster
       checkRejoin();
     }
@@ -1858,11 +1871,13 @@ function tryAutoLogin(){
       user=r.user;
       updateUserUI();
       toast('Hoş geldin '+user.username+'!');
-      setTimeout(()=>{ show('S1'); setupDraggableButtons(); checkRejoin(); }, 300);
+      setTimeout(()=>{ show('S1'); setupDraggableButtons(); tryAutoRejoin(); }, 300);
       updateRoleInfoBtn();
     } else {
       // Token geçersiz - sil
       try{ localStorage.removeItem('azap_token'); }catch{}
+      // Token geçersiz olsa bile rejoin dene
+      setTimeout(()=>{ tryAutoRejoin(); }, 300);
     }
   });
   return true;
@@ -2819,14 +2834,36 @@ function renderH(){
 function renderLobby(){
   if(!gs)return;
   Q('LP').innerHTML='';
+  const isLeader = me===gs.leaderId;
   gs.players.forEach(p=>{
     const li=document.createElement('li');li.className='pi fade';
     const isMe=p.id===me;
+    const showKick = isLeader && !isMe;
     li.innerHTML=`${avHTML(p.avatar,'sm')}<span class="pi-name"><span>${p.name}${isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':''}</span></span>
       ${p.id===gs.leaderId?'<span class="badge badge-l">LİDER</span>':''}
-      <span class="wins-badge">🏆${p.wins||0}<span class="heart">❤️${p.mvp||0}</span></span>`;
+      <span class="wins-badge">🏆${p.wins||0}<span class="heart">❤️${p.mvp||0}</span></span>
+      ${showKick?`<button class="kick-btn" data-pid="${p.id}" title="Oyuncuyu at">🚫</button>`:''}`;
     Q('LP').appendChild(li);
   });
+  // Kick butonlarına event ekle
+  if(isLeader){
+    document.querySelectorAll('.kick-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const pid=btn.getAttribute('data-pid');
+        const target=gs.players.find(p=>p.id===pid);
+        if(!target)return;
+        if(confirm(`${target.name} oyuncusunu odadan atmak istediğine emin misin?`)){
+          io2.emit('room:kick',{targetId:pid},r=>{
+            if(r?.ok){
+              toast(`${r.kickedName||target.name} atıldı.`);
+            } else {
+              toast(r?.err||'Atma işlemi başarısız.',1);
+            }
+          });
+        }
+      });
+    });
+  }
   const sp=Q('LS');
   sp.innerHTML=gs.spectators?.length?`<div class="lbl mt8">👁️ İzleyiciler</div>`+gs.spectators.map(s=>`<div class="pi" style="opacity:.5">${avHTML(s.avatar,'sm','👁️')}<span class="pi-name"><span>${s.name}</span></span></div>`).join(''):'';
   Q('SP2').style.display=io2.id===gs.leaderId?'block':'none';
@@ -4356,8 +4393,14 @@ document.addEventListener('visibilitychange', () => {
       try{ token = localStorage.getItem('azap_token'); }catch{}
       if(token && user){
         io2.emit('auth:loginByToken',{token},()=>{});
+      }
+    }
+  }
+});
+
 io2.on('connect',()=>{
   me=io2.id;
+  console.log('[connect] Socket bağlandı, id:',me);
   // HER bağlantıda (ilk + reconnect) token varsa server'da authed map'e kayıt ettir
   // Aksi halde room:create gibi auth gerektiren işlemler başarısız olur
   let token = null;
@@ -4388,8 +4431,17 @@ io2.on('connect',()=>{
           show('S0');
           toast('Oturumun sona erdi, tekrar giriş yap.',1);
         }
+        // Token geçersiz olsa bile rejoin dene (anonim oyuncu için)
+        setTimeout(()=>{
+          tryAutoRejoin();
+        }, 500);
       }
     });
+  } else {
+    // Token yoksa bile rejoin dene (anonim oyuncu için)
+    setTimeout(()=>{
+      tryAutoRejoin();
+    }, 500);
   }
   // Sürüklenebilir butonları kur (DOM hazır olduktan sonra)
   setTimeout(setupDraggableButtons, 100);
@@ -4407,6 +4459,12 @@ io2.on('state',s=>{
   const roundChanged = _lastRound !== s.round;
   _lastPhase = s.phase;
   _lastRound = s.round;
+
+  // Oda kodunu kaydet (rejoin için) - oyun aktifken veya lobideyken
+  const currentCode = Q('LC')?.textContent;
+  if(currentCode && currentCode.length === 4 && s.phase !== 'game_over' && s.phase !== 'post_game'){
+    saveLastRoom(currentCode, user?.username || Q('IN')?.value?.trim() || 'Oyuncu');
+  }
 
   // İzleyici veya ölmüş oyuncu — bitiş ekranlarına ve lobiye dönüşe izin ver
   if(isSpec||isDead){
@@ -4682,12 +4740,6 @@ io2.on('reconnect',()=>{
 
 io2.on('connect_error',(err)=>{
   console.log('[socket] connect_error:', err.message);
-});
-
-io2.on('forceLogout',({reason})=>{
-  toast(reason||'Oturumun başka bir cihazda açıldı.',1);
-  try{ localStorage.removeItem('azap_token'); }catch{}
-  setTimeout(()=>location.reload(),2500);
 });
 
 Q('IC').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'')});
