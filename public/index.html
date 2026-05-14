@@ -1816,6 +1816,38 @@ function dismissRejoin(){
   clearLastRoom();
 }
 
+// Otomatik rejoin - sayfa yenilendiğinde veya reconnect olduğunda sessizce dene
+function tryAutoRejoin(){
+  var saved=null;
+  try{saved=JSON.parse(localStorage.getItem('azap_last_room'));}catch{}
+  if(!saved||!saved.code)return;
+  // Rejoin modal açıkken tekrar deneme
+  if(Q('REJOIN_MODAL').classList.contains('on'))return;
+  io2.emit('room:checkRejoin',{code:saved.code},function(r){
+    if(!r||!r.ok){clearLastRoom();return;}
+    // Oda aktif — otomatik rejoin dene (kullanıcıya sormadan)
+    if(r.isActive){
+      var name=saved.name||user?.username||'Oyuncu';
+      io2.emit('room:rejoin',{code:saved.code,playerName:name},function(rejoinRes){
+        if(rejoinRes?.ok){
+          me=io2.id;
+          Q('LC').textContent=rejoinRes.code;
+          toast('🎮 Oyuna geri bağlanıldı!');
+          io2.emit('state:request');
+          io2.emit('priv:request');
+        } else {
+          clearLastRoom();
+          // Başarısızsa modal göster (manuel rejoin için)
+          checkRejoin();
+        }
+      });
+    } else {
+      // Lobi durumu — modal göster
+      checkRejoin();
+    }
+  });
+}
+
 // Otomatik token girişi (sayfa yüklendiğinde)
 function tryAutoLogin(){
   let token = null;
@@ -4324,12 +4356,6 @@ document.addEventListener('visibilitychange', () => {
       try{ token = localStorage.getItem('azap_token'); }catch{}
       if(token && user){
         io2.emit('auth:loginByToken',{token},()=>{});
-      }
-    }
-  }
-});
-
-// ── SOCKET ──
 io2.on('connect',()=>{
   me=io2.id;
   // HER bağlantıda (ilk + reconnect) token varsa server'da authed map'e kayıt ettir
@@ -4349,6 +4375,10 @@ io2.on('connect',()=>{
           updateRoleInfoBtn();
         }
         // user zaten doluysa sadece sunucu authed map'i tazelendi (sessizce)
+        // Bağlantı sonrası rejoin kontrolü (sayfa yenilenme/reconnect durumları için)
+        setTimeout(()=>{
+          tryAutoRejoin();
+        }, 500);
       } else {
         // Token geçersiz - sil ve user'ı sıfırla
         try{ localStorage.removeItem('azap_token'); }catch{}
@@ -4614,6 +4644,30 @@ io2.on('disconnect',(reason)=>{
     // Sunucu kasıtlı kapattı
     toast('Sunucudan ayrıldın.',1);
   }
+  // Otomatik rejoin dene (sayfa yenilenmemiş, sadece geçici kopma)
+  if(reason==='ping timeout'||reason==='transport close'||reason==='transport error'){
+    setTimeout(()=>{
+      if(io2.disconnected)tryAutoRejoin();
+    },1000);
+  }
+});
+
+// Oda kurucusu tarafından atıldı
+io2.on('kicked',({reason})=>{
+  clearLastRoom();
+  resetClient();
+  show('S1');
+  toast(reason||'Odadan atıldın.',1);
+});
+
+// Başka cihazda giriş yapıldı
+io2.on('forceLogout',({reason})=>{
+  clearLastRoom();
+  resetClient();
+  user=null;
+  try{localStorage.removeItem('azap_token');}catch{}
+  show('S0');
+  toast(reason||'Başka bir cihazda giriş yapıldı.',1);
 });
 
 io2.on('reconnect_attempt',(n)=>{

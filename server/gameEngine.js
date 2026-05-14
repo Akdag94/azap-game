@@ -714,8 +714,8 @@ class GameEngine {
         this.nightActions.set(pid, { pid, role: p.role, team: p.actualTeam, ...action });
         return true;
       }
-      // Köstebek, Virüs, Pusucu, Hacker hain ability sayılır (kill değil)
-      if (['kostebek', 'virus', 'pusucu', 'hacker'].includes(p.role)) {
+      // Pusucu, Hacker hain ability sayılır (kill değil)
+      if (['pusucu', 'hacker'].includes(p.role)) {
         this.nightActions.set(pid, { pid, role: p.role, team: p.actualTeam, ...action });
         return true;
       }
@@ -885,7 +885,7 @@ class GameEngine {
       this.hist(a.pid, 'Pusu', '-', 'Başarılı');
     });
 
-    const eff = acts.filter(a => !this.blocked.has(a.pid) || a.role === 'seri_katil');
+    const eff = acts.filter(a => !this.blocked.has(a.pid));
 
     // 2. HİPNOTİZMACI + GÖLGE
     eff.filter(a => a.role === 'hipnotizmaci' && a.abilityTargetId).forEach(a => {

@@ -1046,6 +1046,21 @@ function kickOldSessions(username, currentSocketId) {
   });
   toKick.forEach(sid => {
     const s = io.sockets.sockets.get(sid);
+    // Önce odayı temizle (duplicate oyuncu sorununu engelle)
+    const oldRc = prooms.get(sid);
+    if (oldRc) {
+      const oldG = rooms.get(oldRc);
+      if (oldG) {
+        // Lobide veya post-game'de ise tamamen çıkar, aktif oyunda ise sadece bağlantıyı kopar (rejoin ile dönebilir)
+        if (oldG.phase === PHASES.LOBBY || oldG.phase === PHASES.POST_GAME) {
+          oldG.removePlayer(sid);
+          oldG.removeSpectator(sid);
+          if (oldG.players.size === 0 && oldG.spectators.size === 0) { rooms.delete(oldRc); clearTimer(oldRc); }
+          else if (oldG.leaderId === sid && oldG.players.size > 0) oldG.leaderId = [...oldG.players.keys()][0];
+        }
+      }
+      prooms.delete(sid);
+    }
     if (s) {
       s.emit('forceLogout', { reason: 'Başka bir cihazda giriş yapıldı.' });
       s.disconnect(true);
@@ -1635,31 +1650,69 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('room:kick', ({ targetId }, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
+    // Sadece lobi kurucusu atabilir
+    if (g.leaderId !== socket.id) return cb?.({ ok: false, err: 'Sadece oda kurucusu atabilir!' });
+    // Sadece lobide atma yapılabilir
+    if (g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME) return cb?.({ ok: false, err: 'Oyun başladıktan sonra atılamaz!' });
+    // Hedef oyuncu var mı
+    const target = g.players.get(targetId);
+    if (!target) return cb?.({ ok: false, err: 'Oyuncu bulunamadı!' });
+    // Kendini atamaz
+    if (targetId === socket.id) return cb?.({ ok: false, err: 'Kendini atamazsın!' });
+    // Bahis varsa geri ver
+    if (target.username && g.bets?.has(target.username)) {
+      Accounts.addCoins(target.username, g.bets.get(target.username));
+      g.bets.delete(target.username);
+      io.to(rc).emit('betUpdate', {
+        bets: Object.fromEntries(g.bets || new Map()),
+        total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)
+      });
+    }
+    // Hedefi at
+    g.removePlayer(targetId); g.removeSpectator(targetId);
+    prooms.delete(targetId);
+    const sock = io.sockets.sockets.get(targetId);
+    if (sock) {
+      sock.leave(rc);
+      sock.emit('kicked', { reason: 'Oda kurucusu tarafından atıldın.' });
+    }
+    emit(rc);
+    cb?.({ ok: true, kickedName: target.name });
+  });
+
   socket.on('room:leave', () => {
     const rc = prooms.get(socket.id);
     if (rc) {
       const g = rooms.get(rc);
       if (g) {
-        // Lobide bahis varsa geri ver
-        const u = authed.get(socket.id);
-        if (u && g.bets?.has(u) && g.phase === PHASES.LOBBY) {
-          Accounts.addCoins(u, g.bets.get(u));
-          g.bets.delete(u);
-          io.to(rc).emit('betUpdate', {
-            bets: Object.fromEntries(g.bets || new Map()),
-            total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)
-          });
-        }
-        g.removePlayer(socket.id); g.removeSpectator(socket.id);
-        if (g.players.size === 0 && g.spectators.size === 0) { rooms.delete(rc); clearTimer(rc); }
-        else {
-          if (g.leaderId === socket.id && g.players.size > 0) {
-            g.leaderId = [...g.players.keys()][0];
+        if (g.phase === PHASES.LOBBY || g.phase === PHASES.POST_GAME) {
+          // Lobide bahis varsa geri ver
+          const u = authed.get(socket.id);
+          if (u && g.bets?.has(u) && g.phase === PHASES.LOBBY) {
+            Accounts.addCoins(u, g.bets.get(u));
+            g.bets.delete(u);
+            io.to(rc).emit('betUpdate', {
+              bets: Object.fromEntries(g.bets || new Map()),
+              total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)
+            });
           }
-          emit(rc);
+          g.removePlayer(socket.id); g.removeSpectator(socket.id);
+          if (g.players.size === 0 && g.spectators.size === 0) { rooms.delete(rc); clearTimer(rc); }
+          else {
+            if (g.leaderId === socket.id && g.players.size > 0) {
+              g.leaderId = [...g.players.keys()][0];
+            }
+            emit(rc);
+          }
+        } else {
+          // Aktif oyunda oyuncuyu silme, sadece bağlantıyı izole et
+          g.players.get(socket.id).isDisconnected = true;
+          emit(rc); // Oyuncu offline olarak görünecek
         }
       }
-      socket.leave(rc);
       prooms.delete(socket.id);
     }
   });
@@ -2293,6 +2346,16 @@ io.on('connection', (socket) => {
       const g = rooms.get(rc);
       if (g) {
         if (g.phase === PHASES.LOBBY || g.phase === PHASES.POST_GAME) {
+          // Lobide bahis varsa geri ver
+          const u = authed.get(socket.id);
+          if (u && g.bets?.has(u) && g.phase === PHASES.LOBBY) {
+            Accounts.addCoins(u, g.bets.get(u));
+            g.bets.delete(u);
+            io.to(rc).emit('betUpdate', {
+              bets: Object.fromEntries(g.bets || new Map()),
+              total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)
+            });
+          }
           g.removePlayer(socket.id); g.removeSpectator(socket.id);
           if (g.players.size === 0 && g.spectators.size === 0) { rooms.delete(rc); clearTimer(rc); }
           else {
@@ -2300,7 +2363,9 @@ io.on('connection', (socket) => {
             emit(rc);
           }
         } else {
-          maybeResolveVoteIfEveryoneOnlineVoted(rc, g);
+          // Aktif oyunda oyuncuyu silme, sadece bağlantıyı izole et
+          g.players.get(socket.id).isDisconnected = true;
+          emit(rc); // Oyuncu offline olarak görünecek
         }
       }
       prooms.delete(socket.id);

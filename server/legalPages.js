@@ -3,7 +3,7 @@
 
 const SITE_NAME = 'AZAP';
 const SITE_URL  = 'https://azap.online';
-const OWNER     = 'Azad Akdağ';
+const OWNER     = 'Azat Akdağ';
 const EMAIL     = 'destek@azap.online';   // gerçek e-posta ile değiştir
 const ADDRESS   = 'Türkiye';              // tam adres eklenirse buraya
 
