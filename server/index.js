@@ -2364,8 +2364,11 @@ io.on('connection', (socket) => {
           }
         } else {
           // Aktif oyunda oyuncuyu silme, sadece bağlantıyı izole et
-          g.players.get(socket.id).isDisconnected = true;
-          emit(rc); // Oyuncu offline olarak görünecek
+          const p = g.players.get(socket.id);
+          if (p) {
+            p.isDisconnected = true;
+            emit(rc); // Oyuncu offline olarak görünecek
+          }
         }
       }
       prooms.delete(socket.id);
