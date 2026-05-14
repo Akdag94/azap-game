@@ -1,6 +1,6 @@
 # ⛧ AZAP
 
-**Sosyal dedüksiyon oyunu** — *Created by Azad Akdağ*
+**Sosyal dedüksiyon oyunu** — *Created by Azat Akdağ*
 
 Mafya / Town of Salem benzeri çok oyunculu bir sosyal dedüksiyon oyunu. 4-20 kişi arasında, tarayıcı üzerinden gerçek zamanlı oynanır. Hain takımı masumları geceleyin teker teker öldürmeye çalışır; masumlar gündüz tartışıp oylama yaparak hainleri elemeye çalışır. Bağımsız tarafsız roller (Seri Katil, Dodo, Cellat, Yamyam) kendi başına kazanma koşullarına sahiptir.
 

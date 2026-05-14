@@ -519,4 +519,4 @@ PM2 ile cluster modu açılabilir ama şu an **tek instance** öneriyorum çünk
 
 **Sorularınız?** README.md ve SECURITY.md dosyalarına da göz atın.
 
-**Created by Azad Akdağ** ⛧
+**Created by Azat Akdağ** ⛧

@@ -616,11 +616,6 @@ body.day.modern-ui .pi.president{border-color:var(--gold);background:linear-grad
 body.day.modern-ui .tb{background:linear-gradient(180deg,#fff8e8,#f4ead0);border:1.5px solid #c4a877}
 body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180deg,#ffefb8,#f9e4a3);box-shadow:0 0 14px rgba(184,134,11,.4)}
 
-/* UI seçim radio'ları (profil modalı) */
-.ui-mode-row{display:flex;gap:8px;margin-top:6px}
-.ui-mode-row label{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 4px;background:var(--bg2);border:1px solid var(--brd);border-radius:5px;cursor:pointer;font-size:.78rem;text-align:center;transition:all .15s}
-.ui-mode-row label.active{background:rgba(255,255,255,.06);border-color:var(--hi);color:var(--hi)}
-.ui-mode-row input[type=radio]{display:none}
 .shop-cat-btn{flex:1;padding:6px 8px;background:var(--bg2);border:1px solid var(--brd);color:var(--dim);font-size:.74rem;cursor:pointer;border-radius:4px;transition:all .15s}
 .shop-cat-btn.active{background:rgba(255,215,0,.1);border-color:var(--gold);color:var(--gold)}
 /* Mağaza üst banner */
@@ -687,7 +682,7 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 .cw-score{text-align:center;font-size:.9rem;color:var(--hi);margin:6px 0}
 </style>
 </head>
-<body>
+<body class="modern-ui">
 <div class="tbar" id="TB"><div class="tbar-f" id="TF"></div></div>
 <div class="tnum" id="TN"></div>
 <div class="specbar" id="SB">👁️ İZLEYİCİ</div>
@@ -722,12 +717,6 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 <!-- Envanter -->
 <div class="st mt12">🎒 Envanter</div>
 <div id="PROF_INVENTORY" style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px;min-height:60px;font-size:.82rem"></div>
-<div class="st mt12">Arayüz</div>
-<div class="ui-mode-row" id="UI_MODE_ROW">
-<label data-mode="classic" onclick="setUIMode('classic')"><input type="radio" name="uimode" value="classic"> 📋 Klasik</label>
-<label data-mode="modern" onclick="setUIMode('modern')"><input type="radio" name="uimode" value="modern"> 🎴 Modern</label>
-</div>
-<div style="font-size:.7rem;color:var(--dim);margin-top:4px">Modern: oyuncular kart şeklinde 2'li grid'de gösterilir.</div>
 
 <div class="st mt12">Şifre Değiştir</div>
 <div style="display:flex;flex-direction:column;gap:6px">
@@ -1030,7 +1019,6 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
 <div class="hdr">
 <div class="logo">AZAP</div>
 <div class="logo-s">Sosyal Dedüksiyon</div>
-<div class="signature">Created by Azad Akdağ</div>
 </div>
 
 <!-- Oyun içi butonlar (sadece oyundayken) -->
@@ -1174,7 +1162,7 @@ Hoş geldin, <strong id="WN"></strong>
 </div>
 </div>
 </div>
-<div class="entry-footer">⛧ AZAP — by Azad Akdağ ⛧</div>
+<div class="entry-footer">⛧ AZAP — by Azat Akdağ ⛧</div>
 <div class="legal-footer">
   <a href="/yasal/kullanim-kosullari" target="_blank">Kullanım Koşulları</a>
   <span class="lf-sep">·</span>
@@ -1923,29 +1911,6 @@ function tryAutoLogin(){
   return true;
 }
 
-// Çıkış yap
-// ── UI MODE (Klasik / Modern) ──
-function setUIMode(mode){
-  if(mode!=='modern')mode='classic';
-  try{ localStorage.setItem('azap_ui_mode', mode); }catch{}
-  applyUIMode(mode);
-}
-function applyUIMode(mode){
-  document.body.classList.toggle('modern-ui', mode==='modern');
-  // Profil modalındaki radio'ları güncelle
-  document.querySelectorAll('#UI_MODE_ROW label').forEach(l=>{
-    l.classList.toggle('active', l.dataset.mode===mode);
-    const radio = l.querySelector('input[type=radio]');
-    if(radio) radio.checked = l.dataset.mode===mode;
-  });
-}
-// Sayfa yüklendiğinde tercihi uygula
-(function initUIMode(){
-  let mode = 'classic';
-  try{ mode = localStorage.getItem('azap_ui_mode') || 'classic'; }catch{}
-  applyUIMode(mode);
-})();
-
 // ── MAĞAZA ──
 let _shopPackages = null;
 let _shopDonationPresets = null;
@@ -2260,10 +2225,6 @@ function openProfile(){
         }).join('');
       }
     }
-    // UI mode radio'larını güncelle
-    let curMode = 'classic';
-    try{ curMode = localStorage.getItem('azap_ui_mode') || 'classic'; }catch{}
-    applyUIMode(curMode);
     openModal('MDL_PROFILE');
   });
 }
@@ -2326,8 +2287,23 @@ function renderGuide(){
   c.innerHTML=`
     <div class="guide-hero">
       <h3>AZAP Nedir?</h3>
-      <p>AZAP, Türkçe oynanan çevrimiçi bir sosyal dedüksiyon oyunudur. Oyuncular gizli roller alır; bazıları köyü korumaya, bazıları köyü içeriden çökertmeye, bazıları ise kendi özel kazanma şartını tamamlamaya çalışır. Oyun; konuşma, blöf, gözlem, zamanlama ve doğru oylama üzerine kurulur.</p>
-      <p style="margin-top:6px">Ben Azad Akdağ. Bu oyunu sosyal çıkarım oyunlarını Türkçe, hızlı, mobil uyumlu ve rol çeşitliliği yüksek bir deneyime dönüştürmek için geliştiriyorum. Bana daha detaylı ulaşmak istersen <a class="guide-link" href="https://azatakdag.com" target="_blank" rel="noopener">azatakdag.com</a> üzerinden hakkımda bilgi alabilir ve iletişim kurabilirsin.</p>
+      <p>Hepimiz biliyoruz; o eski, uzun masalı arkadaş toplantıları artık sessiz sinemaya dönüştü. Masaya oturulduğu an telefonlar çıkıyor, kafalar öne eğiliyor. Kimseye “bırak o telefonu” diyemediğimiz bir çağdayız; çünkü artık telefonlar elimiz kolumuz gibi oldu.</p>
+      <p style="margin-top:6px">İşte AZAP, tam bu noktada devreye giriyor.</p>
+      <p style="margin-top:6px">Biz size “telefonu elinizden bırakın” demiyoruz. Aksine, o elinizden düşürmediğiniz telefonları, arkadaş ortamınızın merkezine yerleştiriyoruz. AZAP; fiziksel olarak yan yana olup dijital olarak uzaklaştığımız o anları, tekrar kahkahaya, heyecana ve tatlı atışmalara çeviren bir sosyal dedüksiyon oyunudur.</p>
+      <p style="margin-top:6px">AZAP, sadece ekran başında değil, masanın etrafındaki gözlerin içinde oynanan bir oyundur. Gizli roller dağıtılır; kiminiz köyü canı pahasına savunan bir sadık, kiminiz gece karanlığında planlar yapan bir hain, kiminiz ise sadece kendi hikayesini yazan bir yalnızdır.</p>
+      <p style="margin-top:6px"><b>Telefonunuz rehberiniz, gözleriniz kanıtınız olsun:</b> Hamlenizi telefondan yapın ama yalanı arkadaşınızın gözlerinin içine bakarak söyleyin.</p>
+      <p style="margin-top:6px"><b>Blöf, strateji ve kaos:</b> Konuşma yeteneğinizi konuşturun, arkadaşınızın ses tonundaki o ufacık titremeyi yakalayın ve doğru oylamayla köyün kaderini çizin.</p>
+      <p style="margin-top:6px"><b>Sıkılmaya vakit yok:</b> “Ne oynayacağız?” ya da “Toplandık ama herkes telefonda” dertlerini bitiriyoruz. AZAP varken, telefonunuz artık sizi uzaklaştıran değil, masanın en eğlenceli parçası haline gelen bir oyun konsoludur.</p>
+      <p style="margin-top:6px">Artık o kafalar telefona eğilecekse bile, bu bir ihanet planı ya da köyü kurtarma stratejisi için olacak. Arkadaş ortamınızı eski canlılığına, hem de teknolojiden kopmadan kavuşturmaya hazır mısınız?</p>
+      <p style="margin-top:6px"><b>Çünkü AZAP’ta kimse göründüğü kişi değildir.</b></p>
+    </div>
+    <div class="guide-card">
+      <h3>👤 Geliştirici Hakkında</h3>
+      <p>Merhaba, ben Azat Akdağ.</p>
+      <p style="margin-top:6px">AZAP, sadece bir oyun değil; dijital dünyanın sunduğu imkanları, fiziksel sosyal etkileşimin heyecanıyla birleştirme tutkumun bir ürünü. Bu projeyi; sosyal çıkarım türünü Türkçe dilinde, modern bir arayüzle, hızlı ve her an her yerden erişilebilen mobil uyumlu bir deneyime dönüştürmek amacıyla geliştiriyorum.</p>
+      <p style="margin-top:6px">Hedefim; tek düze rollerden sıyrılıp, her oyunun farklı bir hikaye yazdığı, strateji ve rol çeşitliliğinin zirve yaptığı bir platform sunmak. Teknolojiyi bizi birbirimizden koparan bir engel olarak değil, masanın etrafındaki sohbeti ve rekabeti körükleyen bir araç olarak kullanıyoruz.</p>
+      <p style="margin-top:6px">Projeye dair vizyonumu, teknik detayları veya diğer çalışmalarımı merak ederseniz; <a class="guide-link" href="https://azatakdag.com" target="_blank" rel="noopener">azatakdag.com</a> üzerinden hakkımda daha fazla bilgi alabilir, benimle doğrudan iletişim kurabilirsiniz.</p>
+      <p style="margin-top:6px">Geleceğin sosyal oyun deneyimini beraber inşa etmek dileğiyle!</p>
     </div>
     <div class="guide-card">
       <h3>🎯 Oyunun Amacı</h3>
@@ -2354,19 +2330,23 @@ function renderGuide(){
     </div>
     <div class="guide-card">
       <h3>🧠 Meta Nedir? Neden Yapılmamalı?</h3>
-      <p><b>Meta</b>, oyunun içindeki bilgi ve davranışlar yerine oyun dışı bilgilere dayanarak karar vermektir. Örneğin “Bu kişi hep hain olunca böyle konuşur”, “Discord’da sesi değişti”, “Ekran görüntüsü atsın”, “Ben koddan biliyorum” gibi oyun dışı çıkarımlar metadır.</p>
-      <div class="guide-note">Meta yapmak oyunun dedüksiyon yapısını bozar. AZAP’ta iyi oyun; rol raporları, konuşmalar, oylama davranışları, çelişkiler ve strateji üzerinden oynanır. Oyun dışı kanıt istemek veya kullanmak adil değildir.</div>
+      <p><b>Meta</b>, oyunun içindeki bilgi ve davranışlar yerine oyun dışı bilgilere dayanarak karar vermektir. “Sen dün de böyle yapmıştın”, “Yan yana oturuyoruz, telefonunu gördüm”, “Sesin odadan geliyor”, “Telefonu bıraktın, demek rolün yok” veya “Gündüz telefonu bıraktın, suikastçı olamazsın” gibi çıkarımlar metadır.</p>
+      <p style="margin-top:6px">AZAP özellikle yüz yüze oynanırken telefonun oyunun parçası olduğu düşünülerek tasarlandı. Bu yüzden telefonu elinizden bırakmayın; gece telefonu bırakmanız, gündüz ekrana bakmamanız ya da bir an pasif kalmanız başka oyuncular tarafından oyun dışı kanıt gibi kullanılmamalı.</p>
+      <div class="guide-note">Telefonunuz oyununuzun kumandasıdır. Oyuncuların telefon tutuşunu, ekrana bakıp bakmamasını, uygulamada hangi butonu gördüğünü veya fiziksel davranışını kanıt olarak kullanmak AZAP’ın ruhuna aykırıdır. Sadece oyun içindeki verilere odaklanın: gece raporları, oylamalar, çelişkili iddialar, konuşmalar ve stratejik davranışlar.</div>
     </div>
     <div class="guide-card">
-      <h3>📜 Temel Kurallar</h3>
-      <ul>
-        <li>Rolünü ekran görüntüsüyle kanıtlamaya çalışma; rol iddiası sözlü stratejidir, ekran kanıtı değildir.</li>
-        <li>Ölüysen yaşayan oyunculara bilgi verme. Ölümden sonra oyunu dışarıdan etkilemek oyunun dengesini bozar.</li>
-        <li>Küfür, hakaret, hedef gösterme ve kişisel saldırı yapma. Sert tartışma olabilir ama saygı korunmalı.</li>
-        <li>Bilerek oyunu sabote etme; takımına zarar vermek, AFK kalmak veya bilerek yanlış oynamak diğer oyuncuların eğlencesini bozar.</li>
-        <li>Oyun içi bilgilerle konuş: gece raporların, oylama davranışları, suskunluklar, çelişkiler ve rol iddiaları en değerli ipuçlarıdır.</li>
-      </ul>
-      <p>Kurala göre oynanan oyun daha akıcı, daha adil ve çok daha keyifli olur.</p>
+      <h3>📜 Azap Online: Temel Kurallar ve Oyun Etiği</h3>
+      <p>Azap, sadece kodlarla değil, oyuncuların dürüstlüğü ve saygısıyla ayakta kalan bir deneyimdir. Herkesin keyif alması için aşağıdaki kurallara uyulması zorunludur:</p>
+      <ol>
+        <li><b>Kanıt ve ekran paylaşımı yasaktır:</b> Rolünü kanıtlamak için ekran görüntüsü almak, ekran paylaşmak veya arayüzdeki teknik bir detayı kullanmak kesinlikle yasaktır. İstediğin rolü iddia edebilirsin ama bunu sadece kelimelerinle ve ikna kabiliyetinle yapmalısın.</li>
+        <li><b>Ölülerin sessizliği:</b> Elenen bir oyuncu, oyunun gidişatını etkileyecek hiçbir bilgiyi yaşayanlara aktaramaz. WhatsApp, Discord, fısıldama veya yanındaki arkadaşına işaret verme gibi dış kanallar oyunun tüm mantığını çöpe atar.</li>
+        <li><b>İletişim ve saygı çerçevesi:</b> Azap bir tartışma oyunudur; suçlamalar, sert çıkışlar ve blöfler oyunun doğasında var. Ancak bu hiçbir zaman kişisel hakarete, küfüre, cinsiyetçi veya ırkçı söylemlere dönüşemez. Kişiyi değil, rolün oyun içindeki tutarsızlıklarını hedef almalısın.</li>
+        <li><b>Oyun disiplini:</b> Kendi takımına bilerek zarar vermek, takım arkadaşlarını sebepsiz yere ifşalamak veya oyunu sabote etmek yasaktır. Oyuna girdiysen masadasın demektir; uzun süre AFK kalmak oyunun akışını bozar.</li>
+        <li><b>Meta-gaming yasağı:</b> Oyun mekaniği dışındaki hiçbir bilgiyi kanıt olarak sunma. Telefon hareketleri, dış sesler, geçmiş oyun alışkanlıkları, ekran parlaması veya “telefonu bıraktı” gibi çıkarımlar oyun dışıdır.</li>
+        <li><b>Adil oyun:</b> Arkadaşınla aynı odada olsan bile oyun içinde takım değilseniz birbirinizi korumayın. Gerçek bir Azat Akdağ takipçisi, en yakın arkadaşını bile köyün selameti veya kendi gizli emelleri için feda edebilecek soğukkanlılığa sahip olmalıdır.</li>
+      </ol>
+      <div class="guide-note">Unutma: Kurallar sadece yasaklar için değil, herkesin eşit ve adil bir ortamda “Azap” çekmeden eğlenmesi içindir. Bu kurallara uymayan oyuncuları bildirmekten çekinmeyin.</div>
+      <p style="margin-top:7px">Bu kurallar dizisi oyuncuya sadece “şunu yapma” demiyor, aynı zamanda neden yapmaması gerektiğini de açıklıyor. Özellikle meta-gaming ve ölülerin sessizliği gibi başlıklar, bu tür oyunların profesyonel seviyede kalmasını sağlar.</p>
     </div>
     <div class="guide-card">
       <h3>💡 Yeni Oyuncuya Hızlı Tavsiyeler</h3>
