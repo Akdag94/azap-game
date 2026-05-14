@@ -1620,9 +1620,7 @@ const RDEF={
     full:'Tartışma fazında butona basıp ANINDA birini infaz edersin (oylama yapılmaz). Hain veya tarafsız ise hedef ölür. Masum ise SEN ölürsün. Kullanmadan önce çok emin olmalısın. Tartışma sırasında çıkan butonla aktif edersin.'},
   OLUMSUZ:{e:'🪦',n:'Ölümsüz',t:'masum',d:'1 kez canlanır.',
     full:'Pasif rol. İlk öldürüldüğünde herkes öldü sanır (sabah raporunda ölü görünür) ama ertesi gece geri dönersin. Sadece 1 kez canlanırsın. İkinci ölümünde gerçekten ölürsün. Diriliş diğer oyuncuları şoke eder.'},
-  KOSTEBEK:{e:'🦔',n:'Köstebek',t:'hain',d:'Hain Savcı (her gece kullanılabilir).',
-    full:'Her gece birini incelersin. 2 rol seçeneği gösterilir, biri kesinlikle doğru (hain rolleri seçenek olarak gelmez). Hain sohbetinde paylaşıp suikastçıya hedef gösterir veya tehlikeli polisin kim olduğunu tespit edersin.'},
-  // VIRUS geçici olarak devre dışı bırakıldı
+  // KOSTEBEK ve VIRUS geçici olarak devre dışı bırakıldı
   PUSUCU:{e:'🪤',n:'Pusucu',t:'hain',d:'Pusu kurar; gelenler ölür.',
     full:'O gece evine gelen oyunculardan biri rastgele ölür (hain takım arkadaşların bile dahil — dikkat!). Diğer hainler ana cinayeti yaparken sen arkayı kollarsın. Gazeteci/Takipçi/Polis seni hedef alırsa pusuya düşer.'},
   HACKER:{e:'💻',n:'Hacker',t:'hain',d:'Bilgi rolünü engeller.',
@@ -1824,6 +1822,13 @@ function dismissRejoin(){
 // Otomatik rejoin - sayfa yenilendiğinde veya reconnect olduğunda sessizce dene
 function tryAutoRejoin(){
   console.log('[tryAutoRejoin] Başladı');
+  // Son 5 saniye içinde kullanıcı bilerek çıktıysa rejoin yapma
+  var leftTime=null;
+  try{leftTime=parseInt(localStorage.getItem('azap_left_time'),10);}catch{}
+  if(leftTime && (Date.now()-leftTime)<5000){
+    console.log('[tryAutoRejoin] Son 5sn içinde çıkılmış, rejoin yapılmıyor');
+    return;
+  }
   var saved=null;
   try{saved=JSON.parse(localStorage.getItem('azap_last_room'));}catch(e){console.log('[tryAutoRejoin] localStorage hatası:',e);}
   console.log('[tryAutoRejoin] saved:',saved);
@@ -2304,6 +2309,8 @@ function saveLastRoom(code,name){
 }
 function clearLastRoom(){
   try{localStorage.removeItem('azap_last_room');}catch{}
+  try{localStorage.setItem('azap_left_time',Date.now().toString());}catch{}
+  console.log('[clearLastRoom] Oda verisi temizlendi, timestamp kaydedildi');
 }
 function createRoom(){
   const n=Q('IN').value.trim();if(!n)return toast('İsim gir!',1);
@@ -2377,6 +2384,7 @@ function updateGameActions(){
   ga.style.display = showActions ? 'flex' : 'none';
 }
 function resetClient(){
+  me=null; // Ana menüye dönünce me sıfırlanır, rejoin engellenir
   deathOk=false;lastDead=new Set();gs=null;ps=null;isSpec=false;isDead=false;mvpVoted=null;
   const sb=Q('SB'); sb.textContent='👁️ İZLEYİCİ'; sb.classList.remove('sh');
   Q('HT').classList.remove('sh');Q('HP').classList.remove('op');
@@ -2406,7 +2414,7 @@ function startGame(){io2.emit('start',null,r=>{if(!r.ok)toast(r.err,1);});}
 
 function buildRG(){
   const g=Q('RG');g.innerHTML='';
-  Object.entries(RDEF).filter(([k])=>k!=='DELI').forEach(([k,v])=>{
+  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='KOSTEBEK').forEach(([k,v])=>{
     const d=document.createElement('div');
     d.className=`rchip on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
     d.innerHTML=`<span>${v.e}</span>${v.n}`;
@@ -3997,7 +4005,9 @@ function openMyRoleModal(){
   const keyMap={doktor:'DOKTOR',polis:'POLIS',savci:'SAVCI',muhtar:'MUHTAR',gazeteci:'GAZETECI',
     psikolog:'PSIKOLOG',gazi:'GAZI',dedikoducu:'DEDIKODUCU',ajan:'AJAN',serif:'SERIF',kurban:'KURBAN',
     cilingir:'CILINGIR',takipci:'TAKIPCI',suikastci:'SUIKASTCI',hipnotizmaci:'HIPNOTIZMACI',
-    bombaci:'BOMBACI',golge:'GOLGE',dodo:'DODO',seri_katil:'SERI_KATIL',cellat:'CELLAT',yamyam:'YAMYAM'};
+    bombaci:'BOMBACI',golge:'GOLGE',dodo:'DODO',seri_katil:'SERI_KATIL',cellat:'CELLAT',yamyam:'YAMYAM',
+    koruyucu:'KORUYUCU',demirci:'DEMIRCI',buzcu:'BUZCU',infazci:'INFAZCI',gardiyan:'GARDIYAN',
+    engizitor:'ENGIZITOR',olumsuz:'OLUMSUZ',pusucu:'PUSUCU',hacker:'HACKER',veba:'VEBA'};
   const rd=RDEF[keyMap[ps.role]];
   if(!rd){body.innerHTML='<div style="color:var(--dim)">Rol bilgisi bulunamadı.</div>';
     Q('MY_ROLE_MODAL').classList.add('sh');return;}
@@ -4454,15 +4464,18 @@ let _lastPhase = null;
 let _lastRound = -1;
 
 io2.on('state',s=>{
+  console.log('[state] Phase:',s.phase,'Round:',s.round,'Players:',s.players?.length);
   gs=s;
   const phaseChanged = _lastPhase !== s.phase;
   const roundChanged = _lastRound !== s.round;
+  if(phaseChanged) console.log('[state] Phase değişti:',_lastPhase,'->',s.phase);
   _lastPhase = s.phase;
   _lastRound = s.round;
 
   // Oda kodunu kaydet (rejoin için) - oyun aktifken veya lobideyken
+  // me null ise kullanıcı ana menüye dönmüş demektir, kaydetme
   const currentCode = Q('LC')?.textContent;
-  if(currentCode && currentCode.length === 4 && s.phase !== 'game_over' && s.phase !== 'post_game'){
+  if(me && currentCode && currentCode.length === 4 && s.phase !== 'game_over' && s.phase !== 'post_game'){
     saveLastRoom(currentCode, user?.username || Q('IN')?.value?.trim() || 'Oyuncu');
   }
 
