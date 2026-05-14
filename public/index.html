@@ -2503,7 +2503,8 @@ function buildRG(){
   const g=Q('RG');g.innerHTML='';
   // Ana roller (DELI, VAMPIR ve demo roller hariç)
   const _demoKeys=new Set(Object.keys(RDEF_DEMO));
-  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='VAMPIR' && !_demoKeys.has(k)).forEach(([k,v])=>{
+  const _tOrder={masum:0,hain:1,'tarafsız':2,deli:3};
+  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='VAMPIR' && !_demoKeys.has(k)).sort((a,b)=>(_tOrder[a[1].t]??9)-(_tOrder[b[1].t]??9)).forEach(([k,v])=>{
     const d=document.createElement('div');
     d.className=`rchip on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
     d.innerHTML=`<span>${v.e}</span>${v.n}`;
