@@ -1886,6 +1886,7 @@ class GameEngine {
     this.phase = PHASES.VOTING;
     this.votes.clear(); this.voteTally.clear();
     this.alive().forEach(p => this.voteTally.set(p.id, 0));
+    this.voteTally.set('__skip__', 0);
   }
   submitVote(vid, tid) {
     const v = this.players.get(vid);
@@ -1896,11 +1897,8 @@ class GameEngine {
     if (this.votes.has(vid)) return false;
     if (tid === 'skip' || tid === null) {
       this.votes.set(vid, 'skip');
-      // Muhtar skip oyu da 2 oy sayılsın
       const w = this.getVoteWeight(vid);
-      if (w !== 1) {
-        this.voteTally.set('__skip__', (this.voteTally.get('__skip__') || 0) + (w - 1));
-      }
+      this.voteTally.set('__skip__', (this.voteTally.get('__skip__') || 0) + w);
       return true;
     }
     const t = this.players.get(tid);
@@ -1923,49 +1921,37 @@ class GameEngine {
   getVoteTally() {
     const r = {};
     this.voteTally.forEach((c, pid) => { if (c !== 0) r[pid] = c; });
-    // Skip oy sayısı (Muhtar'ın 2 oy sayılması dahil)
-    let skipCount = 0;
-    let skipWeight = 0;
-    this.votes.forEach((tid, voterId) => { 
-      if (tid === 'skip') {
-        skipCount++;
-        skipWeight += this.getVoteWeight(voterId);
-      }
-    });
-    if (skipCount > 0) r['__skip__'] = skipWeight;
     return r;
   }
 
   resolveVoting() {
-    let max = 0, elim = null, tied = false;
-    this.voteTally.forEach((v, pid) => {
-      if (v > max) { max = v; elim = this.players.get(pid); tied = false; }
-      else if (v === max && max > 0) tied = true;
+    this.alive().forEach(p => {
+      if (!this.frozen.has(p.id) && !this.votes.has(p.id)) {
+        this.votes.set(p.id, 'skip');
+        const w = this.getVoteWeight(p.id);
+        this.voteTally.set('__skip__', (this.voteTally.get('__skip__') || 0) + w);
+      }
     });
-    // Skip oylarını da say (toplam oy sayısı için)
-    let skipCount = 0;
-    this.votes.forEach(tid => { if (tid === 'skip') skipCount++; });
-
-    // Çoğunluk gerekli: en yüksek oyun, canlı oyuncu sayısının yarısından FAZLA olması lazım
-    const aliveCount = this.alive().length;
-    const majority = Math.floor(aliveCount / 2) + 1; // 6 oyuncu → 4, 5 oyuncu → 3, 4 oyuncu → 3
-
+    let max = 0, leaders = [];
+    this.voteTally.forEach((v, pid) => {
+      if (v > max) { max = v; leaders = [pid]; }
+      else if (v === max && max > 0) leaders.push(pid);
+    });
+    const skipCount = this.voteTally.get('__skip__') || 0;
+    const elimId = leaders.length === 1 && leaders[0] !== '__skip__' ? leaders[0] : null;
+    const elim = elimId ? this.players.get(elimId) : null;
     const result = { eliminated: null, message: '', dodoWins: false, cellatWins: null, voteTally: Object.fromEntries(this.voteTally), skipCount };
 
-    if (max < majority || tied || max <= 0) {
-      // Çoğunluk yok ya da beraberlik
-      if (skipCount >= majority) {
-        result.message = `${skipCount} kişi oy kullanmadı. Kimse asılmıyor.`;
-        this.log(`⏭️ ${skipCount} skip — kimse asılmadı`);
-      } else if (tied) {
+    if (!elim || max <= 0) {
+      if (skipCount > 0 && leaders.includes('__skip__')) {
+        result.message = 'Pas geçildi. Kimse asılmıyor.';
+        this.log(`⏭️ Pas geçildi (${skipCount} oy)`);
+      } else {
         result.message = 'Berabere! Kimse elenmiyor.';
         this.log('⚖️ Berabere');
-      } else {
-        result.message = `Çoğunluk yok (${max}/${majority} gerekli). Kimse asılmıyor.`;
-        this.log(`⚖️ Çoğunluk sağlanamadı: ${max}/${majority}`);
       }
     }
-    else if (elim) {
+    else {
       elim.isAlive = false;
       this.deadThisNight.push(elim.id); // Gündüz ölenleri de ekle (sabah raporunda gösterilmek için)
       result.eliminated = { id: elim.id, name: elim.name };
@@ -2015,7 +2001,8 @@ class GameEngine {
         id: mvpId,
         name: this.pn(mvpId),
         username: this.players.get(mvpId)?.username,
-        avatar: this.players.get(mvpId)?.avatar
+        avatar: this.players.get(mvpId)?.avatar,
+        cosmetics: this.players.get(mvpId)?.cosmetics || {}
       } : null,
       votes: max
     };

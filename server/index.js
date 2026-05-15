@@ -1347,6 +1347,7 @@ function endGame(rc, wc, res) {
       const ro = g.ro(p.role);
       return {
         id: p.id, name: p.name, username: p.username, avatar: p.avatar,
+        cosmetics: p.cosmetics || {},
         role: p.role, roleName: ro?.name, roleEmoji: ro?.emoji,
         team: p.actualTeam, isAlive: p.isAlive, isInsane: p.isInsane,
         isWinner: winnerSet.has(p.username),
@@ -1355,6 +1356,7 @@ function endGame(rc, wc, res) {
     }),
     winners: winnerPlayers.map(p => ({
       id: p.id, name: p.name, username: p.username, avatar: p.avatar,
+      cosmetics: p.cosmetics || {},
       roleName: g.ro(p.role)?.name, roleEmoji: g.ro(p.role)?.emoji,
       isInsane: p.isInsane,
       coinChange: coinUpdates[p.username]?.coinChange || 0
