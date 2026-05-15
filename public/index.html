@@ -535,7 +535,15 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 .rs-opt-em{font-size:1.5rem}
 .rs-opt-name{font-family:'Cinzel Decorative',serif;font-size:.88rem;letter-spacing:1px}
 .rs-opt-rnd{border-color:var(--hi)}
-.rs-opt-rnd:hover{border-color:var(--hi);background:rgba(201,169,110,.05)}
+.rs-opt:hover{border-color:var(--hi);background:rgba(255,255,255,.06);transform:translateX(2px)}
+.rs-opt-rnd{border-style:dashed;background:rgba(201,169,110,.06)}
+.rs-opt.team-masum{border-color:rgba(39,174,96,.65);background:rgba(39,174,96,.08)}
+.rs-opt.team-hain{border-color:rgba(192,57,43,.65);background:rgba(192,57,43,.08)}
+.rs-opt.team-tarafsız{border-color:rgba(41,128,185,.65);background:rgba(41,128,185,.08)}
+.rs-opt.team-masum .rs-opt-name{color:var(--masum)}
+.rs-opt.team-hain .rs-opt-name{color:var(--hain)}
+.rs-opt.team-tarafsız .rs-opt-name{color:var(--tarafsiz)}
+.rs-opt-em{font-size:1.5rem;width:32px;text-align:center}
 .rs-my-pick{padding:14px;background:rgba(201,169,110,.1);border:2px solid var(--hi);border-radius:6px;text-align:center;margin:10px 0}
 .rs-my-pick .em{font-size:2.2rem}
 .rs-my-pick .nm{font-family:'Cinzel Decorative',serif;font-size:1.1rem;color:var(--hi);margin:6px 0;letter-spacing:2px}
@@ -1725,7 +1733,7 @@ const RDEF_DEMO={
 const ID_MAP={};
 Object.entries(RDEF).forEach(([k,v])=>{
   const id=k.toLowerCase();
-  ID_MAP[id]={e:v.e,n:v.n,d:v.d};
+  ID_MAP[id]={e:v.e,n:v.n,d:v.d,t:v.t};
 });
 
 function show(id){
@@ -2839,16 +2847,14 @@ function renderRS(){
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
         const d=document.createElement('div');
-        d.className='rs-opt';
-        d.style.borderColor='var(--danger)';
+        d.className=`rs-opt team-${info.t||ps.myRoleForcedTeam||'masum'}`;
         d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
         d.onclick=()=>pickRole(roleId);
         ol.appendChild(d);
       });
       // Forced durumda da rastgele opsiyonu (forced takım içinden seçer)
       const rd=document.createElement('div');
-      rd.className='rs-opt rs-opt-rnd';
-      rd.style.borderColor='var(--danger)';
+      rd.className=`rs-opt rs-opt-rnd team-${ps.myRoleForcedTeam||'masum'}`;
       const teamColor = ps.myRoleForcedTeam==='hain'?'var(--hain)':ps.myRoleForcedTeam==='tarafsız'?'var(--tarafsiz)':'var(--safe)';
       rd.innerHTML=`<span class="rs-opt-em">🎲</span><div style="flex:1"><div class="rs-opt-name">Rastgele <span style="color:${teamColor};font-size:.72rem">(${ps.myRoleForcedTeam||'?'})</span></div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${ps.myRoleForcedTeam} havuzundan rastgele rol gelir.</div></div>`;
       rd.onclick=()=>pickRole('random');
@@ -2858,7 +2864,7 @@ function renderRS(){
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
         const d=document.createElement('div');
-        d.className='rs-opt';
+        d.className=`rs-opt team-${info.t||'masum'}`;
         d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
         d.onclick=()=>pickRole(roleId);
         ol.appendChild(d);
@@ -2904,15 +2910,7 @@ function renderPV(){
     const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
     const tally=gs.presidentVoteTally?.[p.id]||0;
     const nameStyle=isT?'color:var(--hain);font-weight:600':(isMe?'color:var(--hi)':'');
-    const fw=cosmeticFrameWrap(p.cosmetics,isMe);
-    const petS=cosmeticPetHTML(p.cosmetics,isMe);
-    const nameH=cosmeticNameHTML(p.name,p.cosmetics,isMe);
-    // Frame sadece avatar etrafına - köşeli çerçeve
-    let avatarHtml = avHTML(p.avatar,'sm');
-    if(fw){
-      avatarHtml = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:3px;margin:1px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatarHtml}</div>`;
-    }
-    d.innerHTML=`${avatarHtml}<span class="vb-name"><span style="${nameStyle}">${nameH}${isMe?' (SEN)':''}${isT?' 🧛':''}${petS}</span></span><span class="vc" data-pvc="${p.id}">${tally}</span>`;
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="vb-name">${cosmeticPlayerNameHTML(p,isMe,`${isMe?' (SEN)':''}${isT?' 🧛':''}`,nameStyle)}</span><span class="vc" data-pvc="${p.id}">${tally}</span>`;
     // Kendine de oy verilebilir
     d.onclick=()=>pVote(p.id);
     grid.appendChild(d);
@@ -3082,9 +3080,10 @@ function renderMV(){
   // Tüm oyuncular (öldü ya da hayatta) — ama kendine oy verilemez (MVP için)
   gs.players.forEach(p=>{
     if(p.id===me)return;
+    const isMe=false;
     const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
     const tally=gs.mvpTally?.[p.id]||0;
-    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span>${p.name}</span></span><span class="vc" data-mvc="${p.id}">${tally}</span><span class="tk">✓</span>`;
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="vb-name">${cosmeticPlayerNameHTML(p,isMe)}</span><span class="vc" data-mvc="${p.id}">${tally}</span><span class="tk">✓</span>`;
     d.onclick=()=>doMvpVote(p.id);
     grid.appendChild(d);
   });
@@ -3118,7 +3117,7 @@ function renderMvpResult(result){
       if(!p)return;
       const item=document.createElement('div');
       item.className='mvp-tally-item';
-      item.innerHTML=`${avHTML(p.avatar,'sm')}<span style="flex:1">${p.name}</span><span style="color:var(--gold);font-family:'Fira Code',monospace">${votes}</span>`;
+      item.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',p.id===me)}<span style="flex:1">${cosmeticPlayerNameHTML(p,p.id===me)}</span><span style="color:var(--gold);font-family:'Fira Code',monospace">${votes}</span>`;
       tally.appendChild(item);
     });
   }
@@ -3227,6 +3226,19 @@ function cosmeticPetHTML(cosm, isMe){
   const sprite=p.sprite||item.emoji;
   return `<span style="display:inline-block;font-size:1.1rem;margin-left:4px;vertical-align:middle;animation:${anim} 3s ease-in-out infinite;line-height:1">${sprite}</span>`;
 }
+function cosmeticPlayerAvatarHTML(p, size, isMe, pad){
+  const fw=cosmeticFrameWrap(p?.cosmetics,isMe);
+  let avatar=avHTML(p?.avatar,size||'sm');
+  if(fw){
+    avatar=`<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:${pad||'3px'};margin:1px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatar}</div>`;
+  }
+  return avatar;
+}
+function cosmeticPlayerNameHTML(p, isMe, extraHtml, style){
+  const name=cosmeticNameHTML(p?.name||'',p?.cosmetics,isMe);
+  const pet=cosmeticPetHTML(p?.cosmetics,isMe);
+  return `<span style="${style||''}">${name}${extraHtml||''}${pet}</span>`;
+}
 
 function renderLobby(){
   if(!gs)return;
@@ -3239,15 +3251,9 @@ function renderLobby(){
     const li=document.createElement('li');li.className='pi fade';
     const isMe=p.id===me;
     const showKick = isLeader && !isMe;
-    const fw = cosmeticFrameWrap(p.cosmetics, isMe);
-    const petSprite = cosmeticPetHTML(p.cosmetics, isMe);
-    const nameHtml = cosmeticNameHTML(p.name, p.cosmetics, isMe);
-    // Frame sadece avatar etrafına - köşeli çerçeve (avatarla aynı şekil)
-    let avatarHtml = avHTML(p.avatar,'sm');
-    if(fw){
-      avatarHtml = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:4px;margin:2px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatarHtml}</div>`;
-    }
-    li.innerHTML=`${avatarHtml}<span class="pi-name"><span>${nameHtml}${isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':''}${petSprite}</span></span>${p.id===gs.leaderId?'<span class="badge badge-l">LİDER</span>':''}<span class="wins-badge">🏆${p.wins||0}<span class="heart">❤️${p.mvp||0}</span></span>${showKick?`<button class="kick-btn" data-pid="${p.id}" title="Oyuncuyu at">🚫</button>`:''}`;
+    const avatarHtml = cosmeticPlayerAvatarHTML(p,'sm',isMe,'4px');
+    const nameHtml = cosmeticPlayerNameHTML(p,isMe,isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'');
+    li.innerHTML=`${avatarHtml}<span class="pi-name">${nameHtml}</span>${p.id===gs.leaderId?'<span class="badge badge-l">LİDER</span>':''}<span class="wins-badge">🏆${p.wins||0}<span class="heart">❤️${p.mvp||0}</span></span>${showKick?`<button class="kick-btn" data-pid="${p.id}" title="Oyuncuyu at">🚫</button>`:''}`;
     Q('LP').appendChild(li);
   });
   // Kick butonlarına event ekle
@@ -3435,8 +3441,9 @@ function renderTL(){
           const has = myBombSet.has(p.id);
           const sel = p.id===sel1?'sel':'';
           const ns = isT ? 'color:var(--hain);font-weight:600' : '';
+          const isMe = p.id===me;
           return `<div class="tb ${sel}" data-bid="${p.id}" onclick="selBombTarget('${p.id}')">
-            ${avHTML(p.avatar,'sm')}<span class="tb-name"><span style="${ns}">${p.name}${isT?' 🧛':''}${has?' <span style="color:var(--hain)">💣</span>':''}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>
+            ${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="tb-name">${cosmeticPlayerNameHTML(p,isMe,`${isT?' 🧛':''}${has?' <span style="color:var(--hain)">💣</span>':''}`,ns)}${p.isPresident?'<span class="crown">👑</span>':''}</span>
           </div>`;
         }).join('');
     } else {
@@ -3524,7 +3531,7 @@ function renderTL(){
     const bombIcon = hasBomb ? ' <span style="color:var(--hain);" title="Bomba kondu">💣</span>' : '';
     const cellatIcon = isCellatTarget ? ' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>' : '';
     const meTag = isMe ? ' <span style="font-size:.7rem;color:var(--hi)">(SEN — TEK KULLANIM!)</span>' : '';
-    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="tb-name"><span style="${nameStyle}">${p.name}${isTeammate?' 🧛':''}${cellatIcon}${bombIcon}${meTag}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>`;
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="tb-name">${cosmeticPlayerNameHTML(p,isMe,`${isTeammate?' 🧛':''}${cellatIcon}${bombIcon}${meTag}`,nameStyle)}${p.isPresident?'<span class="crown">👑</span>':''}</span>`;
     d.onclick=()=>selT(p.id);list.appendChild(d);
   });
 }
@@ -3600,7 +3607,7 @@ function renderDay(){
     const nameStyle=isT?'color:var(--hain);font-weight:600':(isCT?'color:var(--tarafsiz);font-weight:600':'');
     const meTag=isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'';
     const ctIcon=isCT?' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>':'';
-    li.innerHTML=`${avHTML(p.avatar,'sm')}<span class="pi-name"><span style="${nameStyle}">${p.name}${meTag}${isT?' 🧛':''}${ctIcon}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>${!p.isAlive?'<span style="font-size:.85rem">💀</span>':''}`;
+    li.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="pi-name">${cosmeticPlayerNameHTML(p,isMe,`${meTag}${isT?' 🧛':''}${ctIcon}`,nameStyle)}${p.isPresident?'<span class="crown">👑</span>':''}</span>${!p.isAlive?'<span style="font-size:.85rem">💀</span>':''}`;
     Q('DP').appendChild(li);
   });
   // Suikastçı floating butonu güncelle (gündüzde görünür)
@@ -3997,7 +4004,7 @@ function openEngizitorModal(){
   gs.players.filter(p => p.isAlive && p.id !== me).forEach(p => {
     const d = document.createElement('div');
     d.className = 'tb';
-    d.innerHTML = `${avHTML(p.avatar,'sm')}<span class="tb-name">${p.name}</span>`;
+    d.innerHTML = `${cosmeticPlayerAvatarHTML(p,'sm',false)}<span class="tb-name">${cosmeticPlayerNameHTML(p,false)}</span>`;
     d.onclick = () => {
       window._engizitorTarget = p.id;
       document.querySelectorAll('#ENGIZITOR_TARGETS .tb').forEach(el => el.classList.remove('sel'));
@@ -4496,7 +4503,7 @@ function openSuikastModal(){
     const isT=tmIds.has(p.id);
     const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
     const nameStyle=isT?'color:var(--hain);font-weight:600':'';
-    d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="${nameStyle}">${p.name}${isT?' 🧛':''}</span></span>`;
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',false)}<span class="vb-name">${cosmeticPlayerNameHTML(p,false,isT?' 🧛':'',nameStyle)}</span>`;
     d.onclick=()=>{
       document.querySelectorAll('#SUIKAST_TARGETS .vb').forEach(b=>b.classList.remove('vd'));
       d.classList.add('vd');window._suikastTarget=p.id;updSuikastBtn();
@@ -4537,11 +4544,11 @@ function renderVote(){
     const ctIcon=isCT?' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>':'';
     const deadIcon = !p.isAlive ? ' 💀' : '';
     if(p.isAlive){
-      d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="${nameStyle}">${p.name}${isMe?' (SEN)':''}${isT?' 🧛':''}${ctIcon}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span><span class="vc" data-vc="${p.id}">0</span><span class="tk">✓</span>`;
+      d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="vb-name">${cosmeticPlayerNameHTML(p,isMe,`${isMe?' (SEN)':''}${isT?' 🧛':''}${ctIcon}`,nameStyle)}${p.isPresident?'<span class="crown">👑</span>':''}</span><span class="vc" data-vc="${p.id}">0</span><span class="tk">✓</span>`;
       d.onclick=()=>doVote(p.id);
     } else {
       // Ölü: tıklanamaz, üst çizili, soluk
-      d.innerHTML=`${avHTML(p.avatar,'sm')}<span class="vb-name"><span style="text-decoration:line-through;color:var(--dim)">${p.name}${deadIcon}</span></span>`;
+      d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="vb-name">${cosmeticPlayerNameHTML(p,isMe,deadIcon,'text-decoration:line-through;color:var(--dim)')}</span>`;
     }
     grid.appendChild(d);
   });
@@ -4613,7 +4620,7 @@ function renderGO(data){
     winBox.style.display='block';
     winList.innerHTML=data.winners.map(w=>{
       const cc = w.coinChange ? `<span style="color:var(--gold);font-size:.74rem;margin-left:4px">+${w.coinChange}💰</span>` : '';
-      return `<div class="winner-item">${avHTML(w.avatar,'sm')}<span class="trophy">🏆</span><span style="flex:1;font-weight:700">${w.name}${cc}</span><span style="color:var(--dim);font-size:.78rem">${w.roleEmoji} ${w.roleName} ${w.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span></div>`;
+      return `<div class="winner-item">${cosmeticPlayerAvatarHTML(w,'sm',w.id===me)}<span class="trophy">🏆</span><span style="flex:1;font-weight:700">${cosmeticPlayerNameHTML(w,w.id===me,cc)}</span><span style="color:var(--dim);font-size:.78rem">${w.roleEmoji} ${w.roleName} ${w.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span></div>`;
     }).join('');
   } else {
     winBox.style.display='none';
@@ -4626,8 +4633,8 @@ function renderGO(data){
     const d=document.createElement('div');d.className='gop'+(p.isWinner?' winner':'');
     const meTag=isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'';
     const cc = p.coinChange ? `<span style="color:${p.coinChange>0?'var(--gold)':'var(--hain)'};font-size:.7rem;margin-left:4px">${p.coinChange>0?'+':''}${p.coinChange}💰</span>` : '';
-    d.innerHTML=`${avHTML(p.avatar,'sm')}<span>${p.isAlive?'✅':'💀'}</span><span>${p.roleEmoji}</span>
-      <span style="flex:1">${p.name}${meTag}${cc}</span><span style="color:var(--dim);font-size:.74rem">${p.roleName} (${p.team}) ${p.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span>
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span>${p.isAlive?'✅':'💀'}</span><span>${p.roleEmoji}</span>
+      <span style="flex:1">${cosmeticPlayerNameHTML(p,isMe,`${meTag}${cc}`)}</span><span style="color:var(--dim);font-size:.74rem">${p.roleName} (${p.team}) ${p.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span>
       ${p.isWinner?'<span class="ib">🏆 KAZANDI</span>':''}`;
     l.appendChild(d);});
   // Yeni oyun butonu herkese görünür - herkes başlatabilir
@@ -4654,7 +4661,7 @@ function renderSpec(data){
   }
   // İzleyici DELİ rozetini görür - kim deli net belli
   Q('SPP').innerHTML='<div id="SPP_GRID">'+data.players.map(p=>
-    `<div class="pi ${p.isAlive?'':'dead'}${p.isPresident?' president':''}">${avHTML(p.avatar,'sm')}<span class="pi-name"><span>${p.name}${p.id===me?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':''}</span>${p.isPresident?'<span class="crown">👑</span>':''}</span>
+    `<div class="pi ${p.isAlive?'':'dead'}${p.isPresident?' president':''}">${cosmeticPlayerAvatarHTML(p,'sm',p.id===me)}<span class="pi-name">${cosmeticPlayerNameHTML(p,p.id===me,p.id===me?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'')}${p.isPresident?'<span class="crown">👑</span>':''}</span>
       <span style="font-size:.74rem;color:var(--dim)">${p.roleEmoji} ${p.roleName}</span>
       ${p.isInsane?'<span class="deli-tag">DELİ</span>':''}
       ${p.isSilenced?'<span style="font-size:.72rem">🤐</span>':''}</div>`).join('')+'</div>';
@@ -4875,15 +4882,30 @@ io2.on('connect',()=>{
 // Phase tracking for optimized rendering
 let _lastPhase = null;
 let _lastRound = -1;
+let _lastCosmSig = '';
 
 io2.on('state',s=>{
   console.log('[state] Phase:',s.phase,'Round:',s.round,'Players:',s.players?.length);
   gs=s;
   const phaseChanged = _lastPhase !== s.phase;
   const roundChanged = _lastRound !== s.round;
+  const cosmSig = JSON.stringify((s.players||[]).map(p=>[p.id,p.cosmetics||{}]));
+  const cosmeticsChanged = _lastCosmSig !== cosmSig;
   if(phaseChanged) console.log('[state] Phase değişti:',_lastPhase,'->',s.phase);
   _lastPhase = s.phase;
   _lastRound = s.round;
+  _lastCosmSig = cosmSig;
+  if(!_cosmeticCatalog){
+    loadCosmeticCatalog().then(()=>{
+      if(!gs)return;
+      if(gs.phase==='lobby')renderLobby();
+      else if(gs.phase==='president_vote')renderPV();
+      else if(gs.phase==='night')renderNight();
+      else if(gs.phase==='day_discussion')renderDay();
+      else if(gs.phase==='voting')renderVote();
+      else if(gs.phase==='mvp_vote')renderMV();
+    });
+  }
 
   // Oda kodunu kaydet (rejoin için) - oyun aktifken veya lobideyken
   // me null ise kullanıcı ana menüye dönmüş demektir, kaydetme
@@ -4928,14 +4950,14 @@ io2.on('state',s=>{
   // Render fonksiyonları sadece phase'a yeni geçildiğinde tam çalıştırılır.
   if(s.phase==='lobby')renderLobby();
   if(s.phase==='role_selection')renderRS();
-  if(s.phase==='president_vote'&&phaseChanged)renderPV();
-  if(s.phase==='night'&&phaseChanged)renderNight();
+  if(s.phase==='president_vote'&&(phaseChanged||cosmeticsChanged))renderPV();
+  if(s.phase==='night'&&(phaseChanged||cosmeticsChanged))renderNight();
   if(s.phase==='day_discussion'){
-    if(phaseChanged||roundChanged)renderDay();
+    if(phaseChanged||roundChanged||cosmeticsChanged)renderDay();
     else updateDayPlayerList();
   }
-  if(s.phase==='voting'&&phaseChanged)renderVote();
-  if(s.phase==='mvp_vote'&&phaseChanged)renderMV();
+  if(s.phase==='voting'&&(phaseChanged||cosmeticsChanged))renderVote();
+  if(s.phase==='mvp_vote'&&(phaseChanged||cosmeticsChanged))renderMV();
   if(s.phase==='mvp_result' && s.mvpResult)renderMvpResult(s.mvpResult);
   // Suikast butonu her state güncellemesinde kontrol edilsin (suikastUsedThisRound değişebilir)
   updateSuikastFloatingBtn();
