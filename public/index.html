@@ -1743,6 +1743,17 @@ function roleTeamOf(roleId,fallback){
   const r=RDEF[String(roleId||'').toUpperCase()];
   return roleTeamClass(r?.t||fallback);
 }
+const _TEAM_COLORS={hain:'#c0392b',masum:'#27ae60','tarafsız':'#2980b9',tarafsiz:'#2980b9'};
+function applyTeamStyle(el,tc){
+  const c=_TEAM_COLORS[tc]||'#27ae60';
+  el.style.borderColor=c;
+  el.style.borderWidth='2px';
+  el.style.borderStyle='solid';
+  el.style.background=`linear-gradient(90deg,${c}40,${c}10)`;
+  el.style.boxShadow=`inset 4px 0 0 ${c}`;
+  const nameEl=el.querySelector('.rs-opt-name');
+  if(nameEl){nameEl.style.color=c;}
+}
 
 function show(id){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
@@ -2855,14 +2866,17 @@ function renderRS(){
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
         const d=document.createElement('div');
-        d.className=`rs-opt team-${roleTeamOf(roleId,ps.myRoleForcedTeam)}`;
+        const tc=roleTeamOf(roleId,ps.myRoleForcedTeam);
+        d.className=`rs-opt team-${tc}`;
         d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
         d.onclick=()=>pickRole(roleId);
         ol.appendChild(d);
+        applyTeamStyle(d,tc);
       });
       // Forced durumda da rastgele opsiyonu (forced takım içinden seçer)
       const rd=document.createElement('div');
-      rd.className=`rs-opt rs-opt-rnd team-${roleTeamClass(ps.myRoleForcedTeam)}`;
+      const forcedTc=roleTeamClass(ps.myRoleForcedTeam);
+      rd.className=`rs-opt rs-opt-rnd team-${forcedTc}`;
       const teamColor = ps.myRoleForcedTeam==='hain'?'var(--hain)':ps.myRoleForcedTeam==='tarafsız'?'var(--tarafsiz)':'var(--safe)';
       rd.innerHTML=`<span class="rs-opt-em">🎲</span><div style="flex:1"><div class="rs-opt-name">Rastgele <span style="color:${teamColor};font-size:.72rem">(${ps.myRoleForcedTeam||'?'})</span></div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${ps.myRoleForcedTeam} havuzundan rastgele rol gelir.</div></div>`;
       rd.onclick=()=>pickRole('random');
@@ -2872,10 +2886,12 @@ function renderRS(){
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
         const d=document.createElement('div');
-        d.className=`rs-opt team-${roleTeamOf(roleId)}`;
+        const tc=roleTeamOf(roleId);
+        d.className=`rs-opt team-${tc}`;
         d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
         d.onclick=()=>pickRole(roleId);
         ol.appendChild(d);
+        applyTeamStyle(d,tc);
       });
       // Rastgele butonu: tüm havuzdan gelebilir
       const rd=document.createElement('div');
@@ -2908,6 +2924,7 @@ function pVote(tid){
 
 function renderPV(){
   if(!gs)return;theme(false);
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='president_vote')renderPV();});}
   const grid=Q('PV_GRID');grid.innerHTML='';
   const isH=ps?.team==='hain';
   const tmIds=new Set();
@@ -3322,6 +3339,7 @@ function renderRole(){
 
 function renderNight(){
   if(!ps||!gs)return;nsent=false;sel1=null;sel2=null;selG=null;window._bombMode='place';theme(false);
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='night')renderNight();});}
   Q('NR').textContent='Tur '+gs.round;Q('NE').textContent=ps.roleEmoji;Q('NN').textContent=ps.roleName;
   const r=ps.role,isH=ps.team==='hain',isSK=r==='seri_katil';
 
@@ -3382,6 +3400,7 @@ function renderNight(){
 
 function renderTL(){
   const list=Q('NTL');if(!gs||!ps)return;
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='night')renderTL();});}
   const r=ps.role;
   if(['muhtar','dodo','cellat','yamyam','kurban','koruyucu','engizitor','olumsuz'].includes(r)){
     if(r==='koruyucu'&&ps.koruyucuTarget){
@@ -3594,6 +3613,7 @@ function renderReport(reps){
 
 function renderDay(){
   if(!gs)return;theme(true);
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='day_discussion')renderDay();});}
   Q('DAY_PS').textContent=gs.presidentId?`Başkan: ${gs.players.find(p=>p.id===gs.presidentId)?.name||'-'} • Oylama yaklaşıyor...`:'Tartışın! Oylama 20 saniye sonra başlıyor...';
   Q('SM').innerHTML=ps?.isSilenced?'<div class="silban">🤐 Susturuldun! Bu tur konuşamazsın.</div>':'';
   const da=Q('DA');
@@ -4540,6 +4560,7 @@ function closeSuikastModal(){
 
 function renderVote(){
   if(!gs)return;theme(true);voted=null;
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='voting')renderVote();});}
   const grid=Q('VG');grid.innerHTML='';
   const isH=ps?.team==='hain';
   const tmIds=new Set();
