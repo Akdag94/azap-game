@@ -1626,14 +1626,15 @@ class GameEngine {
     while (shuffled.length >= 1) {
       const p1 = shuffled.shift();
       const gType = gameTypes[crypto.randomInt(0, gameTypes.length)];
+      const pAt = Date.now() + (forceImmediate ? 0 : crypto.randomInt(0, 15001));
       this.sabotageTargets.set(p1.id, {
         gameType: gType,
         opponentType: 'ai',
         fromSystem,
-        promptAt: Date.now() + (forceImmediate ? 0 : crypto.randomInt(0, 15001)),
+        promptAt: pAt,
         started: false,
         startedAt: null,
-        deadlineAt: null,
+        deadlineAt: pAt + 10000,
         status: 'scheduled',
         completed: false,
         won: false
@@ -2187,7 +2188,9 @@ class GameEngine {
       mvpTally: this.phase === 'mvp_vote' ? this.getMvpTally() : {},
       mvpResult: this.mvpResult,
       // Suikastçı: bu tur kullanıldı mı?
-      suikastUsedThisRound: this.suikastUsedThisRound
+      suikastUsedThisRound: this.suikastUsedThisRound,
+      // Sabotaj: gündüz ölenler (timeout)
+      sabotageDayDeaths: [...this.sabotageDeaths].map(pid => ({ id: pid, name: this.pn(pid) }))
     };
   }
 

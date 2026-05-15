@@ -1060,6 +1060,7 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
       <div class="sabo-icon">🚨</div>
       <div class="sabo-title">SABOTAJ!</div>
       <div class="sabo-sub" id="SABO_SUB">Mini oyunu çöz, kazanırsan +5 altın!</div>
+      <div id="SABO_COUNTDOWN" style="font-size:.82rem;font-weight:700;text-align:center;margin:4px 0 0;letter-spacing:.5px"></div>
     </div>
     <div id="SABO_BODY"></div>
     <button class="b bs mt8" id="SABO_SKIP" onclick="sabotageSkip()" style="background:rgba(255,255,255,.05);color:var(--dim);border:1px solid var(--brd);width:100%">Geç (kaybet)</button>
@@ -3749,14 +3750,22 @@ io2.on('toast', d => {
 });
 
 // ── SABOTAJ MİNİ OYUNLAR ──
-let _saboGame = null; // mevcut oyun durumu
-let _saboShown = false; // bu sabotaj turunda gösterildi mi (tekrar açma)
+let _saboGame = null;
+let _saboShown = false;
+let _saboStarted = false;
 let _saboPromptTimer = null;
+let _saboCountdownInterval = null;
 
 function sabotageCheck(){
   if(!ps?.sabotageGame || ps.sabotageGame.completed){
+    if(_saboShown && ps?.sabotageGame?.status === 'timeout' && !ps?.isAlive && !_saboStarted){
+      toast('💀 Sabotaja 10 saniye içinde başlamadın ve öldürüldün!', 1);
+    }
     Q('SABO_OV').classList.remove('sh');
     _saboShown = false;
+    _saboStarted = false;
+    if(_saboCountdownInterval){clearInterval(_saboCountdownInterval);_saboCountdownInterval=null;}
+    const cdEl=Q('SABO_COUNTDOWN');if(cdEl)cdEl.textContent='';
     if(_saboPromptTimer){clearTimeout(_saboPromptTimer);_saboPromptTimer=null;}
     return;
   }
@@ -3777,8 +3786,10 @@ function sabotageCheck(){
 
 function startSabotageGame(gameType){
   Q('SABO_OV').classList.add('sh');
+  _saboStarted = false;
   if(!window._saboFakeMode){
-    io2.emit('sabotage:begin', null, ()=>{});
+    const dl = ps?.sabotageGame?.deadlineAt;
+    if(dl) _startSaboCountdown(dl);
   }
   const sub = Q('SABO_SUB');
   if(gameType === 'xox'){
@@ -3790,6 +3801,41 @@ function startSabotageGame(gameType){
   } else if(gameType === 'colorword'){
     sub.textContent = 'Renk Yaz — Yazıdaki RENGE bas, kelimeye değil!';
     initColorWord();
+  }
+}
+
+function _startSaboCountdown(deadline){
+  if(_saboCountdownInterval){clearInterval(_saboCountdownInterval);_saboCountdownInterval=null;}
+  const el=Q('SABO_COUNTDOWN');
+  const isHain = ps?.team === 'hain';
+  const tick = () => {
+    if(!el) return;
+    const left = Math.ceil((deadline - Date.now()) / 1000);
+    if(left <= 0){
+      clearInterval(_saboCountdownInterval);
+      _saboCountdownInterval = null;
+      if(!_saboStarted && !isHain){
+        el.textContent = '💀 Süre doldu!';
+        el.style.color = '#c0392b';
+      } else {
+        el.textContent = '';
+      }
+      return;
+    }
+    el.textContent = isHain ? `⏰ ${left}s (hain: ölüm yok)` : `⚠️ ${left}s içinde başla veya ölürsün!`;
+    el.style.color = left <= 3 ? '#c0392b' : left <= 5 ? '#f39c12' : '#e0e0e0';
+  };
+  tick();
+  _saboCountdownInterval = setInterval(tick, 500);
+}
+
+function saboMarkStarted(){
+  if(_saboStarted) return;
+  _saboStarted = true;
+  if(_saboCountdownInterval){clearInterval(_saboCountdownInterval);_saboCountdownInterval=null;}
+  const el=Q('SABO_COUNTDOWN');if(el)el.textContent='';
+  if(!window._saboFakeMode){
+    io2.emit('sabotage:begin', null, ()=>{});
   }
 }
 
@@ -3847,6 +3893,7 @@ function renderXOX(){
 function xoxClick(i){
   const g = _saboGame;
   if(g.winner || g.turn !== 'player' || g.board[i]) return;
+  saboMarkStarted();
   g.board[i] = g.playerSymbol;
   const w = xoxCheckWin();
   if(w){ g.winner = w; renderXOX(); sabotageEnd(w === 'player'); return; }
@@ -3929,6 +3976,7 @@ function renderRPS(){
 function rpsPlay(playerChoice){
   const g = _saboGame;
   if(g.gameOver) return;
+  saboMarkStarted();
   const choices = ['rock','paper','scissors'];
   const aiChoice = choices[Math.floor(Math.random()*3)];
   const emoji = { rock:'🪨', paper:'📄', scissors:'✂️' };
@@ -4009,6 +4057,7 @@ function cwUpdateTimer(){
 }
 
 function cwAnswer(answer){
+  saboMarkStarted();
   if(answer === _saboGame.correctAnswer){
     _saboGame.score++;
     if(_saboGame.score >= _saboGame.target){
@@ -4917,6 +4966,7 @@ io2.on('connect',()=>{
 let _lastPhase = null;
 let _lastRound = -1;
 let _lastCosmSig = '';
+let _seenSaboDeaths = new Set();
 
 io2.on('state',s=>{
   console.log('[state] Phase:',s.phase,'Round:',s.round,'Players:',s.players?.length);
@@ -4993,6 +5043,16 @@ io2.on('state',s=>{
   if(s.phase==='voting'&&(phaseChanged||cosmeticsChanged))renderVote();
   if(s.phase==='mvp_vote'&&(phaseChanged||cosmeticsChanged))renderMV();
   if(s.phase==='mvp_result' && s.mvpResult)renderMvpResult(s.mvpResult);
+  // Sabotaj gündüz ölümleri: yeni ölenler için toast göster
+  if(s.sabotageDayDeaths?.length){
+    s.sabotageDayDeaths.forEach(d=>{
+      if(!_seenSaboDeaths.has(d.id)){
+        _seenSaboDeaths.add(d.id);
+        if(d.id !== me) toast(`💀 ${d.name} sabotaja başlamadı ve gündüz öldü!`, 1);
+      }
+    });
+  }
+  if(s.phase==='lobby') _seenSaboDeaths.clear();
   // Suikast butonu her state güncellemesinde kontrol edilsin (suikastUsedThisRound değişebilir)
   updateSuikastFloatingBtn();
   // Bu işlemler sadece phase değişiminde gereklidir — gereksiz DOM mutasyonu önlemek için
