@@ -3759,7 +3759,7 @@ let _saboCountdownInterval = null;
 function sabotageCheck(){
   if(!ps?.sabotageGame || ps.sabotageGame.completed){
     if(_saboShown && ps?.sabotageGame?.status === 'timeout' && !ps?.isAlive && !_saboStarted){
-      toast('💀 Sabotaja 10 saniye içinde başlamadın ve öldürüldün!', 1);
+      toast('💀 Öldün!', 1);
     }
     Q('SABO_OV').classList.remove('sh');
     _saboShown = false;
@@ -4966,6 +4966,7 @@ io2.on('connect',()=>{
 let _lastPhase = null;
 let _lastRound = -1;
 let _lastCosmSig = '';
+let _lastAliveSig = '';
 let _seenSaboDeaths = new Set();
 
 io2.on('state',s=>{
@@ -4975,10 +4976,13 @@ io2.on('state',s=>{
   const roundChanged = _lastRound !== s.round;
   const cosmSig = JSON.stringify((s.players||[]).map(p=>[p.id,p.cosmetics||{}]));
   const cosmeticsChanged = _lastCosmSig !== cosmSig;
+  const aliveSig = (s.players||[]).map(p=>p.id+':'+(p.isAlive?1:0)).join(',');
+  const aliveChanged = _lastAliveSig !== aliveSig;
   if(phaseChanged) console.log('[state] Phase değişti:',_lastPhase,'->',s.phase);
   _lastPhase = s.phase;
   _lastRound = s.round;
   _lastCosmSig = cosmSig;
+  _lastAliveSig = aliveSig;
   if(!_cosmeticCatalog){
     loadCosmeticCatalog().then(()=>{
       if(!gs)return;
@@ -5040,7 +5044,7 @@ io2.on('state',s=>{
     if(phaseChanged||roundChanged||cosmeticsChanged)renderDay();
     else updateDayPlayerList();
   }
-  if(s.phase==='voting'&&(phaseChanged||cosmeticsChanged))renderVote();
+  if(s.phase==='voting'&&(phaseChanged||cosmeticsChanged||aliveChanged))renderVote();
   if(s.phase==='mvp_vote'&&(phaseChanged||cosmeticsChanged))renderMV();
   if(s.phase==='mvp_result' && s.mvpResult)renderMvpResult(s.mvpResult);
   // Sabotaj gündüz ölümleri: yeni ölenler için toast göster
@@ -5048,7 +5052,7 @@ io2.on('state',s=>{
     s.sabotageDayDeaths.forEach(d=>{
       if(!_seenSaboDeaths.has(d.id)){
         _seenSaboDeaths.add(d.id);
-        if(d.id !== me) toast(`💀 ${d.name} sabotaja başlamadı ve gündüz öldü!`, 1);
+        if(d.id !== me) toast(`💀 ${d.name} öldü!`, 1);
       }
     });
   }

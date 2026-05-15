@@ -1441,6 +1441,8 @@ function watchSabotage(rc) {
       clearInterval(int);
       sabotageWatchers.delete(rc);
       emit(rc);
+      // Sabotaj bitti — tüm oylar geldiyse hemen çöz
+      maybeResolveVoteIfEveryoneOnlineVoted(rc, g);
     }
   }, 1000);
   sabotageWatchers.set(rc, int);
