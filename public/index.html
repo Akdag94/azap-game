@@ -540,12 +540,12 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 .rs-opt-rnd{border-color:var(--hi)}
 .rs-opt:hover{border-color:var(--hi);background:rgba(255,255,255,.06);transform:translateX(2px)}
 .rs-opt-rnd{border-style:dashed;background:rgba(201,169,110,.06)}
-.rs-opt.team-masum{border-color:rgba(39,174,96,.65);background:rgba(39,174,96,.08)}
-.rs-opt.team-hain{border-color:rgba(192,57,43,.65);background:rgba(192,57,43,.08)}
-.rs-opt.team-tarafsız{border-color:rgba(41,128,185,.65);background:rgba(41,128,185,.08)}
-.rs-opt.team-masum .rs-opt-name{color:var(--masum)}
-.rs-opt.team-hain .rs-opt-name{color:var(--hain)}
-.rs-opt.team-tarafsız .rs-opt-name{color:var(--tarafsiz)}
+.rs-opt.team-masum{border-color:var(--masum)!important;background:linear-gradient(90deg,rgba(39,174,96,.24),rgba(39,174,96,.06))!important;box-shadow:inset 5px 0 0 var(--masum)}
+.rs-opt.team-hain{border-color:var(--hain)!important;background:linear-gradient(90deg,rgba(192,57,43,.24),rgba(192,57,43,.06))!important;box-shadow:inset 5px 0 0 var(--hain)}
+.rs-opt.team-tarafsiz,.rs-opt.team-tarafsız{border-color:var(--tarafsiz)!important;background:linear-gradient(90deg,rgba(41,128,185,.24),rgba(41,128,185,.06))!important;box-shadow:inset 5px 0 0 var(--tarafsiz)}
+.rs-opt.team-masum .rs-opt-name{color:var(--masum)!important;text-shadow:0 0 8px rgba(39,174,96,.45)}
+.rs-opt.team-hain .rs-opt-name{color:var(--hain)!important;text-shadow:0 0 8px rgba(192,57,43,.45)}
+.rs-opt.team-tarafsiz .rs-opt-name,.rs-opt.team-tarafsız .rs-opt-name{color:var(--tarafsiz)!important;text-shadow:0 0 8px rgba(41,128,185,.45)}
 .rs-opt-em{font-size:1.5rem;width:32px;text-align:center}
 .rs-my-pick{padding:14px;background:rgba(201,169,110,.1);border:2px solid var(--hi);border-radius:6px;text-align:center;margin:10px 0}
 .rs-my-pick .em{font-size:2.2rem}
@@ -1739,6 +1739,10 @@ Object.entries(RDEF).forEach(([k,v])=>{
   ID_MAP[id]={e:v.e,n:v.n,d:v.d,t:v.t};
 });
 function roleTeamClass(t){return t==='hain'?'hain':t==='tarafsız'?'tarafsız':'masum'}
+function roleTeamOf(roleId,fallback){
+  const r=RDEF[String(roleId||'').toUpperCase()];
+  return roleTeamClass(r?.t||fallback);
+}
 
 function show(id){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
@@ -2831,7 +2835,7 @@ function renderRS(){
         pickHTML='<span class="rs-comp-pick random">🎲 Rastgele</span>';
       } else {
         const info=ID_MAP[c.picked]||{e:'❓',n:c.picked};
-        pickHTML=`<span class="rs-comp-pick team-${roleTeamClass(info.t)}">${info.e} ${info.n}</span>`;
+        pickHTML=`<span class="rs-comp-pick team-${roleTeamOf(c.picked)}">${info.e} ${info.n}</span>`;
       }
       const d=document.createElement('div');
       d.className='rs-comp-row';
@@ -2851,7 +2855,7 @@ function renderRS(){
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
         const d=document.createElement('div');
-        d.className=`rs-opt team-${roleTeamClass(info.t||ps.myRoleForcedTeam)}`;
+        d.className=`rs-opt team-${roleTeamOf(roleId,ps.myRoleForcedTeam)}`;
         d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
         d.onclick=()=>pickRole(roleId);
         ol.appendChild(d);
@@ -2868,7 +2872,7 @@ function renderRS(){
       ps.myRoleOptions.forEach(roleId=>{
         const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
         const d=document.createElement('div');
-        d.className=`rs-opt team-${roleTeamClass(info.t)}`;
+        d.className=`rs-opt team-${roleTeamOf(roleId)}`;
         d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
         d.onclick=()=>pickRole(roleId);
         ol.appendChild(d);
@@ -3187,8 +3191,9 @@ try{_hideOtherCosmetics=localStorage.getItem('azap_hide_cosmetics')==='1';}catch
 function cosmeticNameHTML(name, cosm, isMe){
   if(!cosm||(!isMe && _hideOtherCosmetics)) return esc(name);
   let style='';
-  if(cosm.font && _cosmeticCatalog?.[cosm.font]){
-    const p=_cosmeticCatalog[cosm.font].preview||{};
+  const fontId=cosm.font||cosm.nameFont||cosm.activeFont||cosm.yazi||cosm.yaziTipi;
+  if(fontId && _cosmeticCatalog?.[fontId]){
+    const p=_cosmeticCatalog[fontId].preview||{};
     // Font family'deki escape karakterlerini temizle
     let family=p.family||'inherit';
     family=family.replace(/\\"/g,'"').replace(/"/g,"'");
@@ -3201,8 +3206,10 @@ function cosmeticNameHTML(name, cosm, isMe){
 
 // Frame tüm kartı sarar - border+shadow+bg+anim
 function cosmeticFrameWrap(cosm, isMe){
-  if(!cosm||(!isMe && _hideOtherCosmetics)||!cosm.frame) return null;
-  const item = _cosmeticCatalog?.[cosm.frame];
+  if(!cosm||(!isMe && _hideOtherCosmetics)) return null;
+  const frameId=cosm.frame||cosm.avatarFrame||cosm.activeFrame||cosm.cerceve;
+  if(!frameId) return null;
+  const item = _cosmeticCatalog?.[frameId];
   if(!item) return null;
   const p=item.preview||{};
   return {
@@ -3222,8 +3229,10 @@ function cosmeticFrameStyle(cosm, isMe){
 }
 
 function cosmeticPetHTML(cosm, isMe){
-  if(!cosm||(!isMe && _hideOtherCosmetics)||!cosm.pet) return '';
-  const item = _cosmeticCatalog?.[cosm.pet];
+  if(!cosm||(!isMe && _hideOtherCosmetics)) return '';
+  const petId=cosm.pet||cosm.activePet||cosm.companion;
+  if(!petId) return '';
+  const item = _cosmeticCatalog?.[petId];
   if(!item) return '';
   const p=item.preview||{};
   const anim=p.anim||'catIdle';

@@ -46,7 +46,13 @@ function getEquippedFromUser(u) {
   u.inventory.forEach(it => {
     const item = typeof it === 'string' ? { id: it, equipped: false } : it;
     if (item.equipped) {
-      const category = item.id.split('_')[0];
+      const id = String(item.id || '');
+      const parts = id.split('_');
+      const category =
+        parts[0] === 'frame' || id.includes('_frame') ? 'frame' :
+        parts[0] === 'font' || id.includes('_font') ? 'font' :
+        parts[0] === 'pet' || id.includes('_pet') ? 'pet' :
+        parts[0];
       equipped[category] = item.id;
     }
   });
@@ -195,12 +201,23 @@ module.exports = {
     );
     const item = db[key].inventory.find(it => it.id === itemId);
     if (!item) return { success: false, error: 'Eşya envanterinde yok' };
-    // Kategori belirle: itemId formatı "frame_gold", "font_gothic", "color_red" vb.
-    const category = itemId.split('_')[0];
+    const parts = itemId.split('_');
+    const category =
+      parts[0] === 'frame' || itemId.includes('_frame') ? 'frame' :
+      parts[0] === 'font' || itemId.includes('_font') ? 'font' :
+      parts[0] === 'pet' || itemId.includes('_pet') ? 'pet' :
+      parts[0];
     if (equipped) {
       // Aynı kategorideki diğer eşyaları pasifleştir
       db[key].inventory.forEach(it => {
-        if (it.id !== itemId && it.id.startsWith(category + '_')) it.equipped = false;
+        const itId = String(it.id || '');
+        const itParts = itId.split('_');
+        const itCategory =
+          itParts[0] === 'frame' || itId.includes('_frame') ? 'frame' :
+          itParts[0] === 'font' || itId.includes('_font') ? 'font' :
+          itParts[0] === 'pet' || itId.includes('_pet') ? 'pet' :
+          itParts[0];
+        if (it.id !== itemId && itCategory === category) it.equipped = false;
       });
       item.equipped = true;
     } else {
