@@ -11,3 +11,4 @@ data/screenshots/
 .vscode/
 .idea/
 dist/
+data/users.json
