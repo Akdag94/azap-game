@@ -635,6 +635,7 @@ class GameEngine {
     this.serifPendingSuicide.clear();
 
     this.sabotageVotes.clear();
+    this.sabotageDeaths.clear();
     this.log(`🌙 Gece ${this.round}`);
   }
 
@@ -827,25 +828,6 @@ class GameEngine {
         }
       }
       this.hist(a.pid, 'Zindan', t.name, 'Başarılı');
-    });
-
-    // GARDİYAN: Sokağa çıkma yasağı (tüm köy korunur)
-    acts.filter(a => a.role === 'gardiyan' && a.action === 'shield').forEach(a => {
-      if (this.gardiyanUsed.has(a.pid)) return;
-      const insane = this.isInsane(a.pid);
-      if (insane) {
-        rep.get(a.pid)?.push({ i: '🛡️', t: 'Sokağa çıkma yasağı ilan ettin! Ama sahte...' });
-        return;
-      }
-      this.gardiyanUsed.add(a.pid);
-      this.gardiyanShield = true;
-      this.players.forEach(p => { if (p.isAlive) p.isShielded = true; });
-      // Sabah herkes haberdar olsun
-      this.players.forEach((_, pid) => {
-        rep.get(pid)?.push({ i: '🛡️', t: 'Bu gece SOKAĞA ÇIKMA YASAĞI vardı! Hiç kimse zarar göremedi.' });
-      });
-      this.hist(a.pid, 'Sokağa Çıkma Yasağı', '-', 'Başarılı');
-      this.log(`🛡️ Gardiyan ${this.pn(a.pid)} sokağa çıkma yasağı ilan etti.`);
     });
 
     // HACKER: bilgi toplayan rolü hedef alır
@@ -1548,11 +1530,13 @@ class GameEngine {
     if (t.actualTeam === TEAMS.MASUM) {
       // Yanlış — engizitör ölür
       p.isAlive = false;
+      this.deadThisNight.push(pid);
       this.log(`⚖️ Engizitör ${p.name} ${t.name}'i hedef aldı ama o masum! Engizitör öldü.`);
       return { ok: true, killed: pid, killedName: p.name, msg: `${p.name} masum birini hedef aldı! Engizitör öldü.` };
     } else {
       // Hain veya tarafsız — hedef ölür
       t.isAlive = false;
+      this.deadThisNight.push(targetId);
       this.log(`⚖️ Engizitör ${p.name} ${t.name}'i ifşa etti ve infaz etti.`);
       return { ok: true, killed: targetId, killedName: t.name, msg: `Engizitör ${t.name}'i ifşa etti ve infaz etti!` };
     }
@@ -1648,8 +1632,8 @@ class GameEngine {
         const t = this.sabotageTargets.get(pid);
         if (!this.sabotageActive || !t || t.completed || t.started) return;
         t.status = 'prompted';
-        t.deadlineAt = Date.now() + 10000;
-        const deathTimer = setTimeout(() => this._resolveSabotageNoStart(pid), 10000);
+        const deathDelay = Math.max(0, t.deadlineAt - Date.now());
+        const deathTimer = setTimeout(() => this._resolveSabotageNoStart(pid), deathDelay);
         this.sabotageTimers.set(`${pid}:death`, deathTimer);
       }, promptDelay);
       this.sabotageTimers.set(`${pid}:prompt`, promptTimer);
@@ -1793,8 +1777,8 @@ class GameEngine {
           });
           this._maybeEndSabotage();
         } else {
-          // Yeni round - seçimleri sıfırla (ama önce sonuç gönderilebilsin)
-          // Bunu frontend tarafında animasyonla göstereceğiz
+          // Yeni round — seçimleri sıfırla
+          pair.state.lastChoices = [null, null];
         }
       }
       return { ok: true, state: pair.state, completed: pair.completed };
@@ -1864,10 +1848,12 @@ class GameEngine {
     if (correct) {
       t.isAlive = false;
       deadName = t.name; deadId = t.id;
+      this.deadThisNight.push(t.id);
       this.log(`🗡️ Suikastçı ${p.name} → ${t.name} (${this.ro(guessedRole)?.name}) DOĞRU TAHMİN! Hedef anında öldü.`);
     } else {
       p.isAlive = false;
       deadName = p.name; deadId = p.id;
+      this.deadThisNight.push(p.id);
       this.log(`🗡️ Suikastçı ${p.name} → ${t.name} (${this.ro(guessedRole)?.name}) YANLIŞ! Suikastçı anında öldü.`);
     }
     // Suikastçıya özel detay (sadece kendisi görür)
@@ -1920,9 +1906,7 @@ class GameEngine {
     return 1;
   }
   getVoteTally() {
-    const r = {};
-    this.voteTally.forEach((c, pid) => { if (c !== 0) r[pid] = c; });
-    return r;
+    return Object.fromEntries(this.voteTally);
   }
 
   resolveVoting() {

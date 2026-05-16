@@ -5,7 +5,6 @@ const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const archiver = null;
 const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
 const Reports = require('./reports');
@@ -1210,6 +1209,7 @@ function toVote(rc) {
 }
 function resolveVote(rc) {
   const g = rooms.get(rc); if (!g) return;
+  if (g.phase !== PHASES.VOTING) return;
   if (g.sabotagePending && !g.hasActiveSabotage?.()) {
     triggerPendingSabotageNow(rc);
   }
@@ -1956,9 +1956,11 @@ io.on('connection', (socket) => {
     const rc = prooms.get(socket.id), g = rooms.get(rc); if (!g) return;
     const p = g.players.get(socket.id);
     if (p?.actualTeam !== 'hain') return;
+    if (typeof msg !== 'string' || msg.length === 0 || msg.length > 200) return;
+    const safeMsg = msg.replace(/[<>&"']/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c]));
     g.players.forEach((pp, pid) => {
       if (pp.actualTeam === 'hain')
-        io.sockets.sockets.get(pid)?.emit('hainMsg', { from: p.name, msg });
+        io.sockets.sockets.get(pid)?.emit('hainMsg', { from: p.name, msg: safeMsg });
     });
   });
 

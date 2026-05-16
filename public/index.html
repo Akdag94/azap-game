@@ -3753,12 +3753,14 @@ io2.on('toast', d => {
 let _saboGame = null;
 let _saboShown = false;
 let _saboStarted = false;
+let _saboDeathToasted = false;
 let _saboPromptTimer = null;
 let _saboCountdownInterval = null;
 
 function sabotageCheck(){
   if(!ps?.sabotageGame || ps.sabotageGame.completed){
-    if(_saboShown && ps?.sabotageGame?.status === 'timeout' && !ps?.isAlive && !_saboStarted){
+    if(ps?.sabotageGame?.status === 'timeout' && !ps?.isAlive && !_saboDeathToasted){
+      _saboDeathToasted = true;
       toast('💀 Öldün!', 1);
     }
     Q('SABO_OV').classList.remove('sh');
@@ -5041,7 +5043,7 @@ io2.on('state',s=>{
   if(s.phase==='president_vote'&&(phaseChanged||cosmeticsChanged))renderPV();
   if(s.phase==='night'&&(phaseChanged||cosmeticsChanged))renderNight();
   if(s.phase==='day_discussion'){
-    if(phaseChanged||roundChanged||cosmeticsChanged)renderDay();
+    if(phaseChanged||roundChanged||cosmeticsChanged||aliveChanged)renderDay();
     else updateDayPlayerList();
   }
   if(s.phase==='voting'&&(phaseChanged||cosmeticsChanged||aliveChanged))renderVote();
@@ -5056,7 +5058,7 @@ io2.on('state',s=>{
       }
     });
   }
-  if(s.phase==='lobby') _seenSaboDeaths.clear();
+  if(s.phase==='lobby'){ _seenSaboDeaths.clear(); _saboDeathToasted=false; }
   // Suikast butonu her state güncellemesinde kontrol edilsin (suikastUsedThisRound değişebilir)
   updateSuikastFloatingBtn();
   // Bu işlemler sadece phase değişiminde gereklidir — gereksiz DOM mutasyonu önlemek için
