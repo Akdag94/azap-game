@@ -29,7 +29,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: ["https://azap.online", "http://localhost:3000", "https://www.azap.online", "http://127.0.0.1:3000", "http://localhost:5500", "http://127.0.0.1:5500" ] },
   maxHttpBufferSize: 8e6,
-  pingTimeout: 60000,
+  pingTimeout: 20000,
   pingInterval: 25000,
   upgradeTimeout: 30000,
   transports: ['websocket', 'polling'],
@@ -987,6 +987,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
+const disconnectTimers = new Map(); // socketId -> timeoutId (3dk sonra oyundan otomatik çıkar)
 
 // ── ANLİK ZİYARETÇİ İSTATİSTİKLERİ (sadece sayaçlar, IP kaydetmiyoruz) ──
 const siteStats = {
@@ -1724,6 +1725,11 @@ io.on('connection', (socket) => {
       const res = g.rejoinPlayer(socket.id, u);
       if (!res.ok) return cb?.({ ok: false, err: 'Bu odada kayıtlı oyuncu bulunamadı.' });
       if (res.player) res.player.cosmetics = Accounts.getEquipped(u);
+      // Disconnect timer'ı iptal et (oyuncu geri döndü)
+      if (res.oldId && disconnectTimers.has(res.oldId)) {
+        clearTimeout(disconnectTimers.get(res.oldId));
+        disconnectTimers.delete(res.oldId);
+      }
       prooms.set(socket.id, rc); socket.join(rc);
       cb?.({ ok: true, code: rc, active: true });
       // Yeni sokete mevcut state + priv gönder
@@ -2469,7 +2475,21 @@ io.on('connection', (socket) => {
           const p = g.players.get(socket.id);
           if (p) {
             p.isDisconnected = true;
-            emit(rc); // Oyuncu offline olarak görünecek
+            emit(rc);
+            // 3 dakika sonra hâlâ offline ise oyundan çıkar (oyunun devam edebilmesi için)
+            if (disconnectTimers.has(socket.id)) clearTimeout(disconnectTimers.get(socket.id));
+            const _sid = socket.id, _rc = rc;
+            disconnectTimers.set(_sid, setTimeout(() => {
+              disconnectTimers.delete(_sid);
+              const g2 = rooms.get(_rc); if (!g2) return;
+              const p2 = g2.players.get(_sid); if (!p2 || !p2.isDisconnected) return;
+              console.log(`[disconnectTimer] ${p2.name} 3dk sonra hâlâ offline — oyundan çıkarılıyor`);
+              g2.removePlayer(_sid);
+              if (g2.players.size === 0 && g2.spectators.size === 0) { rooms.delete(_rc); clearTimer(_rc); return; }
+              emit(_rc);
+              const wc = g2.checkWin();
+              if (wc.over) setTimeout(() => endGame(_rc, wc, null), 2000);
+            }, 3 * 60 * 1000));
           }
         }
       }
@@ -2486,6 +2506,21 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection:', reason);
 });
+
+// Her 5 dakikada bir tüm oyuncuları offline olan aktif odaları temizle
+setInterval(() => {
+  for (const [rc, g] of rooms) {
+    const isActive = g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME && g.phase !== PHASES.GAME_OVER;
+    if (!isActive) continue;
+    const alive = [...g.players.values()].filter(p => p.isAlive);
+    if (alive.length === 0) continue;
+    const allOffline = alive.every(p => p.isDisconnected);
+    if (allOffline && g.spectators.size === 0) {
+      console.log(`[deadRoom] Oda ${rc}: tüm oyuncular offline — oda siliniyor`);
+      rooms.delete(rc); clearTimer(rc);
+    }
+  }
+}, 5 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => console.log(`\n  ⛧ AZAP v4 aktif: http://localhost:${PORT}\n  Created by Azat Akdağ\n`));
