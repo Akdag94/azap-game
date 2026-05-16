@@ -756,13 +756,22 @@ class GameEngine {
     // 1. POLİS + ÇİLİNGİR
     acts.filter(a => a.role === 'polis' && a.targetId).forEach(a => {
       const insane = this.isInsane(a.pid);
+      const targetAct = this.nightActions.get(a.targetId);
+      const triedSomething = !!targetAct;
       if (!insane) {
         this.blocked.add(a.targetId);
-        // Tutulan kişiye bildirim
-        rep.get(a.targetId)?.push({ i: '🔦', t: 'Polis seni gece engelledi! Yeteneğini kullanamadın.' });
+        if (triedSomething) {
+          rep.get(a.targetId)?.push({ i: '🔦', t: 'Polis seni gece engelledi! Yeteneğini kullanamadın.' });
+          rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} rol kullandı ama engellendi! (Girişimi durduruldu.)` });
+          this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Girişimi durduruldu');
+        } else {
+          rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} bu gece hiçbir şey yapmadı.` });
+          this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Hiçbir şey yapmadı');
+        }
+      } else {
+        rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} bu gece engellendi.` });
+        this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Sahte');
       }
-      rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} bu gece engellendi.` });
-      this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Başarılı');
     });
 
     // Çilingir: kilitle (blok + koruma) — deli ise hiçbir etkisi yok
@@ -1220,6 +1229,12 @@ class GameEngine {
       const t = this.players.get(a.targetId); if (!t) return;
       // Seri Katil iz bırakmaz — takipçi de onu göremez
       if (t.role === 'seri_katil' && !insane) {
+        rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: Bu gece hiçbir şey yapmadı.` });
+        this.hist(a.pid, 'Takip', t.name, 'Hiçbir şey yapmadı');
+        return;
+      }
+      // Bloklanmış kişi hiçbir yere gitmemiş sayılır
+      if (this.blocked.has(a.targetId) && !insane) {
         rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: Bu gece hiçbir şey yapmadı.` });
         this.hist(a.pid, 'Takip', t.name, 'Hiçbir şey yapmadı');
         return;
