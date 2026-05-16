@@ -1035,6 +1035,9 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 <!-- Floating Engizitör butonu (sadece engizitör için, tartışma fazında) -->
 <button class="suikast-btn" id="ENGIZITOR_BTN_FLOAT" onclick="openEngizitorModal()" title="Engizitör İnfaz" style="background:linear-gradient(135deg,#5e3a87,#8e44ad);border-color:#8e44ad;display:none">⚖️</button>
 
+<!-- Floating Sabotaj butonu (sadece hainler için, gece fazında) -->
+<button class="suikast-btn" id="SABOTAJ_BTN_FLOAT" onclick="toggleSabotage()" title="Sabotaj oyu ver" style="background:linear-gradient(135deg,#5e2c1c,#8e3a1a);border-color:#a04020;display:none">🚨</button>
+
 <!-- Floating Mini Oyun butonu (gündüz, eğlence) -->
 <button class="suikast-btn" id="MINIGAME_BTN_FLOAT" onclick="openFakeMinigame()" title="Mini Oyun (Eğlence)" style="background:linear-gradient(135deg,#1e6091,#2980b9);border-color:#3498db;display:none;bottom:14px;left:14px;right:auto">🎮</button>
 
@@ -1362,7 +1365,6 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="abtn" id="AB2" style="display:none">
 <button class="b bk" id="BK" onclick="conf('kill')" disabled>🗡️ Öldür</button>
 <button class="b ba" id="BA" onclick="conf('ability')" disabled>✨ Yetenek</button>
-<button class="b bs" id="BSAB" onclick="toggleSabotage()" style="background:linear-gradient(135deg,#5e2c1c,#8e3a1a);color:#fff;border:1px solid #a04020;font-size:.74rem;letter-spacing:1.5px;flex:0 0 auto">🚨 Sabotaj</button>
 </div>
 <div id="SAA" style="display:none"><button class="b b1 bw mt12" id="BSA" onclick="conf('single')" disabled>Onayla</button></div>
 <div id="HCA"></div>
@@ -3671,8 +3673,8 @@ function updateSuikastFloatingBtn(){
       ebtn.style.display='none';
     }
   }
-  // Inline sabotaj butonu (hain takım, gece fazında)
-  const sbtn = Q('BSAB');
+  // Floating sabotaj butonu (hain takım, gece fazında)
+  const sbtn = Q('SABOTAJ_BTN_FLOAT');
   if(sbtn){
     const isHain = ps?.team === 'hain' && ps?.isAlive;
     if(isHain && gs?.phase === 'night'){
@@ -3680,11 +3682,11 @@ function updateSuikastFloatingBtn(){
       if(ps?.sabotageVoted){
         sbtn.style.background='linear-gradient(135deg,#a04020,#c25030)';
         sbtn.style.boxShadow='0 0 12px rgba(192,80,40,.5)';
-        sbtn.textContent='🚨 İptal';
+        sbtn.title='Sabotaj oyunu geri çek';
       } else {
         sbtn.style.background='linear-gradient(135deg,#5e2c1c,#8e3a1a)';
         sbtn.style.boxShadow='';
-        sbtn.textContent='🚨 Sabotaj';
+        sbtn.title='Sabotaj oyu ver';
       }
     } else {
       sbtn.style.display='none';
@@ -4889,7 +4891,7 @@ function makeDraggable(elementId, opts={}){
 
 // Tüm floating butonları sürüklenebilir yap
 function setupDraggableButtons(){
-  ['ROLE_INFO_BTN','ROLE_GUIDE_BTN','ADMIN_BTN','ADMIN_MENU_BTN','REPORT_BTN','SUIKAST_BTN_FLOAT','HT'].forEach(id=>{
+  ['ROLE_INFO_BTN','ROLE_GUIDE_BTN','ADMIN_BTN','ADMIN_MENU_BTN','REPORT_BTN','SUIKAST_BTN_FLOAT','SABOTAJ_BTN_FLOAT','HT'].forEach(id=>{
     if(Q(id)) makeDraggable(id);
   });
 }

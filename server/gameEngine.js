@@ -765,10 +765,12 @@ class GameEngine {
           rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} rol kullandı ama engellendi! (Girişimi durduruldu.)` });
           this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Girişimi durduruldu');
         } else {
+          rep.get(a.targetId)?.push({ i: '🔦', t: 'Polis bu gece seni ziyaret etti.' });
           rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} bu gece hiçbir şey yapmadı.` });
           this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Hiçbir şey yapmadı');
         }
       } else {
+        rep.get(a.targetId)?.push({ i: '🔦', t: 'Polis bu gece seni ziyaret etti.' });
         rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} bu gece engellendi.` });
         this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Sahte');
       }
