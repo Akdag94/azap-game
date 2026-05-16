@@ -4600,10 +4600,18 @@ function openSuikastModal(){
     };
     tg.appendChild(d);
   });
-  const roles=[['doktor','Doktor','🩺'],['polis','Polis','🔦'],['savci','Savcı','⚖️'],
+  const roles=[
+    // Masumlar
+    ['doktor','Doktor','🩺'],['polis','Polis','🔦'],['savci','Savcı','⚖️'],
     ['muhtar','Muhtar','🏛️'],['gazeteci','Gazeteci','📰'],['psikolog','Psikolog','🧠'],['gazi','Gazi','🛡️'],
     ['dedikoducu','Dedikocucu','🗣️'],['ajan','Ajan','🕵️'],['serif','Şerif','🤠'],['kurban','Kurban','🩸'],
-    ['cilingir','Çilingir','🔑'],['takipci','Takipçi','👣']];
+    ['cilingir','Çilingir','🔑'],['takipci','Takipçi','👣'],
+    ['demirci','Demirci','⚒️'],['infazci','İnfazcı','🔨'],['gardiyan','Gardiyan','🛡️'],
+    ['engizitor','Engizitör','⚖️'],['buzcu','Buzcu','❄️'],
+    // Tarafsızlar
+    ['koruyucu','Koruyucu','😇'],['dodo','Dodo','🦤'],['seri_katil','Seri Katil','🔪'],
+    ['cellat','Cellat','⛓️'],['yamyam','Yamyam','🍖'],['veba','Veba','☠️']
+  ];
   Q('SUIKAST_ROLES').innerHTML=roles.map(([id,n,e])=>`<div class="rgb" data-rid="${id}" onclick="selSuikastRole('${id}')">${e} ${n}</div>`).join('');
   Q('SUIKAST_DO_BTN').disabled=true;
   Q('SUIKAST_DO_BTN').textContent='🗡️ SUİKAST!';
@@ -4896,7 +4904,7 @@ function makeDraggable(elementId, opts={}){
 
 // Tüm floating butonları sürüklenebilir yap
 function setupDraggableButtons(){
-  ['ROLE_INFO_BTN','ROLE_GUIDE_BTN','ADMIN_BTN','ADMIN_MENU_BTN','REPORT_BTN','SUIKAST_BTN_FLOAT','SABOTAJ_BTN_FLOAT','HT'].forEach(id=>{
+  ['ROLE_INFO_BTN','ROLE_GUIDE_BTN','ADMIN_BTN','ADMIN_MENU_BTN','REPORT_BTN','SUIKAST_BTN_FLOAT','SABOTAJ_BTN_FLOAT','MINIGAME_BTN_FLOAT','HT'].forEach(id=>{
     if(Q(id)) makeDraggable(id);
   });
 }
