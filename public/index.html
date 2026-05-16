@@ -1405,8 +1405,9 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="gor" id="GR"></div>
 <div style="display:flex;gap:7px;margin-top:12px">
 <button class="b b2" style="flex:1" onclick="leaveAfterGame()">Çıkış</button>
-<button class="b b1" style="flex:1" id="BNG" onclick="newGame()">Yeni Oyun</button>
+<button class="b b1" style="flex:1" id="BNG" onclick="newGame()" style="display:none">Yeni Oyun</button>
 </div>
+<div id="BNG_WAIT" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(255,200,50,.08);border:1px solid rgba(255,200,50,.3);border-radius:8px;color:#f5c842;font-size:.82rem;text-align:center;letter-spacing:.5px;animation:pulse 2s ease-in-out infinite">⏳ Lider yeni oyunu bekliyor...</div>
 </div></div>
 
 <!-- MVP Vote -->
@@ -1429,8 +1430,9 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="mvp-tally" id="MVR_TALLY"></div>
 <div style="display:flex;gap:7px;margin-top:14px">
 <button class="b b2" style="flex:1" onclick="leaveAfterGame()">Çıkış</button>
-<button class="b b1" style="flex:1" id="BNG2" onclick="newGame()">Yeni Oyun</button>
+<button class="b b1" style="flex:1" id="BNG2" onclick="newGame()" style="display:none">Yeni Oyun</button>
 </div>
+<div id="BNG2_WAIT" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(255,200,50,.08);border:1px solid rgba(255,200,50,.3);border-radius:8px;color:#f5c842;font-size:.82rem;text-align:center;letter-spacing:.5px;animation:pulse 2s ease-in-out infinite">⏳ Lider yeni oyunu bekliyor...</div>
 </div></div>
 
 <!-- Spectator -->
@@ -3149,7 +3151,9 @@ function renderMvpResult(result){
       tally.appendChild(item);
     });
   }
-  Q('BNG2').style.display='block';
+  const isLeaderMVR = gs?.leaderId === me;
+  Q('BNG2').style.display = isLeaderMVR ? 'block' : 'none';
+  Q('BNG2_WAIT').style.display = isLeaderMVR ? 'none' : 'block';
 }
 
 // ── HISTORY ──
@@ -4724,8 +4728,9 @@ function renderGO(data){
       <span style="flex:1">${cosmeticPlayerNameHTML(p,isMe,`${meTag}${cc}`)}</span><span style="color:var(--dim);font-size:.74rem">${p.roleName} (${p.team}) ${p.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span>
       ${p.isWinner?'<span class="ib">🏆 KAZANDI</span>':''}`;
     l.appendChild(d);});
-  // Yeni oyun butonu herkese görünür - herkes başlatabilir
-  Q('BNG').style.display='block';
+  const isLeaderGO = gs?.leaderId === me;
+  Q('BNG').style.display = isLeaderGO ? 'block' : 'none';
+  Q('BNG_WAIT').style.display = isLeaderGO ? 'none' : 'block';
 }
 
 function renderSpec(data){

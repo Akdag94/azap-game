@@ -1809,11 +1809,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Yeni oyun (post-game'den lobiye) — herkes başlatabilir
+  // Yeni oyun (post-game'den lobiye) — sadece lider başlatabilir
   socket.on('room:newGame', () => {
     const rc = prooms.get(socket.id);
     const g = rooms.get(rc);
     if (!g) return;
+    if (g.leaderId !== socket.id) return;
     if (g.phase !== PHASES.GAME_OVER && g.phase !== PHASES.POST_GAME && g.phase !== 'mvp_result') return;
     g.resetForNewGame();
     clearTimer(rc);
