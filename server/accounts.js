@@ -2,10 +2,41 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const DB = path.join(__dirname, '..', 'data', 'users.json');
+const AVATAR_DIR = path.join(__dirname, '..', 'data', 'avatars');
 if (!fs.existsSync(path.dirname(DB))) fs.mkdirSync(path.dirname(DB), { recursive: true });
 if (!fs.existsSync(DB)) fs.writeFileSync(DB, '{}');
-function read() { try { return JSON.parse(fs.readFileSync(DB, 'utf8')); } catch { return {}; } }
-function write(d) { fs.writeFileSync(DB, JSON.stringify(d, null, 2)); }
+if (!fs.existsSync(AVATAR_DIR)) fs.mkdirSync(AVATAR_DIR, { recursive: true });
+
+// ── IN-MEMORY CACHE: disk I/O'yu minimize et ──
+let _cache = null;
+let _writeTimer = null;
+const WRITE_DELAY = 2000; // 2 saniyede bir diske yaz (debounced)
+
+function read() {
+  if (!_cache) {
+    try { _cache = JSON.parse(fs.readFileSync(DB, 'utf8')); } catch { _cache = {}; }
+  }
+  return _cache;
+}
+function write(d) {
+  _cache = d;
+  // Debounced disk yazma — sık ardışık write'ları tek yazıma indir
+  if (_writeTimer) clearTimeout(_writeTimer);
+  _writeTimer = setTimeout(() => {
+    _writeTimer = null;
+    try { fs.writeFileSync(DB, JSON.stringify(_cache, null, 2)); } catch(e) { console.error('[DB] Yazma hatası:', e.message); }
+  }, WRITE_DELAY);
+}
+// Sunucu kapanırken cache'i diske yaz
+process.on('exit', () => { if (_cache) try { fs.writeFileSync(DB, JSON.stringify(_cache, null, 2)); } catch {} });
+process.on('SIGINT', () => { if (_cache) try { fs.writeFileSync(DB, JSON.stringify(_cache, null, 2)); } catch {} process.exit(); });
+process.on('SIGTERM', () => { if (_cache) try { fs.writeFileSync(DB, JSON.stringify(_cache, null, 2)); } catch {} process.exit(); });
+
+// Avatar DB değeri → URL dönüştürücü (cache-busting ile)
+function avatarUrl(val) {
+  if (!val) return null;
+  return '/avatars/' + val + '?v=' + Date.now();
+}
 
 function ensureStats(u) {
   if (!u.stats) u.stats = { played: 0, won: 0, lost: 0, mvp: 0 };
@@ -82,7 +113,7 @@ module.exports = {
       if (u.tokens.length > 5) u.tokens = u.tokens.slice(-5);
     }
     write(db);
-    return { success: true, user: { username: u.username, avatar: u.avatar || null, stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin }, token };
+    return { success: true, user: { username: u.username, avatar: avatarUrl(u.avatar), stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin }, token };
   },
 
   // Token ile otomatik giriş
@@ -93,7 +124,7 @@ module.exports = {
       const u = db[key];
       if (u.tokens?.some(t => t.token === token)) {
         ensureStats(u);
-        return { success: true, user: { username: u.username, avatar: u.avatar || null, stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin } };
+        return { success: true, user: { username: u.username, avatar: avatarUrl(u.avatar), stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin } };
       }
     }
     return { success: false };
@@ -125,18 +156,51 @@ module.exports = {
     const db = read(), key = username?.toLowerCase()?.trim();
     if (!db[key]) return { success: false };
     if (dataUrl && dataUrl.length > 280000) return { success: false, error: 'Fotoğraf çok büyük (max ~200KB).' };
-    db[key].avatar = dataUrl || null;
+    if (dataUrl) {
+      // dataURL → dosyaya yaz
+      const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!match) return { success: false, error: 'Geçersiz görsel formatı.' };
+      const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+      const buf = Buffer.from(match[2], 'base64');
+      const fname = key + '.' + ext;
+      fs.writeFileSync(path.join(AVATAR_DIR, fname), buf);
+      // DB'de sadece dosya adını sakla
+      db[key].avatar = fname;
+    } else {
+      // Avatar silme
+      if (db[key].avatar) {
+        try { fs.unlinkSync(path.join(AVATAR_DIR, db[key].avatar)); } catch {}
+      }
+      db[key].avatar = null;
+    }
     write(db);
-    return { success: true, avatar: db[key].avatar };
+    return { success: true, avatar: avatarUrl(db[key].avatar) };
   },
   getStats(username) {
     const db = read(), u = db[username?.toLowerCase()?.trim()];
     if (!u) return null;
     ensureStats(u);
     const isActive = isPremiumActive(u);
+    // Özel çerçeveleri otomatik tanı (bağışçı, premium, admin)
+    let dirty = false;
+    const hasItem = (id) => u.inventory.some(it => (typeof it === 'string' ? it : it.id) === id);
+    if ((u.totalDonated > 0 || !!u.isAdmin) && !hasItem('frame_donor')) {
+      u.inventory.push({ id: 'frame_donor', equipped: false });
+      dirty = true;
+    }
+    if ((isActive || !!u.isAdmin) && !hasItem('frame_premium')) {
+      u.inventory.push({ id: 'frame_premium', equipped: false });
+      dirty = true;
+    }
+    // Premium süresi bittiyse frame'i kaldır (admin hariç)
+    if (!isActive && !u.isAdmin && hasItem('frame_premium')) {
+      u.inventory = u.inventory.filter(it => (typeof it === 'string' ? it : it.id) !== 'frame_premium');
+      dirty = true;
+    }
+    if (dirty) write(db);
     const equipped = getEquippedFromUser(u);
     return {
-      username: u.username, avatar: u.avatar || null,
+      username: u.username, avatar: avatarUrl(u.avatar),
       stats: u.stats, coins: u.coins, inventory: u.inventory,
       equipped,
       premium: {
@@ -307,7 +371,7 @@ module.exports = {
   },
   getAvatar(username) {
     const db = read(), u = db[username?.toLowerCase()?.trim()];
-    return u?.avatar || null;
+    return avatarUrl(u?.avatar);
   },
   record(username, won) {
     const db = read(), key = username?.toLowerCase()?.trim();
@@ -320,7 +384,7 @@ module.exports = {
     db[key].stats.mvp++; write(db);
   },
   leaderboard(n = 30) {
-    return Object.values(read()).map(u => { ensureStats(u); return { username: u.username, avatar: u.avatar || null, stats: u.stats }; }).sort((a, b) => b.stats.won - a.stats.won).slice(0, n);
+    return Object.values(read()).map(u => { ensureStats(u); return { username: u.username, avatar: avatarUrl(u.avatar), stats: u.stats }; }).sort((a, b) => b.stats.won - a.stats.won).slice(0, n);
   },
 
   // ── ADMIN METODLARI ──
@@ -332,7 +396,7 @@ module.exports = {
       return {
         key,
         username: u.username,
-        avatar: u.avatar || null,
+        avatar: avatarUrl(u.avatar),
         stats: u.stats,
         coins: u.coins || 0,
         premium: { active: isPremiumActive(u), daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 },

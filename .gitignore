@@ -6,6 +6,7 @@ node_modules/
 data/users.json
 data/reports.json
 data/screenshots/
+data/avatars/
 *.log
 .DS_Store
 .vscode/

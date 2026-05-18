@@ -71,7 +71,8 @@ const adminLimiter = rateLimit ? rateLimit({
 const BLOCKED_PATHS = [
   /^\/\.[^/]/i,                // Tüm dotfile'lar: .env, .git, .htaccess, .DS_Store vb.
   /\/\.\./,                    // Path traversal: ../ içeren her şey
-  /^\/(node_modules|server|data|\.git)(\/|$)/i,  // Hassas dizinler
+  /^\/(node_modules|server|\.git)(\/|$)/i,  // Hassas dizinler
+  /^\/data\/(?!avatars\/)/i,               // data dizini (avatars hariç)
   /\.(env|key|pem|crt|p12|pfx|sql|db|sqlite|log|bak|backup|old|swp|swo)$/i, // Hassas uzantılar
   /^\/(package(-lock)?\.json|yarn\.lock|composer\.(json|lock)|Dockerfile|docker-compose\.ya?ml|\.gitignore|\.dockerignore|README\.md|CHANGELOG.*|LICENSE.*)$/i
 ];
@@ -84,6 +85,12 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Avatar dosyalarını serve et (data/avatars → /avatars/)
+app.use('/avatars', express.static(path.join(__dirname, '..', 'data', 'avatars'), {
+  maxAge: '1h',
+  dotfiles: 'deny'
+}));
 
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   dotfiles: 'deny', // Dotfile'ları statik servis etme
@@ -122,8 +129,16 @@ const DONATION_PRESETS = [10, 25, 50, 100, 250, 500];
 const COSMETIC_CATALOG = {
   // Kartlıklar (isim kartı çerçeveleri)
   frame_gold:   { cat:'frame', name:'Altın Çerçeve',  emoji:'🖼️', price:500,  rarity:'rare',      desc:'İsminin etrafında parlak altın çerçeve.',      preview:{border:'2px solid #ffd700',shadow:'0 0 12px rgba(255,215,0,.5)',bg:'linear-gradient(135deg,rgba(255,215,0,.12),rgba(184,134,11,.08))',anim:'shimmer'} },
-  frame_rgb:    { cat:'frame', name:'RGB Çerçeve',    emoji:'🌈', price:800,  rarity:'epic',      desc:'Renk değiştiren neon çerçeve.',                preview:{border:'2px solid #ff0000',shadow:'0 0 10px rgba(255,0,0,.4)',bg:'linear-gradient(135deg,rgba(255,0,0,.08),rgba(0,0,255,.08))',anim:'rgbShift'} },
+  frame_rgb:    { cat:'frame', name:'RGB Çerçeve',    emoji:'🎮', price:800,  rarity:'epic',      desc:'Renk değiştiren neon çerçeve.',                preview:{border:'2px solid #ff0000',shadow:'0 0 10px rgba(255,0,0,.4)',bg:'linear-gradient(135deg,rgba(255,0,0,.08),rgba(0,0,255,.08))',anim:'rgbShift'} },
   frame_fire:   { cat:'frame', name:'Alev Çerçeve',   emoji:'🔥', price:1500, rarity:'legendary', desc:'Gerçek ateş efektiyle yanan çerçeve.',          preview:{border:'2px solid #ff6600',shadow:'0 0 20px rgba(255,100,0,.6), inset 0 0 10px rgba(255,150,0,.3)',bg:'linear-gradient(180deg,rgba(255,100,0,.2),rgba(255,50,0,.1))',anim:'realFire'} },
+  frame_lightning:{ cat:'frame', name:'Yıldırım Çerçeve',emoji:'⚡', price:900, rarity:'epic',      desc:'Gök gürültüsü gibi ani flaşlar çakan çerçeve.',  preview:{border:'2px solid #002288',shadow:'0 0 5px #0055ff, inset 0 0 5px #0055ff',bg:'linear-gradient(135deg,rgba(0,85,255,.08),rgba(0,34,136,.1))',anim:'lightningStrike'} },
+  frame_ocean:  { cat:'frame', name:'Okyanus Çerçeve', emoji:'🌊', price:850,  rarity:'epic',      desc:'Dalga efektli mavi-cyan gradient çerçeve.',     preview:{border:'2px solid #0072ff',shadow:'0 0 12px rgba(0,114,255,.4)',bg:'linear-gradient(270deg,#00c6ff33,#0072ff33,#00c6ff33)',bgSize:'400% 400%',anim:'oceanWave'} },
+  frame_void:   { cat:'frame', name:'Hiçlik Çerçeve',  emoji:'🕳️', price:1200, rarity:'epic',      desc:'Kara deliğ gibi içe çöken lanetli çerçeve.',    preview:{border:'2px solid #4b0082',shadow:'0 0 5px #4b0082, inset 0 0 10px #4b0082',bg:'linear-gradient(135deg,rgba(75,0,130,.15),rgba(0,0,0,.2))',anim:'voidCollapse'} },
+  frame_glitch: { cat:'frame', name:'Glitch Çerçeve',  emoji:'💻', price:1500, rarity:'legendary', desc:'Siberpunk bozulma efektli hacker çerçevesi.',  preview:{border:'2px solid #0ff',shadow:'0 0 8px #0ff, 0 0 2px #f0f',bg:'linear-gradient(135deg,rgba(0,255,255,.06),rgba(255,0,255,.04))',anim:'cyberGlitch'} },
+  frame_nature: { cat:'frame', name:'Doğa Çerçeve',  emoji:'🌿', price:700,  rarity:'rare',      desc:'Yeşil enerjiyle nefes alan organik çerçeve.', preview:{border:'2px solid #228b22',shadow:'0 0 10px #228b22',bg:'linear-gradient(135deg,rgba(34,139,34,.1),rgba(50,205,50,.05))',anim:'natureBreath'} },
+  // ── ÖZEL ÇERÇEVELER (satın alınamaz, otomatik tanımlanır) ──
+  frame_donor:  { cat:'frame', name:'Destekçi Çerçeve', emoji:'💝', price:0, rarity:'legendary', exclusive:true, desc:'AZAP destekçilerine özel kalp efektli çerçeve.', preview:{border:'2px solid #e91e63',shadow:'0 0 16px rgba(233,30,99,.5), 0 0 40px rgba(233,30,99,.15)',bg:'linear-gradient(135deg,rgba(233,30,99,.12),rgba(156,39,176,.08))',anim:'heartbeat'} },
+  frame_premium:{ cat:'frame', name:'Premium Çerçeve',  emoji:'👑', price:0, rarity:'legendary', exclusive:true, desc:'Premium üyelere özel parlayan taç çerçevesi.',   preview:{border:'2px solid #bb8fce',shadow:'0 0 18px rgba(187,143,206,.5), 0 0 40px rgba(94,58,135,.2)',bg:'linear-gradient(135deg,rgba(187,143,206,.15),rgba(94,58,135,.1))',anim:'crownGlow'} },
   // Petler - smooth, göz yormayan animasyonlar
   pet_cat:      { cat:'pet',   name:'Kedi',           emoji:'🐱', price:800,  rarity:'rare',      desc:'Yanında oturan, ara sıra kıpırdayan kedi.',     preview:{sprite:'🐱',anim:'catIdle'} },
   pet_ghost:    { cat:'pet',   name:'Hayalet',        emoji:'👻', price:1200, rarity:'epic',      desc:'Yavaş süzülen, gizemli hayalet.',               preview:{sprite:'👻',anim:'ghostDrift'} },
@@ -131,25 +146,19 @@ const COSMETIC_CATALOG = {
   // Yazı tipleri
   font_gothic:  { cat:'font',  name:'Gotik Yazı',     emoji:'✒️', price:500,  rarity:'rare',      desc:'Ortaçağ tarzı dekoratif yazı tipi.',            preview:{family:'"Cinzel Decorative",serif',weight:'700'} },
   font_cursive: { cat:'font',  name:'El Yazısı',      emoji:'🖋️', price:600,  rarity:'rare',      desc:'Zarif el yazısı stili.',                        preview:{family:'"Segoe Script","Apple Chancery",cursive',weight:'400'} },
-  font_pixel:   { cat:'font',  name:'Piksel Yazı',    emoji:'👾', price:750,  rarity:'epic',      desc:'Retro 8-bit piksel yazı tipi.',                 preview:{family:'"Courier New",monospace',weight:'700',size:'.72rem'} }
+  font_pixel:   { cat:'font',  name:'Piksel Yazı',    emoji:'👾', price:750,  rarity:'epic',      desc:'Retro 8-bit piksel yazı tipi.',                 preview:{family:'"Courier New",monospace',weight:'700',size:'.72rem'} },
+  font_bebas:   { cat:'font',  name:'Bebas Neue',     emoji:'🔠', price:600,  rarity:'rare',      desc:'Kalın, güçlü ve modern başlık fontu.',          preview:{family:'"Bebas Neue",sans-serif',weight:'400',size:'.95rem'} },
+  font_smooch:  { cat:'font',  name:'Smooch Sans',    emoji:'💫', price:700,  rarity:'rare',      desc:'Yumuşak ve akıcı modern yazı tipi.',            preview:{family:'"Smooch Sans",sans-serif',weight:'700'} },
+  font_changa:  { cat:'font',  name:'Changa One',     emoji:'🎯', price:800,  rarity:'epic',      desc:'Cesur ve dikkat çeken display fontu.',           preview:{family:'"Changa One",sans-serif',weight:'400',size:'.9rem'} }
 };
 
-// Kozmetik eşya kataloğu endpoint'i
+// Kozmetik eşya kataloğu endpoint'i (exclusive olanlar gösterilir ama satın alınamaz)
 app.get('/api/shop/cosmetics', apiLimiter, (req, res) => {
   res.json({ items: COSMETIC_CATALOG });
 });
 
 // ── ÖDEME SİSTEMİ (Provider-agnostic, SOLID/DIP) ──
-const { setupPayment } = require('./payment');
-setupPayment(app, io, {
-  packages: PAYMENT_PACKAGES,
-  donationPresets: DONATION_PRESETS,
-  getUser: (username) => Accounts.getStats(username),
-  applyPayment,
-  authed,
-  paymentLimiter,
-  apiLimiter
-});
+// setupPayment() çağrısı authed Map tanımından sonra yapılır (aşağıda)
 
 // Ödeme başarılı sonrası uygulama (PaymentService tarafından çağrılır)
 function applyPayment(username, packageId, donationAmount) {
@@ -938,6 +947,18 @@ app.get('*', (req, res) => {
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
 const disconnectTimers = new Map(); // socketId -> timeoutId (3dk sonra oyundan otomatik çıkar)
 
+// ── ÖDEME SİSTEMİ BAŞLAT (authed tanımlandıktan sonra) ──
+const { setupPayment } = require('./payment');
+setupPayment(app, io, {
+  packages: PAYMENT_PACKAGES,
+  donationPresets: DONATION_PRESETS,
+  getUser: (username) => Accounts.getStats(username),
+  applyPayment,
+  authed,
+  paymentLimiter,
+  apiLimiter
+});
+
 // ── ANLİK ZİYARETÇİ İSTATİSTİKLERİ (sadece sayaçlar, IP kaydetmiyoruz) ──
 const siteStats = {
   totalConnections: 0,      // Başarılı socket bağlantısı sayısı
@@ -1549,6 +1570,7 @@ io.on('connection', (socket) => {
     if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
     if (typeof itemId !== 'string' || !COSMETIC_CATALOG[itemId]) return cb?.({ ok: false, err: 'Eşya bulunamadı' });
     const item = COSMETIC_CATALOG[itemId];
+    if (item.exclusive) return cb?.({ ok: false, err: 'Bu eşya satın alınamaz, özel olarak tanımlanır.' });
     const stats = Accounts.getStats(u);
     if (!stats) return cb?.({ ok: false, err: 'Kullanıcı yok' });
     if (stats.inventory?.some(it => (typeof it === 'string' ? it : it.id) === itemId)) {
@@ -1833,9 +1855,9 @@ io.on('connection', (socket) => {
     const u = authed.get(socket.id);
     if (!u || !g.bets?.has(u)) return cb?.({ ok: false });
     const amt = g.bets.get(u);
-    Accounts.addCoins(u, amt);
+    const r = Accounts.addCoins(u, amt);
     g.bets.delete(u);
-    cb?.({ ok: true });
+    cb?.({ ok: true, coins: r?.coins ?? null });
     io.to(rc).emit('betUpdate', {
       bets: Object.fromEntries(g.bets || new Map()),
       total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)

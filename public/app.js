@@ -1,0 +1,3964 @@
+// ── DEBUG KONSOL SİSTEMİ ──
+(function initDebugConsole(){
+  const MAX_LINES = 200;
+  let _dbgOn = false, _lines = [];
+  let _frames = 0, _lastFps = Date.now();
+
+  // FPS sayacı
+  function fpsLoop(){
+    _frames++;
+    const now = Date.now();
+    if(now - _lastFps >= 1000){
+      const fps = Math.round(_frames * 1000 / (now - _lastFps));
+      _frames = 0; _lastFps = now;
+      const el = document.getElementById('DBG_FPS');
+      if(el) el.textContent = 'FPS: ' + fps;
+      if(fps < 15) dbgLog('⚠️ DÜŞÜK FPS: ' + fps, '#f55');
+    }
+    requestAnimationFrame(fpsLoop);
+  }
+  requestAnimationFrame(fpsLoop);
+
+  // Bellek (destekleniyorsa)
+  if(performance.memory){
+    setInterval(()=>{
+      const el = document.getElementById('DBG_MEM');
+      if(el) el.textContent = 'MEM: ' + Math.round(performance.memory.usedJSHeapSize/1048576) + 'MB';
+    }, 2000);
+  }
+
+  // console.log/warn/error yakalama
+  const _origLog = console.log, _origWarn = console.warn, _origErr = console.error;
+  console.log = function(){_origLog.apply(console,arguments); dbgLog([...arguments].map(a=>typeof a==='object'?JSON.stringify(a):a).join(' '), '#ccc');};
+  console.warn = function(){_origWarn.apply(console,arguments); dbgLog('⚠ '+[...arguments].join(' '), '#ff0');};
+  console.error = function(){_origErr.apply(console,arguments); dbgLog('❌ '+[...arguments].join(' '), '#f55');};
+
+  // Global hatalar
+  window.addEventListener('error', e => dbgLog('❌ '+e.message+' ('+e.filename+':'+e.lineno+')', '#f55'));
+  window.addEventListener('unhandledrejection', e => dbgLog('❌ Promise: '+(e.reason?.message||e.reason), '#f55'));
+
+  function dbgLog(msg, color){
+    const time = new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    _lines.push({time, msg, color: color||'#ccc'});
+    if(_lines.length > MAX_LINES) _lines = _lines.slice(-MAX_LINES);
+    if(_dbgOn) renderLog();
+  }
+  window._dbgLog = dbgLog;
+
+  function renderLog(){
+    const el = document.getElementById('DBG_LOG');
+    if(!el) return;
+    el.innerHTML = _lines.map(l=>`<div style="color:${l.color};border-bottom:1px solid #222;padding:1px 0"><span style="color:#666">${l.time}</span> ${l.msg}</div>`).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  window.toggleDebug = function(){
+    _dbgOn = !_dbgOn;
+    const panel = document.getElementById('DBG_PANEL');
+    if(panel){ panel.style.display = _dbgOn ? 'flex' : 'none'; if(_dbgOn) renderLog(); }
+  };
+  window.clearDebugLog = function(){ _lines=[]; renderLog(); };
+
+  // Logo'ya 5 kez tıklayınca debug butonu görünür
+  let _tapCount=0, _tapTimer=null;
+  document.addEventListener('click', e=>{
+    if(e.target.closest('.logo')){
+      _tapCount++;
+      clearTimeout(_tapTimer);
+      _tapTimer = setTimeout(()=>_tapCount=0, 2000);
+      if(_tapCount >= 5){
+        _tapCount=0;
+        const btn = document.getElementById('DBG_BTN');
+        if(btn) btn.style.display = btn.style.display==='none'?'block':'none';
+        dbgLog('🔧 Debug modu aktif', '#0f0');
+      }
+    }
+  });
+
+  // Performans: uzun task algılama
+  if(typeof PerformanceObserver !== 'undefined'){
+    try{
+      const obs = new PerformanceObserver(list=>{
+        for(const entry of list.getEntries()){
+          if(entry.duration > 80){
+            dbgLog('🐌 Uzun task: '+Math.round(entry.duration)+'ms', '#f90');
+          }
+        }
+      });
+      obs.observe({type:'longtask',buffered:false});
+    }catch{}
+  }
+})();
+
+// ── TARAYICI UYUMLULUK KONTROLÜ (Madde IV-a) ──
+(function checkBrowserCompat(){
+  const ua = navigator.userAgent;
+  let ok = true, msg = '';
+  const ver = (re) => { const m = ua.match(re); return m ? parseInt(m[1],10) : 0; };
+  if(/Chrome\//.test(ua) && !/Edg\//.test(ua) && !/OPR\//.test(ua)){
+    if(ver(/Chrome\/(\d+)/) < 90){ ok=false; msg='Chrome 90+'; }
+  } else if(/Edg\//.test(ua)){
+    if(ver(/Edg\/(\d+)/) < 100){ ok=false; msg='Edge 100+'; }
+  } else if(/OPR\//.test(ua)){
+    if(ver(/OPR\/(\d+)/) < 90){ ok=false; msg='Opera 90+'; }
+  } else if(/Firefox\//.test(ua)){
+    if(ver(/Firefox\/(\d+)/) < 100){ ok=false; msg='Firefox 100+'; }
+  } else if(/Version\//.test(ua) && /Safari\//.test(ua)){
+    if(ver(/Version\/(\d+)/) < 12){ ok=false; msg='Safari 12+'; }
+  }
+  if(!ok){
+    document.addEventListener('DOMContentLoaded',()=>{
+      const d=document.createElement('div');
+      d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99998;background:#1a1a2e;color:#ffb347;text-align:center;padding:8px 12px;font-size:.75rem;font-weight:600;border-bottom:1px solid #ffb347';
+      d.innerHTML='⚠️ Tarayıcınız eski bir sürüm. Güvenli ödeme ve en iyi deneyim için <strong>'+msg+'</strong> veya üstüne güncelleyin.';
+      document.body.prepend(d);
+    });
+  }
+})();
+
+// (müzik sistemi kaldırıldı)
+const io2=io({
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  randomizationFactor: 0.5,
+  timeout: 20000,
+  transports: ['websocket', 'polling']
+});
+let me,gs,ps,sel1,sel2,selG,voted,nsent,isSpec=false,isDead=false,AM='login',user=null,deathOk=false,lastDead=new Set(),_lastSpec=null;
+let mvpVoted=null;
+const Q=id=>document.getElementById(id);
+// XSS koruması: HTML entity escape
+const esc = (s) => {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+const RDEF={
+  DOKTOR:{e:'🩺',n:'Doktor',t:'masum',d:'Birini saldırıdan korur. Kendini sadece 1 kez koruyabilir.',
+    full:'Her gece bir kişi seçersin ve o gecelik onu hain saldırısı, seri katil veya şerif kurşunundan korursun. Korunan kişi saldırıya uğradıysa ve kurtardıysan rapor alırsın. Kendini sadece 1 kez koruyabilirsin (tüm oyun boyunca).'},
+  POLIS:{e:'🔦',n:'Polis',t:'masum',d:'Birinin gece rol kullanımını engeller.',
+    full:'Her gece bir kişiyi seçerek o gecelik tüm yetenek kullanımını engellersin. Engellenen kişi yapamaz: ne saldırabilir ne bilgi toplayabilir. Engellediğin kişiye "Polis seni engelledi!" bildirimi gider. Seri katili engelleyemezsin.'},
+  SAVCI:{e:'⚖️',n:'Savcı',t:'masum',d:'Sadece 1 defa birinin rolünü kesin olarak öğrenir.',
+    full:'Oyun boyunca sadece 1 kez kullanabilirsin. Bir kişi seçersin ve o kişinin rolünü ve takımını kesin olarak öğrenirsin. Hain/Hipnotizmacı seni deli yaparsa sahte bilgi alırsın ama hak harcanır.'},
+  MUHTAR:{e:'🏛️',n:'Muhtar',t:'masum',d:'Oyu 2 sayılır. Gece aksiyonu yok.',
+    full:'Gece aksiyonun yok. Asılma oylamalarında oyun 2 sayılır — hain/tarafsız oyunculara karşı güçlü bir tartı. Deli olduğunda oyun rastgele etki eder.'},
+  GAZETECI:{e:'📰',n:'Gazeteci',t:'masum',d:'Birinin rol kullanıp kullanmadığını öğrenir.',
+    full:'Gece bir kişi seçer ve o kişinin rol kullanıp kullanmadığını öğrenirsin. Sonuç: "Rol kullandı" veya "Rol kullanmadı". Pasif roller (Muhtar, Kurban, Dodo, Cellat, Yamyam) her zaman pasif görünür. Seri Katil iz bırakmaz, hep "kullanmadı" çıkar.'},
+  PSIKOLOG:{e:'🧠',n:'Psikolog',t:'masum',d:'Birinin deli olup olmadığını öğrenir.',
+    full:'Gece bir kişi seçersin ve o kişinin deli olup olmadığını öğrenirsin. Hem kalıcı deli (oyun başında atanan) hem geçici deli (Hipnotizmacı etkisi) tespit eder.'},
+  GAZI:{e:'🛡️',n:'Gazi',t:'masum',d:'Bir gece kendini ölümsüz yapar (tek kullanım).',
+    full:'Oyun boyunca 1 kez aktifleştirebilirsin. Aktifleştirdiğin gece hiçbir saldırı seni öldüremez (hain saldırısı, seri katil, şerif kurşunu, bomba — hepsi etkisiz).'},
+  DEDIKODUCU:{e:'🗣️',n:'Dedikocucu',t:'masum',d:'İki kişinin aynı takımda olup olmadığını öğrenir.',
+    full:'Gece iki kişi seçersin ve aynı takımda olup olmadıklarını öğrenirsin: "Aynı takım" veya "Farklı takım". Tarafsızlar kendi başına bir takımdır. Seçtiğin kişilerden biri Polis/Çilingir tarafından engellenmişse yeteneğin başarısız olur.'},
+  AJAN:{e:'🕵️',n:'Ajan',t:'masum',d:'Birinin rolünü 3 seçenek arasından görür.',
+    full:'Gece bir kişi seçersin. Onun gerçek rolü ile birlikte 2 yanlış seçenek alırsın — toplam 3. Doğru olanı bulmak senin işin. Takımlar doğru gösterilir. Oyunda tarafsız hiç yoksa, seçenekler sadece masum/hain rollerinden gelir.'},
+  SERIF:{e:'🤠',n:'Şerif',t:'masum',d:'1 kez birini vurabilir.',
+    full:'Oyun boyunca 1 kez birini vurabilirsin. Hain/tarafsız vurursan kahraman olursun. Masum vurursan o ölür VE sen ertesi gece otomatik intihar edersin. Hedef korumalıysa (Doktor/Çilingir/Gazi) kurşun etkisiz, hak harcanır.'},
+  KURBAN:{e:'🩸',n:'Kurban',t:'masum',d:'Öldürülürse katilinin adını söyler.',
+    full:'Pasif rol — gece aksiyonun yok. Öldürülürsen vasiyet bırakırsın: tüm oyuncular katilini öğrenir. Tek-kill modunda oyu veren hainlerden biri rastgele duyurulur, çoklu-kill modunda direkt katil. Seri Katil öldürdüyse "Bir Seri Katil tarafından öldürüldü" der (ismini vermez).'},
+  CILINGIR:{e:'🔑',n:'Çilingir',t:'masum',d:'Birini evine kilitler: korunur ama yetenek kullanamaz.',
+    full:'Gece bir kişiyi evine kilitlersin. O gece hem yetenek kullanamaz HEM saldırılardan korunur. Polis + Doktor karışımı gibi düşün. Hain kilitlerse öldüremez ama korunur.'},
+  TAKIPCI:{e:'👣',n:'Takipçi',t:'masum',d:'Birini takip eder, kime rol kullandığını öğrenir.',
+    full:'Gece birini takip edersin. O kişinin kime gece aksiyonu yaptığını öğrenirsin: "X, Y kişisine rol kullandı" veya "Hiçbir şey yapmadı". Ne yaptığını söylemez, sadece kime yaptığını. Seri Katil iz bırakmaz, hep "yapmadı" çıkar.'},
+  SUIKASTCI:{e:'🗡️',n:'Suikastçı',t:'hain',d:'Gündüz birinin rolünü tahmin eder. Doğruysa öldürür.',
+    full:'Gündüz (tartışma veya oylama fazında) birini hedef seçip rolünü tahmin edersin. Doğru tahmin → hedef ANINDA ölür. Yanlış tahmin → SEN anında ölürsün. Her tur 1 deneme hakkın var. Gece sadece hain sohbetine katılırsın, kill yapmazsın (kill diğer hainlerin işi).'},
+  HIPNOTIZMACI:{e:'🌀',n:'Hipnotizmacı',t:'hain',d:'Birini o gece deli yapar (geçici).',
+    full:'Gece bir kişi seçersin ve o kişiyi o gecelik deli yaparsın. Hedefin gece aksiyonları sahte sonuç verir, raporu yanlış olur. Geçici delilik 1 gecelik — sonra normale döner. Doktor/Savcı/Psikolog gibi bilgi rollerini yanıltmak için ideal.'},
+  BOMBACI:{e:'💣',n:'Bombacı',t:'hain',d:'Bomba koyar/patlatır. Öldürme yetkisi yok.',
+    full:'Hain takımı içinde özel rol — kill oylamasına katılmazsın. İki ayrı buton: 💣 Bomba Koy ve 💥 Patlat. Bombayı koyduktan sonra biriktirebilirsin (üst üste birden çok kişiye), Patlat dediğinde önceki turlardan kalan TÜM bombaların aynı anda patlar. Aynı gece koyup patlatamazsın.'},
+  GOLGE:{e:'👤',n:'Gölge',t:'hain',d:'Ertesi gün birini susturur.',
+    full:'Gece bir kişi seçersin ve o ertesi gündüz konuşamaz. Sadece sen ve hedef bilir kim susturuldu. Stratejik avantaj: bilgi paylaşacak kişiyi susturmak.'},
+  DODO:{e:'🦤',n:'Dodo',t:'tarafsız',d:'Kendini astırırsa kazanır.',
+    full:'Bağımsız kazanma koşulu: gündüz oylamasında en çok oyu alıp asılırsan, sen TEK BAŞINA kazanırsın, herkes kaybeder. Gece öldürülürsen kazanamazsın. Stratejin: şüpheli davranıp aslana yem olmak.'},
+  SERI_KATIL:{e:'🔪',n:'Seri Katil',t:'tarafsız',d:'Engellenemez, iz bırakmaz, sona kalırsa kazanır.',
+    full:'Her gece dilediğin birini öldürebilirsin (atlama da olur). HİÇBİR şey seni engelleyemez (Polis bile). Gazeteci/Takipçi seni gözlerse "rol kullanmadı" görür. Bağımsız kazanma: son 2 kişi içinde olursan kazanırsın. Hedeflerin korunabilir (Doktor/Gazi/Çilingir).'},
+  CELLAT:{e:'⛓️',n:'Cellat',t:'tarafsız',d:'Otomatik hedefi astırırsa kazanır.',
+    full:'Oyun başında sana rastgele bir masum hedef atanır (sadece sen bilirsin). O hedefi gündüz oylamasında astırtırsan bağımsız kazanırsın. Hedef gece öldürülürse kazanamazsın. Hainlerle/masumlarla geçici işbirliği yapabilirsin.'},
+  YAMYAM:{e:'🍖',n:'Yamyam',t:'tarafsız',d:'Gece ölenlerin rollerini toplar (pasif).',
+    full:'Pasif rol — gece aksiyonun yok. Biri gecede öldüğünde otomatik olarak o kişinin rolünü öğrenirsin ve listesine eklersin. Sadece bilgi toplarsın, yetenek kullanamazsın. Tarafsız takımdasın, masumlarla beraber kazanırsın eğer hainler/SK elenirse.'},
+  KORUYUCU:{e:'😇',n:'Koruyucu',t:'tarafsız',d:'Sistem rastgele birini emanet eder; o yaşıyorsa kazanırsın.',
+    full:'Tarafsız rol — Cellat\'ın TAM ZITTIDIR. Pasif rol, gece aksiyonun yok. Oyun başında sistem sana rastgele BİR oyuncu emanet eder (Hain, Masum, hatta Seri Katil bile olabilir; kendin hariç). O kişinin oyun sonuna kadar hayatta kalmasını sağlamak senin amacın. Eğer hayatta kalırsa, oyunun gerçek kazananı kim olursa olsun, sen de kazanırsın. Korunan kişi gece veya gündüz ölürse kazanamazsın.'},
+  DEMIRCI:{e:'⚒️',n:'Demirci',t:'masum',d:'Gece birine kalıcı çelik zırh giydirir.',
+    full:'Gece bir kişi seçersin ve ona Çelik Zırh giydirirsin. Doktor\'un şifası sadece o gece geçerlidir; Demirci\'nin zırhı ise hedef SALDIRIYA UĞRAYANA kadar (kaç gün geçerse geçsin) üstünde kalır. Vurulduğunda zırh kırılır ve kişi kurtulur. Kötü yanı: zırhın ne zaman kırıldığını bilemezsin. Kendine zırh yapamazsın.'},
+  BUZCU:{e:'❄️',n:'Buzcu',t:'masum',d:'2 kez birini karantinaya alır.',
+    full:'Oyun boyunca 2 kullanım hakkın var. Karantinaya aldığın oyuncu: ertesi gündüz oylamaya katılamaz, kendisine kimse oy veremez, gece hiçbir saldırıdan etkilenmez VE yetenek kullanamaz. Çok şüphelendiğin ama astırmaya korktuğun birini güvenli şekilde izole etmek için ideal.'},
+  INFAZCI:{e:'🔨',n:'İnfazcı',t:'masum',d:'Birini zindana kapatır + 1 infaz hakkı.',
+    full:'Gece bir kişiyi zindana kapatırsın. Zindandaki kişi yetenek kullanamaz, dışarıdan saldırılamaz. Ayrıca oyun boyunca 1 kez zindandakini direkt infaz edebilirsin. Aksiyon ekranında zindana atma seçeneğine ek olarak "İdam et" butonu çıkar.'},
+  GARDIYAN:{e:'🛡️',n:'Gardiyan',t:'masum',d:'1 kez tüm köyü gece korur.',
+    full:'Oyun boyunca 1 kez "Sokağa Çıkma Yasağı" ilan edersin. O gece HİÇBİR ölüm gerçekleşemez — hain saldırısı, seri katil, bomba bile etkisiz. Ertesi sabah herkes yasağın olduğunu öğrenir. Kritik gecede masumlara büyük avantaj.'},
+  ENGIZITOR:{e:'⚖️',n:'Engizitör',t:'masum',d:'Gündüz infaz hakkı (oyun boyunca 1 kez).',
+    full:'Tartışma fazında butona basıp ANINDA birini infaz edersin (oylama yapılmaz). Hain veya tarafsız ise hedef ölür. Masum ise SEN ölürsün. Kullanmadan önce çok emin olmalısın. Tartışma sırasında çıkan butonla aktif edersin.'},
+  // KOSTEBEK ve VIRUS geçici olarak devre dışı bırakıldı
+  PUSUCU:{e:'🪤',n:'Pusucu',t:'hain',d:'Pusu kurar; gelenler ölür.',
+    full:'O gece evine gelen oyunculardan biri rastgele ölür (hain takım arkadaşların bile dahil — dikkat!). Diğer hainler ana cinayeti yaparken sen arkayı kollarsın. Gazeteci/Takipçi/Polis seni hedef alırsa pusuya düşer.'},
+  HACKER:{e:'💻',n:'Hacker',t:'hain',d:'Bilgi rolünü engeller.',
+    full:'Bir bilgi toplayan masum (Polis, Savcı, Psikolog, Gazeteci, Takipçi, Dedikoducu, Ajan, Çilingir) hacklersin. Rolünü kullanırsa o gece raporu silinir, "İletişim ağı bozuldu!" mesajı alır. Saldırı/koruma raporları etkilenmez (sadece bilgi rolleri).'},
+  VEBA:{e:'☠️',n:'Veba',t:'tarafsız',d:'Hastalık yayar; herkes hastayken kazanır.',
+    full:'Her gece bir kişiye hastalık bulaştırırsın (haberi olmaz). Hayattaki HERKES hastalandığında, tüm hastalar anında ölür ve sen TEK BAŞINA kazanırsın. Çok gizli oynamak ve şüphe çekmemek kritik. Sadece sen kazanırsın — kimseyle paylaşmazsın.'},
+  // VIRUS geçici olarak devre dışı
+  // DELI en sonda
+  DELI:{e:'🤡',n:'Deli',t:'deli',d:'Bir masum rol gibi görünür ama tüm sonuçları sahtedir.',
+    full:'Oyun başında masumlardan birine gizlice atanır. Deli oyuncu kendini gerçek rolüymüş gibi görür (örn. Doktor sanır). Aksiyonlarını yapar ama hiçbir etkisi olmaz, raporları sahte/rastgele gelir. Kendisi deli olduğunu bilemez. Psikolog tespit edebilir.'},
+  // YAKINDA EKLENECEK ROLLER (Henüz aktif değil)
+  VAMPIR:{e:'🧛',n:'Vampir',t:'hain',d:'Gece öldürür, sabotaj pasifi var.',
+    full:'Gece birini öldürebilirsin. Öldürsen de öldürmesen de ertesi gün sabotaj başlatır. Sabotaj: 10 saniye içinde başlamazsan (masum/tarafsız) ölürsün. Hainler sabotaja girmezseniz de ölmez.'}
+};
+
+// DEMO ROLLER (İsteğe bağlı oyun havuzuna eklenebilir)
+const RDEF_DEMO={
+  INFAZCI:{e:'🔨',n:'İnfazcı (Demo)',t:'masum',d:'Birini zindana kapatır + 1 infaz hakkı.',
+    full:'Gece bir kişiyi zindana kapatırsın. Zindandaki kişi yetenek kullanamaz, dışarıdan saldırılamaz. Ayrıca oyun boyunca 1 kez zindandakini direkt infaz edebilirsin.'},
+  GARDIYAN:{e:'🛡️',n:'Gardiyan (Demo)',t:'masum',d:'1 kez tüm köyü gece korur.',
+    full:'Oyun boyunca 1 kez "Sokağa Çıkma Yasağı" ilan edersin. O gece HİÇBİR ölüm gerçekleşemez — hain saldırısı, seri katil, bomba bile etkisiz.'},
+  ENGIZITOR:{e:'⚖️',n:'Engizitör (Demo)',t:'masum',d:'Gündüz infaz hakkı (1 kez).',
+    full:'Tartışma fazında butona basıp ANINDA birini infaz edersin. Hain/tarafsız ise hedef ölür, masum ise SEN ölürsün.'},
+  BUZCU:{e:'❄️',n:'Buzcu (Demo)',t:'masum',d:'2 kez birini karantinaya alır.',
+    full:'Oyun boyunca 2 kullanım hakkın var. Karantinaya aldığın oyuncu oylamaya katılamaz, saldırıdan etkilenmez, yetenek kullanamaz.'},
+  KOSTEBEK:{e:'🦔',n:'Köstebek (Demo)',t:'hain',d:'Hain Savcı (her gece kullanılabilir).',
+    full:'Her gece birini incelersin. 2 rol seçeneği gösterilir, biri kesinlikle doğru. Hain sohbetinde paylaşıp suikastçıya hedef gösterirsin.'},
+  PUSUCU:{e:'🪤',n:'Pusucu (Demo)',t:'hain',d:'Pusu kurar; gelenler ölür.',
+    full:'O gece evine gelen oyunculardan biri rastgele ölür (hain takım arkadaşların bile dahil). Diğer hainler ana cinayeti yaparken sen arkayı kollarsın.'},
+  VEBA:{e:'☠️',n:'Veba (Demo)',t:'tarafsız',d:'Hastalık yayar; herkes hastayken kazanır.',
+    full:'Her gece bir kişiye hastalık bulaştırırsın. Hayattaki HERKES hastalandığında, tüm hastalar anında ölür ve sen TEK BAŞINA kazanırsın.'}
+};
+
+// id -> emoji+name lookup
+const ID_MAP={};
+Object.entries(RDEF).forEach(([k,v])=>{
+  const id=k.toLowerCase();
+  ID_MAP[id]={e:v.e,n:v.n,d:v.d,t:v.t};
+});
+function roleTeamClass(t){return t==='hain'?'hain':t==='tarafsız'?'tarafsız':'masum'}
+function roleTeamOf(roleId,fallback){
+  const r=RDEF[String(roleId||'').toUpperCase()];
+  return roleTeamClass(r?.t||fallback);
+}
+const _TEAM_COLORS={hain:'#c0392b',masum:'#27ae60','tarafsız':'#2980b9',tarafsiz:'#2980b9'};
+function applyTeamStyle(el,tc){
+  const c=_TEAM_COLORS[tc]||'#27ae60';
+  el.style.borderColor=c;
+  el.style.borderWidth='2px';
+  el.style.borderStyle='solid';
+  el.style.background=`linear-gradient(90deg,${c}40,${c}10)`;
+  el.style.boxShadow=`inset 4px 0 0 ${c}`;
+  const nameEl=el.querySelector('.rs-opt-name');
+  if(nameEl){nameEl.style.color=c;}
+}
+
+function show(id){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  Q(id).classList.add('on');
+  updateGameActions();
+  // Auth dışında hareketli lobi arka planı aç
+  var lb=document.getElementById('LOBBY_BG');
+  if(lb) lb.classList.toggle('on', id!=='S0' && id!=='S1');
+  // Aurora sadece auth ekranında
+  var aurora=document.getElementById('AURORA_BG');
+  if(aurora) aurora.classList.toggle('on', id==='S1');
+  var aiBg=document.getElementById('AI_AUTH_BG');
+  if(aiBg) aiBg.classList.toggle('on', id==='S0');
+  if(id==='S0') startAiAuthBg(); else stopAiAuthBg();
+}
+function toast(m,e){const t=Q('T');t.textContent=m;t.className='toast'+(e?' er':'');t.classList.add('sh');setTimeout(()=>t.classList.remove('sh'),3e3)}
+function theme(day){document.body.classList.toggle('day',day)}
+function openModal(id){Q(id).classList.add('sh')}
+function closeModal(id){Q(id).classList.remove('sh')}
+
+function avHTML(avatar, size, fallbackEmoji, extraStyle){
+  const cls = size==='lg'?'av-lg':size==='md'?'av-md':size==='sm'?'av-sm':size==='xl'?'av-xl':'';
+  let styleStr = '';
+  if (extraStyle) styleStr += extraStyle + ';';
+  if (avatar) styleStr += "background-image:url('" + avatar + "');";
+  const styleAttr = styleStr ? ' style="' + styleStr + '"' : '';
+  if (avatar) {
+    return '<div class="av ' + cls + '"' + styleAttr + '></div>';
+  }
+  return '<div class="av ' + cls + '"' + styleAttr + '>' + (fallbackEmoji||'👤') + '</div>';
+}
+
+// ── MUSIC (kaldırıldı — fonksiyonlar no-op stub olarak duruyor, geri kalan kod hata vermesin) ──
+function loadYouTubeAPI(){}
+function tryStartMusicNow(){}
+function applyMusicForCurrentScreen(){}
+function shouldPlayMusic(){return false;}
+function startMusic(){}
+function stopMusic(){}
+function toggleMusic(){}
+function updateMusicUI(){}
+
+// ── AUTH ──
+function setAM(m){
+  AM=m;
+  Q('TL').classList.toggle('on',m==='login');
+  Q('TR').classList.toggle('on',m==='register');
+  Q('AB').textContent=m==='login'?'Giriş Yap':'Kayıt Ol';
+  // Login/Register özel alanları göster/gizle
+  var loginEl=document.getElementById('AUTH_LOGIN_EXTRAS');
+  var regEl=document.getElementById('AUTH_REG_EXTRAS');
+  if(loginEl) loginEl.style.display=m==='login'?'block':'none';
+  if(regEl) regEl.style.display=m==='register'?'flex':'none';
+  // Kart animasyonu yeniden tetikle
+  var card=document.querySelector('.auth-card');
+  if(card){ card.style.animation='none'; void card.offsetWidth; card.style.animation=''; }
+}
+
+// ── AURORA BAŞLAT ──
+function startAiAuthBg(){
+  if(window.startThreeAiAuthBg) window.startThreeAiAuthBg();
+}
+function stopAiAuthBg(){
+  if(window.stopThreeAiAuthBg) window.stopThreeAiAuthBg();
+}
+
+(function initAurora(){
+  // Yıldız alanı
+  const sf = document.getElementById('STAR_FIELD');
+  if(sf){
+    for(var i=0;i<120;i++){
+      var s=document.createElement('div');
+      s.className='aurora-star';
+      var x=Math.random()*100, y=Math.random()*100;
+      var d=(Math.random()*3+2).toFixed(1)+'s';
+      var dl=(Math.random()*6).toFixed(1)+'s';
+      var op=(Math.random()*0.7+0.24).toFixed(2);
+      var sz=(Math.random()*1.4+1).toFixed(1)+'px';
+      s.style.cssText='left:'+x+'%;top:'+y+'%;width:'+sz+';height:'+sz+';--d:'+d+';--delay:'+dl+';--op:'+op;
+      sf.appendChild(s);
+    }
+  }
+  // Sayfa yüklenince: aurora aç (auth ekranı), lobby arka plan kapalı
+  var bg=document.getElementById('AURORA_BG');
+  if(bg) bg.classList.remove('on');
+  var lb=document.getElementById('LOBBY_BG');
+  if(lb) lb.classList.remove('on');
+  var aiBg=document.getElementById('AI_AUTH_BG');
+  if(aiBg) setTimeout(function(){ aiBg.classList.add('on'); startAiAuthBg(); },50);
+})();
+function showAuthSuccess(ico, title, sub, cb){
+  const ov=Q('AUTH_SUCCESS_OV');
+  Q('AUTH_SUCCESS_ICO').textContent=ico;
+  Q('AUTH_SUCCESS_TXT').textContent=title;
+  Q('AUTH_SUCCESS_SUB').textContent=sub;
+  ov.classList.add('show');
+  // ring'i yeniden tetikle
+  const ring=ov.querySelector('.auth-success-ring');
+  ring.style.animation='none'; void ring.offsetWidth; ring.style.animation='';
+  ov.querySelector('.auth-success-txt').style.animation='none'; void ov.querySelector('.auth-success-txt').offsetWidth; ov.querySelector('.auth-success-txt').style.animation='';
+  ov.querySelector('.auth-success-sub').style.animation='none'; void ov.querySelector('.auth-success-sub').offsetWidth; ov.querySelector('.auth-success-sub').style.animation='';
+  setTimeout(()=>{ ov.classList.remove('show'); if(cb) cb(); }, 1600);
+}
+function doAuth(){
+  const u=Q('AU').value.trim(),p=Q('AP').value;
+  if(!u||!p)return toast('Alanları doldur!',1);
+  if(AM==='register'){
+    const t1=document.getElementById('TERMS_1'),t2=document.getElementById('TERMS_2'),t3=document.getElementById('TERMS_3');
+    if(!t1?.checked||!t2?.checked||!t3?.checked) return toast('Kayıt için tüm sözleşmeleri onaylamalısın!',1);
+  }
+  const rememberMe = AM==='login' && Q('REMEMBER_ME')?.checked;
+  io2.emit(AM==='login'?'auth:login':'auth:register',{username:u,password:p,rememberMe},r=>{
+    if(r.success){
+      user=r.user;
+      if(r.token){
+        try{ localStorage.setItem('azap_token', r.token); }catch{}
+      }
+      updateUserUI();
+      updateRoleInfoBtn();
+      const isReg = AM==='register';
+      showAuthSuccess(
+        isReg ? '🎉' : '✓',
+        isReg ? 'Hesap Oluşturuldu!' : 'Giriş Başarılı',
+        'Hoş geldin, ' + user.username + '!',
+        ()=>{ show('S1'); setupDraggableButtons(); checkRejoin(); }
+      );
+    }else toast(r.error,1);
+  });
+}
+
+// Müzik fonksiyonu artık no-op
+function tryStartMusicNow(){}
+
+// ── REJOIN SİSTEMİ ──
+function checkRejoin(){
+  var saved=null;
+  try{saved=JSON.parse(localStorage.getItem('azap_last_room'));}catch{}
+  if(!saved||!saved.code)return;
+  io2.emit('room:checkRejoin',{code:saved.code},function(r){
+    if(!r||!r.ok){clearLastRoom();return;}
+    // Oda hâlâ aktif — teklif göster
+    Q('REJOIN_CODE').textContent=r.code;
+    Q('REJOIN_UNAME').textContent=user?.username||'';
+    // Modal alt yazısını faza göre güncelle
+    var sub=Q('REJOIN_MODAL').querySelector('.rejoin-sub:last-of-type');
+    if(sub) sub.textContent=r.isActive?'Oyun devam ediyor! Geri dönmek ister misin?':'Lobiye geri dönmek istiyor musun?';
+    Q('REJOIN_MODAL').classList.add('on');
+  });
+}
+function doRejoin(){
+  Q('REJOIN_MODAL').classList.remove('on');
+  var saved=null;
+  try{saved=JSON.parse(localStorage.getItem('azap_last_room'));}catch{}
+  if(!saved)return;
+  var name=saved.name||Q('IN').value.trim()||user?.username||'Oyuncu';
+  io2.emit('room:rejoin',{code:saved.code,playerName:name},function(r){
+    if(r.ok){
+      me=io2.id;
+      Q('LC').textContent=r.code;
+      if(r.active){
+        // Aktif oyun — state gelince ilgili ekrana otomatik geçecek
+        toast('Oyuna geri bağlanıldı!');
+        io2.emit('state:request');
+        io2.emit('priv:request');
+      } else {
+        show('S2');
+        applyMusicForCurrentScreen();
+        toast('Lobiye geri döndün!');
+      }
+    } else {
+      clearLastRoom();
+      toast(r.err||'Odaya dönülemedi.',1);
+    }
+  });
+}
+function dismissRejoin(){
+  Q('REJOIN_MODAL').classList.remove('on');
+  clearLastRoom();
+}
+
+// Otomatik rejoin - sayfa yenilendiğinde veya reconnect olduğunda sessizce dene
+function tryAutoRejoin(){
+  console.log('[tryAutoRejoin] Başladı');
+  // Son 30 saniye içinde kullanıcı bilerek çıktıysa rejoin yapma
+  var leftTime=null;
+  try{leftTime=parseInt(localStorage.getItem('azap_left_time'),10);}catch{}
+  if(leftTime && (Date.now()-leftTime)<30000){
+    console.log('[tryAutoRejoin] Son 30sn içinde çıkılmış, rejoin yapılmıyor');
+    return;
+  }
+  // Ölü veya izleyici durumunda rejoin yapma (kullanıcı bilerek çıkmış)
+  if(isDead||isSpec){
+    console.log('[tryAutoRejoin] Ölü/izleyici durumunda, rejoin yapılmıyor');
+    clearLastRoom();
+    return;
+  }
+  var saved=null;
+  try{saved=JSON.parse(localStorage.getItem('azap_last_room'));}catch(e){console.log('[tryAutoRejoin] localStorage hatası:',e);}
+  console.log('[tryAutoRejoin] saved:',saved);
+  if(!saved||!saved.code){console.log('[tryAutoRejoin] saved veya code yok, çıkılıyor');return;}
+  // Rejoin modal açıkken tekrar deneme
+  if(Q('REJOIN_MODAL').classList.contains('on')){console.log('[tryAutoRejoin] Modal açık, çıkılıyor');return;}
+  console.log('[tryAutoRejoin] room:checkRejoin gönderiliyor, kod:',saved.code);
+  io2.emit('room:checkRejoin',{code:saved.code},function(r){
+    console.log('[tryAutoRejoin] room:checkRejoin cevabı:',r);
+    if(!r||!r.ok){console.log('[tryAutoRejoin] checkRejoin başarısız:',r);clearLastRoom();return;}
+    // Oda aktif — otomatik rejoin dene (kullanıcıya sormadan)
+    if(r.isActive){
+      var name=saved.name||user?.username||'Oyuncu';
+      console.log('[tryAutoRejoin] Oda aktif, room:rejoin gönderiliyor, isim:',name);
+      io2.emit('room:rejoin',{code:saved.code,playerName:name},function(rejoinRes){
+        console.log('[tryAutoRejoin] room:rejoin cevabı:',rejoinRes);
+        if(rejoinRes?.ok){
+          me=io2.id;
+          Q('LC').textContent=rejoinRes.code;
+          toast('🎮 Oyuna geri bağlanıldı!');
+          io2.emit('state:request');
+          io2.emit('priv:request');
+        } else {
+          console.log('[tryAutoRejoin] rejoin başarısız:',rejoinRes);
+          clearLastRoom();
+          // Başarısızsa modal göster (manuel rejoin için)
+          checkRejoin();
+        }
+      });
+    } else {
+      console.log('[tryAutoRejoin] Oda lobide, modal gösteriliyor');
+      // Lobi durumu — modal göster
+      checkRejoin();
+    }
+  });
+}
+
+// Otomatik token girişi (sayfa yüklendiğinde)
+function tryAutoLogin(){
+  let token = null;
+  try{ token = localStorage.getItem('azap_token'); }catch{}
+  if(!token)return false;
+  io2.emit('auth:loginByToken',{token},r=>{
+    if(r?.success){
+      user=r.user;
+      updateUserUI();
+      toast('Hoş geldin '+user.username+'!');
+      setTimeout(()=>{ show('S1'); setupDraggableButtons(); tryAutoRejoin(); }, 300);
+      updateRoleInfoBtn();
+    } else {
+      // Token geçersiz - sil
+      try{ localStorage.removeItem('azap_token'); }catch{}
+      // Token geçersiz olsa bile rejoin dene
+      setTimeout(()=>{ tryAutoRejoin(); }, 300);
+    }
+  });
+  return true;
+}
+
+// ── MAĞAZA ──
+let _shopPackages = null;
+let _shopDonationPresets = null;
+
+async function loadShopCatalog(){
+  if(_shopPackages) return;
+  try{
+    const r = await fetch('/api/shop/packages');
+    const d = await r.json();
+    _shopPackages = d.packages;
+    _shopDonationPresets = d.donationPresets;
+    _shopPaymentEnabled = d.paymentEnabled;
+  }catch(e){
+    console.error('Mağaza yüklenemedi:', e);
+  }
+}
+
+function renderShopGoldPackages(){
+  if(!_shopPackages) return;
+  const goldPacks = Object.entries(_shopPackages).filter(([k,p])=>p.type==='coins');
+  Q('SHOP_GOLD_PACKAGES').innerHTML = goldPacks.map(([id,p])=>`
+    <div class="shop-pkg">
+      <div class="shop-pkg-emoji">${p.emoji}</div>
+      <div class="shop-pkg-info">
+        <div class="shop-pkg-label">${p.label}</div>
+        ${p.bonus ? `<div class="shop-pkg-bonus">🎁 +${p.bonus} bonus</div>` : ''}
+      </div>
+      <div class="shop-pkg-price">
+        <strong>₺${p.price.toFixed(2)}</strong>
+        <button class="shop-pkg-buy" onclick="shopBuy('${id}')">Satın Al</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderShopPremiumPackages(){
+  if(!_shopPackages) return;
+  const prems = Object.entries(_shopPackages).filter(([k,p])=>p.type==='premium');
+  Q('SHOP_PREMIUM_PACKAGES').innerHTML = prems.map(([id,p])=>`
+    <div class="shop-pkg">
+      <div class="shop-pkg-emoji">${p.emoji}</div>
+      <div class="shop-pkg-info">
+        <div class="shop-pkg-label">${p.label}</div>
+        ${p.bonus ? `<div class="shop-pkg-bonus">✨ ${p.bonus}</div>` : ''}
+      </div>
+      <div class="shop-pkg-price">
+        <strong>₺${p.price.toFixed(2)}</strong>
+        <button class="shop-pkg-buy premium-buy" onclick="shopBuy('${id}')">Satın Al</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderShopDonatePresets(){
+  if(!_shopDonationPresets) return;
+  Q('SHOP_DONATE_PRESETS').innerHTML = _shopDonationPresets.map(amt=>
+    `<div class="donate-preset" onclick="Q('SHOP_DONATE_AMOUNT').value=${amt}">₺${amt}</div>`
+  ).join('');
+}
+
+function shopSwitchTab(tab){
+  document.querySelectorAll('.shop-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  document.querySelectorAll('.shop-pane').forEach(p => {
+    p.style.display = p.id === 'SHOP_PANE_'+tab ? 'block' : 'none';
+  });
+  if(tab === 'gold') renderShopGoldPackages();
+  if(tab === 'premium') renderShopPremiumPackages();
+  if(tab === 'donate') renderShopDonatePresets();
+  if(tab === 'items') renderShopItems();
+}
+
+function getPaymentConsents(){
+  const kvkk = Q('CHK_KVKK')?.checked;
+  const mesafeliSatis = Q('CHK_MSS')?.checked;
+  const caymaHakki = Q('CHK_CAYMA')?.checked;
+  if(!kvkk || !mesafeliSatis || !caymaHakki){
+    toast('Lütfen tüm yasal onayları (KVKK, Mesafeli Satış, Cayma Hakkı) işaretleyin.',1);
+    return null;
+  }
+  return { kvkk, mesafeliSatis, caymaHakki };
+}
+
+async function shopBuy(packageId){
+  if(!user){toast('Giriş yap!',1);return;}
+  const pkg = _shopPackages?.[packageId];
+  if(!pkg){toast('Paket yok',1);return;}
+  const consents = getPaymentConsents();
+  if(!consents) return;
+  if(!confirm(`${pkg.label} satın alacaksın.\nFiyat: ₺${pkg.price.toFixed(2)}\nDevam?`))return;
+  try{
+    const r = await fetch('/api/payment/create',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: user.username, packageId, consents })
+    });
+    const d = await r.json();
+    if(d.checkoutFormContent){
+      const w = window.open('','azap_pay','width=500,height=700');
+      if(w){w.document.write(d.checkoutFormContent);}
+      else{toast('Ödeme penceresi açılamadı. Popup engelleyiciyi kapatın.',1);}
+    } else {
+      toast(d.error || 'Satın alma gerçekleşmedi.',1);
+    }
+  }catch(e){
+    toast('Satın alma gerçekleşmedi.',1);
+  }
+}
+
+async function shopDonate(){
+  if(!user){toast('Giriş yap!',1);return;}
+  const amt = parseFloat(Q('SHOP_DONATE_AMOUNT').value);
+  if(!amt || amt < 5){toast('Min 5 TL!',1);return;}
+  if(amt > 5000){toast('Max 5000 TL!',1);return;}
+  const consents = getPaymentConsents();
+  if(!consents) return;
+  if(!confirm(`₺${amt} bağış yapacaksın. ❤️\nDestek için teşekkürler!`))return;
+  try{
+    const r = await fetch('/api/payment/create',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt, consents })
+    });
+    const d = await r.json();
+    if(d.checkoutFormContent){
+      const w = window.open('','azap_pay','width=500,height=700');
+      if(w){w.document.write(d.checkoutFormContent);}
+      else{toast('Ödeme penceresi açılamadı. Popup engelleyiciyi kapatın.',1);}
+    } else {
+      toast(d.error || 'Bağış gerçekleşmedi.',1);
+    }
+  }catch(e){
+    toast('Bağış gerçekleşmedi.',1);
+  }
+}
+
+function updateShopHeader(){
+  if(!user) return;
+  const sc=Q('SHOP_COINS');if(sc)sc.textContent = (user.coins ?? 0) + ' 💰';
+  const pb=Q('SHOP_PREMIUM_BADGE');
+  const pd=Q('SHOP_PREMIUM_DAYS');
+  if(user.premium?.active){
+    if(pb) pb.style.display='flex';
+    if(pd) pd.textContent = `${user.premium.daysLeft} gün kaldı`;
+  } else {
+    if(pb) pb.style.display='none';
+  }
+}
+
+async function openShopModal(){
+  if(!user){toast('Önce giriş yap!',1);return;}
+  await Promise.all([loadShopCatalog(), loadCosmeticCatalog()]);
+  io2.emit('auth:stats',null,r=>{
+    if(r){user=r;}
+    updateShopHeader();
+    openModal('MDL_SHOP');
+    shopSwitchTab('gold');
+  });
+}
+
+// ── KOZMETİK MAĞAZA ──
+let _cosmeticCatalog = null;
+let _cosmeticCatalogPromise = null;
+let _shopItemCat = 'all';
+
+async function loadCosmeticCatalog(){
+  if(_cosmeticCatalog) return;
+  if(_cosmeticCatalogPromise) return _cosmeticCatalogPromise;
+  _cosmeticCatalogPromise = (async()=>{
+  try{
+    const r = await fetch('/api/shop/cosmetics');
+    const d = await r.json();
+    _cosmeticCatalog = d.items;
+  }catch(e){ console.error('Kozmetik katalog yüklenemedi', e); }
+  finally{ _cosmeticCatalogPromise = null; }
+  })();
+  return _cosmeticCatalogPromise;
+}
+
+function cosmeticPreviewHTML(id, item){
+  if(!item) return '<span>?</span>';
+  if(item.cat==='frame'){
+    const p=item.preview||{};
+    const aDur=p.anim==='legendaryShine'?'3s linear':p.anim==='oceanWave'?'4s ease':p.anim==='lightningStrike'?'2.5s ease-in-out':p.anim==='cyberGlitch'?'.5s steps(1) ':p.anim==='natureBreath'?'3s ease-in-out':'1.5s ease-in-out';
+    const animStyle=p.anim?`animation:${p.anim} ${aDur} infinite;`:'';
+    const bgSizeStyle=p.bgSize?`background-size:${p.bgSize};`:'';
+    return `<div class="frame-preview-card" style="border:${p.border||'1px solid var(--brd)'};box-shadow:${p.shadow||'none'};background:${p.bg||'var(--bg3)'};${bgSizeStyle}${animStyle}"><span>Azat</span></div>`;
+  }
+  if(item.cat==='pet'){
+    const p=item.preview||{};
+    const anim=p.anim||'petBounce';
+    return `<div class="pet-box" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><span style="font-size:1.8rem;animation:${anim} 1.2s ease-in-out infinite;display:inline-block">${p.sprite||item.emoji}</span></div>`;
+  }
+  if(item.cat==='font'){
+    const p=item.preview||{};
+    const family=p.family?p.family.replace(/"/g,"'"):'inherit';
+    return `<div class="font-preview-text" style="font-family:${family};font-weight:${p.weight||'400'};font-size:${p.size||'.85rem'};text-align:center">AZAP</div>`;
+  }
+  return `<span>${item.emoji}</span>`;
+}
+
+async function renderShopItems(){
+  await loadCosmeticCatalog();
+  if(!_cosmeticCatalog) return;
+  const grid = Q('SHOP_ITEM_GRID');
+  if(!grid) return;
+  const cat = _shopItemCat || 'all';
+  const search = (Q('SHOP_ITEM_SEARCH')?.value||'').toLowerCase();
+  const ownedIds = new Set((user?.inventory||[]).map(it=>typeof it==='string'?it:it.id));
+  let html = '';
+  Object.entries(_cosmeticCatalog).forEach(([id,item])=>{
+    if(cat!=='all' && item.cat!==cat) return;
+    if(search && !item.name.toLowerCase().includes(search) && !item.desc.toLowerCase().includes(search)) return;
+    const owned = ownedIds.has(id);
+    const isExclusive = !!item.exclusive;
+    const canBuy = !isExclusive && !owned && (user?.coins||0) >= item.price;
+    let actionBtn;
+    if(owned){
+      actionBtn='<button class="ci-buy owned-btn">✓ Envanterinde</button>';
+    } else if(isExclusive){
+      actionBtn='<button class="ci-buy disabled" disabled style="opacity:.6;cursor:not-allowed;background:linear-gradient(135deg,rgba(233,30,99,.15),rgba(187,143,206,.15));border:1px solid rgba(233,30,99,.3);color:#ffb3d9">🔒 Özel</button>';
+    } else {
+      actionBtn=`<button class="ci-buy buy${canBuy?'':' disabled'}" ${canBuy?`onclick="shopBuyCosmetic('${id}')"`:'disabled style="opacity:.5;cursor:not-allowed"'}>Satın Al</button>`;
+    }
+    html += `<div class="ci-card${owned?' owned':''}${isExclusive?' exclusive':''}">
+      <div class="ci-preview">${cosmeticPreviewHTML(id,item)}</div>
+      <div class="ci-info">
+        <div class="ci-name">${item.emoji} ${esc(item.name)}</div>
+        <div class="ci-desc">${esc(item.desc)}</div>
+        <div class="ci-meta">
+          <span class="ci-rarity ${item.rarity}">${item.rarity}</span>
+          ${isExclusive?'<span class="ci-price" style="color:#e91e63">⭐ Otomatik</span>':`<span class="ci-price">💰 ${item.price}</span>`}
+        </div>
+      </div>
+      <div class="ci-actions">${actionBtn}</div>
+    </div>`;
+  });
+  grid.innerHTML = html || '<div style="text-align:center;color:var(--dim);padding:20px;font-size:.82rem">Eşya bulunamadı.</div>';
+}
+
+function shopFilterItems(cat){
+  if(cat) _shopItemCat = cat;
+  document.querySelectorAll('#SHOP_ITEM_FILTER .ci-filter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cat===(_shopItemCat||'all'));
+  });
+  renderShopItems();
+}
+
+function shopBuyCosmetic(itemId){
+  if(!user){toast('Giriş yap!',1);return;}
+  const item = _cosmeticCatalog?.[itemId];
+  if(!item){toast('Eşya bulunamadı',1);return;}
+  if(!confirm(`${item.emoji} ${item.name} satın alacaksın.\nFiyat: 💰 ${item.price} altın\nDevam?`))return;
+  io2.emit('shop:buyCosmetic',{itemId},r=>{
+    if(r?.ok){
+      toast(`✅ ${item.emoji} ${item.name} satın alındı!`);
+      user.coins = r.coins;
+      user.inventory = r.inventory;
+      updateUserUI();
+      updateShopHeader();
+      renderShopItems();
+    } else {
+      toast(r?.err || 'Satın alma gerçekleşmedi.',1);
+    }
+  });
+}
+
+// ── ENVANTER ──
+let _invCat = 'all';
+
+function openInventoryModal(){
+  if(!user){toast('Giriş yap!',1);return;}
+  io2.emit('auth:stats',null,r=>{
+    if(!r)return;
+    user=r;
+    openModal('MDL_INVENTORY');
+    renderInventory();
+  });
+}
+
+function invFilter(cat){
+  if(cat) _invCat = cat;
+  document.querySelectorAll('#INV_FILTER .ci-filter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cat===(_invCat||'all'));
+  });
+  renderInventory();
+}
+
+function equippedFromInventory(items){
+  const equipped = {};
+  (items||[]).forEach(it=>{
+    const obj = typeof it==='string'?{id:it,equipped:false}:it;
+    if(!obj?.equipped) return;
+    const info = _cosmeticCatalog?.[obj.id];
+    const cat = info?.cat || obj.id.split('_')[0];
+    equipped[cat] = obj.id;
+  });
+  return equipped;
+}
+
+function renderInventoryPreview(items){
+  const box = Q('INV_EQUIPPED_PREVIEW');
+  if(!box) return;
+  const equipped = equippedFromInventory(items);
+  const fw = cosmeticFrameWrap(equipped, true);
+  const petItem = equipped.pet ? _cosmeticCatalog?.[equipped.pet] : null;
+  const fontItem = equipped.font ? _cosmeticCatalog?.[equipped.font] : null;
+  const petPreview = petItem?.preview || {};
+  const fontPreview = fontItem?.preview || {};
+  const fontFamily = fontPreview.family ? fontPreview.family.replace(/"/g,"'") : 'inherit';
+  let avatar = avHTML(user?.avatar,'lg','👤');
+  if(fw){
+    avatar = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatar}</div>`;
+  }
+  const pet = petItem ? `<span class="inv-preview-pet" style="animation:${petPreview.anim||'catIdle'} 3s ease-in-out infinite">${petPreview.sprite||petItem.emoji}</span>` : '';
+  const activeNames = ['frame','pet','font'].map(cat=>equipped[cat] ? _cosmeticCatalog?.[equipped[cat]]?.name : null).filter(Boolean);
+  box.innerHTML = `<div class="inv-preview-avatar">${avatar}${pet}</div>
+    <div class="inv-preview-text">
+      <div class="inv-preview-name" style="font-family:${fontFamily};font-weight:${fontPreview.weight||'700'};font-size:${fontPreview.size||'.84rem'}">${esc(user?.username||'Profil')}</div>
+      <div class="inv-preview-hint">${activeNames.length ? activeNames.map(esc).join(' • ') : 'Kullandığın frame, pet ve yazı tipi burada önizlenir.'}</div>
+    </div>`;
+}
+
+async function renderInventory(){
+  await loadCosmeticCatalog();
+  const inv = Q('PROF_INVENTORY');
+  if(!inv) return;
+  // Önceki içeriği temizle (üst üste binme sorununu önlemek için)
+  inv.innerHTML = '';
+  const items = (user?.inventory||[]).map(it=>typeof it==='string'?{id:it,equipped:false}:it);
+  renderInventoryPreview(items);
+  const cat = _invCat || 'all';
+  const search = (Q('INV_SEARCH')?.value||'').toLowerCase();
+  const filtered = items.filter(it=>{
+    const info = _cosmeticCatalog?.[it.id];
+    if(!info) return false;
+    if(cat!=='all' && info.cat!==cat) return false;
+    if(search && !info.name.toLowerCase().includes(search) && !info.desc.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  if(filtered.length===0){
+    inv.innerHTML='<div style="color:var(--dim);text-align:center;padding:12px;font-size:.78rem">'+
+      (items.length===0?'Henüz eşyan yok. Mağazadan satın alabilirsin.':'Bu filtrede eşya yok.')+'</div>';
+    return;
+  }
+  inv.innerHTML = filtered.map(it=>{
+    const info = _cosmeticCatalog?.[it.id] || {emoji:'📦',name:it.id,desc:'',cat:'?',rarity:'rare'};
+    const eq = !!it.equipped;
+    return `<div class="ci-card${eq?' owned':''}">
+      <div class="ci-preview">${cosmeticPreviewHTML(it.id,info)}</div>
+      <div class="ci-info">
+        <div class="ci-name">${info.emoji} ${esc(info.name)}</div>
+        <div class="ci-desc">${esc(info.desc)}</div>
+        <div class="ci-meta"><span class="ci-rarity ${info.rarity}">${info.rarity}</span>${eq?'<span style="color:var(--safe);font-size:.68rem;font-weight:600">AKTİF</span>':''}</div>
+      </div>
+      <div class="ci-actions">
+        <button class="ci-buy ${eq?'unequip':'equip'}" onclick="toggleEquipItem('${esc(it.id)}',${!eq})">${eq?'Kaldır':'Kullan'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleEquipItem(itemId, equipped){
+  io2.emit('inventory:equip', { itemId, equipped }, r => {
+    if(r?.ok){
+      toast(equipped ? '✓ Eşya aktif edildi' : 'Eşya pasifleştirildi');
+      // Server'dan dönen güncel envanteri hemen uygula (kategori otomatik kaldırma için)
+      if(r.inventory && user){
+        user.inventory = r.inventory;
+        user.equipped = r.equipped || equippedFromInventory(r.inventory);
+      }
+      updateUserUI();
+      renderInventory(); // Sadece envanteri yenile, tüm profili değil
+    } else {
+      toast(r?.err || 'Hata!', 1);
+    }
+  });
+}
+
+// ── BAHİS ──
+function placeBet(){
+  const amt = parseInt(Q('BET_AMOUNT').value);
+  if(!amt || amt < 5){toast('Min 5 coin!',1);return;}
+  if(amt > 1000){toast('Max 1000 coin!',1);return;}
+  io2.emit('bet:place', {amount: amt}, r => {
+    if(r?.ok){
+      toast(`💰 ${amt} altın bahis yatırıldı!`);
+      Q('MY_BET').textContent = amt;
+      Q('BET_AMOUNT').value = '';
+      Q('BET_CANCEL_BTN').style.display = 'block';
+      // user'ın coinlerini güncelle
+      if(user) user.coins = r.coins;
+      const bmc=Q('BET_MY_COINS'); if(bmc && user) bmc.textContent='💰 ' + (user.coins||0);
+    } else {
+      toast(r?.err || 'Bahis başarısız.',1);
+    }
+  });
+}
+
+function cancelBet(){
+  if(!confirm('Bahsi geri çekmek istediğine emin misin?'))return;
+  io2.emit('bet:cancel', null, r => {
+    if(r?.ok){
+      toast('Bahis iade edildi.');
+      Q('MY_BET').textContent = '0';
+      Q('BET_CANCEL_BTN').style.display = 'none';
+      if(r.coins != null && user) { user.coins = r.coins; const bmc=Q('BET_MY_COINS'); if(bmc) bmc.textContent='💰 ' + user.coins; }
+    }
+  });
+}
+
+// betUpdate event handler — tüm odadaki bahis durumu
+io2.on('betUpdate', d => {
+  Q('BET_POOL').textContent = d.total || 0;
+  // Kim ne kadar koymuş listesi
+  const list = Q('BET_LIST');
+  const entries = Object.entries(d.bets || {});
+  if(entries.length === 0){
+    list.innerHTML = '<em>Henüz bahis yok.</em>';
+  } else {
+    list.innerHTML = entries.sort((a,b)=>b[1]-a[1]).map(([uname, amt]) =>
+      `<span style="display:inline-block;margin:2px 4px;padding:2px 6px;background:rgba(255,215,0,.1);border-radius:3px"><strong>${uname}</strong>: ${amt}</span>`
+    ).join('');
+  }
+  // Kendi bahsim
+  const myUname = user?.username;
+  if(myUname && d.bets[myUname]){
+    Q('MY_BET').textContent = d.bets[myUname];
+    Q('BET_CANCEL_BTN').style.display = 'block';
+  } else {
+    Q('MY_BET').textContent = '0';
+    Q('BET_CANCEL_BTN').style.display = 'none';
+  }
+});
+
+// Çıkış yap
+function doLogout(){
+  if(!confirm('Çıkış yapmak istediğine emin misin?'))return;
+  let token = null;
+  try{ token = localStorage.getItem('azap_token'); localStorage.removeItem('azap_token'); }catch{}
+  io2.emit('auth:logout',{token},()=>{
+    user=null;
+    closeModal('MDL_PROFILE');
+    toast('Çıkış yapıldı.');
+    // Sayfayı yeniden yükle - tüm state temizlensin
+    setTimeout(()=>location.reload(),500);
+  });
+}
+function updateUserUI(){
+  if(!user)return;
+  Q('WN').textContent=user.username;
+  // Ana menüde avatar + frame (köşeli 13px)
+  const fw = cosmeticFrameWrap(user.equipped, true);
+  let avatarHtml = avHTML(user.avatar,'md','👤');
+  if(fw){
+    avatarHtml = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:4px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatarHtml}</div>`;
+  }
+  Q('WAV_SLOT').innerHTML=avatarHtml;
+  // Coin göster
+  const tc = Q('TOP_COINS');
+  if(tc){
+    tc.classList.add('on');
+    Q('TOP_COIN_VAL').textContent = user.coins ?? 0;
+  }
+  const bmc=Q('BET_MY_COINS');
+  if(bmc) bmc.textContent='💰 ' + (user.coins ?? 0);
+}
+
+function openProfile(){
+  io2.emit('auth:stats',null,r=>{
+    if(!r)return;user=r;
+    Q('PROF_NAME').textContent=r.username;
+    // Profil modalında avatar + frame (köşeli 13px) - doğrudan avatar üzerinde
+    const fw = cosmeticFrameWrap(r.equipped, true);
+    const avWrap = Q('PROF_AV_WRAP');
+    if(avWrap){
+      let profAvatar = avHTML(r.avatar,'lg','👤');
+      if(fw){
+        profAvatar = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${profAvatar}</div>`;
+      }
+      avWrap.innerHTML = `${profAvatar.replace('class="av av-lg"','class="av av-lg" id="PROF_AV"')}
+<div style="display:flex;gap:6px;margin-top:8px;justify-content:center">
+  <label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;padding:5px 12px;cursor:pointer;border:1px solid var(--brd);color:var(--hi);background:var(--bg2);border-radius:20px">📷 Yükle<input type="file" id="AV_UPLOAD" accept="image/*" onchange="uploadAvatar()" style="display:none"></label>
+  ${r.avatar ? `<button style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;padding:5px 12px;border:1px solid var(--brd);color:var(--hi);background:var(--bg2);border-radius:20px;cursor:pointer" onclick="adjustAvatar()">✂️ Ayarla</button>` : ''}
+</div>`;
+    }
+    Q('MOD_SP').textContent=r.stats.played;
+    Q('MOD_SW').textContent=r.stats.won;
+    Q('MOD_SL').textContent=r.stats.lost;
+    Q('MOD_MV').textContent=r.stats.mvp||0;
+    Q('MOD_COINS').textContent=r.coins??0;
+    // Premium gösterimi
+    if(r.premium?.active){
+      Q('MOD_PREMIUM_ROW').style.display='flex';
+      Q('MOD_PREMIUM').textContent = `${r.premium.daysLeft} gün`;
+    } else {
+      Q('MOD_PREMIUM_ROW').style.display='none';
+    }
+    // Bağış gösterimi
+    if(r.totalDonated > 0){
+      Q('MOD_DONATED_ROW').style.display='flex';
+      Q('MOD_DONATED').textContent = `₺${r.totalDonated.toFixed(0)}`;
+    } else {
+      Q('MOD_DONATED_ROW').style.display='none';
+    }
+    // Envanter render (yeni kozmetik UI)
+    renderInventory();
+    // Kozmetik ayar checkbox'ını mevcut değere ayarla
+    const hcBox=Q('HIDE_COSMETICS');if(hcBox)hcBox.checked=_hideOtherCosmetics;
+    openModal('MDL_PROFILE');
+  });
+}
+
+function changePass(){
+  const o=Q('OLD_PW').value,n=Q('NEW_PW').value;
+  if(!o||!n)return toast('Alanları doldur!',1);
+  io2.emit('auth:changePassword',{oldPass:o,newPass:n},r=>{
+    if(r.success){toast('Şifre güncellendi!');Q('OLD_PW').value='';Q('NEW_PW').value='';}
+    else toast(r.error,1);
+  });
+}
+
+// ── AVATAR KIRPMA ──
+let _cropImg=null, _cropX=0, _cropY=0, _cropScale=1, _cropDragging=false, _cropStartX=0, _cropStartY=0;
+const CROP_SIZE=280;
+
+function uploadAvatar(){
+  const f=Q('AV_UPLOAD').files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      _cropImg=img;
+      _cropScale=1;
+      // Resmi CROP_SIZE'a sığdır (en kısa kenar = CROP_SIZE)
+      const ratio=Math.max(CROP_SIZE/img.width, CROP_SIZE/img.height);
+      _cropScale=Math.round(ratio*100);
+      Q('CROP_ZOOM').min=Math.max(50, Math.round(ratio*100));
+      Q('CROP_ZOOM').max=Math.round(ratio*100*3);
+      Q('CROP_ZOOM').value=_cropScale;
+      _cropX=0;_cropY=0;
+      cropApplyTransform();
+      openModal('MDL_CROP');
+      initCropDrag();
+    };
+    img.onerror=()=>toast('Fotoğraf okunamadı!',1);
+    img.src=r.result;
+  };
+  r.onerror=()=>toast('Dosya okunamadı!',1);
+  r.readAsDataURL(f);
+}
+
+function cropApplyTransform(){
+  if(!_cropImg)return;
+  const el=Q('CROP_IMG');
+  const s=_cropScale/100;
+  const w=_cropImg.width*s, h=_cropImg.height*s;
+  el.src=_cropImg.src;
+  el.style.width=w+'px';el.style.height=h+'px';
+  // Sınırla: resim crop alanından taşmasın
+  const maxX=0, maxY=0;
+  const minX=CROP_SIZE-w, minY=CROP_SIZE-h;
+  _cropX=Math.min(maxX,Math.max(minX,_cropX));
+  _cropY=Math.min(maxY,Math.max(minY,_cropY));
+  el.style.left=_cropX+'px';el.style.top=_cropY+'px';
+}
+
+function cropZoom(v){
+  const oldS=_cropScale/100;
+  _cropScale=parseInt(v);
+  const newS=_cropScale/100;
+  // Zoom merkezi koru
+  const cx=CROP_SIZE/2, cy=CROP_SIZE/2;
+  _cropX=(cx-( (cx-_cropX) * newS/oldS ));
+  _cropY=(cy-( (cy-_cropY) * newS/oldS ));
+  cropApplyTransform();
+}
+
+function initCropDrag(){
+  const area=Q('CROP_AREA');
+  if(area._cropBound) return;
+  area._cropBound=true;
+  // Mouse
+  area.addEventListener('mousedown',e=>{_cropDragging=true;_cropStartX=e.clientX-_cropX;_cropStartY=e.clientY-_cropY;e.preventDefault();});
+  window.addEventListener('mousemove',e=>{if(!_cropDragging)return;_cropX=e.clientX-_cropStartX;_cropY=e.clientY-_cropStartY;cropApplyTransform();});
+  window.addEventListener('mouseup',()=>{_cropDragging=false;});
+  // Touch
+  area.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;_cropDragging=true;_cropStartX=e.touches[0].clientX-_cropX;_cropStartY=e.touches[0].clientY-_cropY;},{passive:true});
+  window.addEventListener('touchmove',e=>{if(!_cropDragging||e.touches.length!==1)return;_cropX=e.touches[0].clientX-_cropStartX;_cropY=e.touches[0].clientY-_cropStartY;cropApplyTransform();},{passive:true});
+  window.addEventListener('touchend',()=>{_cropDragging=false;});
+}
+
+function adjustAvatar(){
+  if(!user?.avatar) return toast('Önce fotoğraf yükle!',1);
+  const img=new Image();
+  img.crossOrigin='anonymous';
+  img.onload=()=>{
+    _cropImg=img;
+    const ratio=Math.max(CROP_SIZE/img.width, CROP_SIZE/img.height);
+    _cropScale=Math.round(ratio*100);
+    Q('CROP_ZOOM').min=Math.max(50, Math.round(ratio*100));
+    Q('CROP_ZOOM').max=Math.round(ratio*100*3);
+    Q('CROP_ZOOM').value=_cropScale;
+    _cropX=0;_cropY=0;
+    cropApplyTransform();
+    openModal('MDL_CROP');
+    initCropDrag();
+  };
+  img.onerror=()=>toast('Avatar yüklenemedi!',1);
+  img.src=user.avatar;
+}
+
+function cancelCrop(){
+  _cropImg=null;
+  closeModal('MDL_CROP');
+}
+
+function applyCrop(){
+  if(!_cropImg)return;
+  toast('Kaydediliyor...');
+  const canvas=document.createElement('canvas');
+  canvas.width=128;canvas.height=128;
+  const ctx=canvas.getContext('2d');
+  const s=_cropScale/100;
+  // Crop alanındaki görünümü 128x128'e çiz
+  const sx=-_cropX/s, sy=-_cropY/s;
+  const sSize=CROP_SIZE/s;
+  ctx.drawImage(_cropImg, sx, sy, sSize, sSize, 0, 0, 128, 128);
+  let quality=0.7;
+  let dataUrl=canvas.toDataURL('image/jpeg',quality);
+  while(dataUrl.length>270000 && quality>0.2){
+    quality-=0.1;
+    dataUrl=canvas.toDataURL('image/jpeg',quality);
+  }
+  io2.emit('auth:setAvatar',{avatar:dataUrl},r2=>{
+    if(r2.success){
+      user.avatar=r2.avatar;
+      Q('PROF_AV').outerHTML=avHTML(r2.avatar,'lg','👤').replace('class="av av-lg"','class="av av-lg" id="PROF_AV"');
+      updateUserUI();
+      closeModal('MDL_CROP');
+      _cropImg=null;
+      toast('Profil fotoğrafı güncellendi!');
+    } else toast(r2.error||'Hata!',1);
+  });
+}
+
+// ── ROLLER REHBERİ ──
+function renderGuide(){
+  const c=Q('GUIDE_CONTENT');
+  const teams=['masum','hain','tarafsız','deli'];
+  const titles={masum:'🌅 Masumlar (Yeşil)',hain:'🧛 Hainler (Kırmızı)',tarafsız:'⚖️ Tarafsızlar (Mavi)',deli:'🤡 Deli (Mor)'};
+  const colorVars={masum:'masum',hain:'hain',tarafsız:'tarafsiz',deli:'deli'};
+  const guideDemoKeys=new Set(Object.keys(RDEF_DEMO));
+  c.innerHTML=`
+    <div class="guide-hero">
+      <h3>AZAP Nedir?</h3>
+      <p>Hepimiz biliyoruz; o eski, uzun masalı arkadaş toplantıları artık sessiz sinemaya dönüştü. Masaya oturulduğu an telefonlar çıkıyor, kafalar öne eğiliyor. Kimseye “bırak o telefonu” diyemediğimiz bir çağdayız; çünkü artık telefonlar elimiz kolumuz gibi oldu.</p>
+      <p style="margin-top:6px">İşte AZAP, tam bu noktada devreye giriyor.</p>
+      <p style="margin-top:6px">Biz size “telefonu elinizden bırakın” demiyoruz. Aksine, o elinizden düşürmediğiniz telefonları, arkadaş ortamınızın merkezine yerleştiriyoruz. AZAP; fiziksel olarak yan yana olup dijital olarak uzaklaştığımız o anları, tekrar kahkahaya, heyecana ve tatlı atışmalara çeviren bir sosyal dedüksiyon oyunudur.</p>
+      <p style="margin-top:6px">AZAP, sadece ekran başında değil, masanın etrafındaki gözlerin içinde oynanan bir oyundur. Gizli roller dağıtılır; kiminiz köyü canı pahasına savunan bir sadık, kiminiz gece karanlığında planlar yapan bir hain, kiminiz ise sadece kendi hikayesini yazan bir yalnızdır.</p>
+      <p style="margin-top:6px"><b>Telefonunuz rehberiniz, gözleriniz kanıtınız olsun:</b> Hamlenizi telefondan yapın ama yalanı arkadaşınızın gözlerinin içine bakarak söyleyin.</p>
+      <p style="margin-top:6px"><b>Blöf, strateji ve kaos:</b> Konuşma yeteneğinizi konuşturun, arkadaşınızın ses tonundaki o ufacık titremeyi yakalayın ve doğru oylamayla köyün kaderini çizin.</p>
+      <p style="margin-top:6px"><b>Sıkılmaya vakit yok:</b> “Ne oynayacağız?” ya da “Toplandık ama herkes telefonda” dertlerini bitiriyoruz. AZAP varken, telefonunuz artık sizi uzaklaştıran değil, masanın en eğlenceli parçası haline gelen bir oyun konsoludur.</p>
+      <p style="margin-top:6px">Artık o kafalar telefona eğilecekse bile, bu bir ihanet planı ya da köyü kurtarma stratejisi için olacak. Arkadaş ortamınızı eski canlılığına, hem de teknolojiden kopmadan kavuşturmaya hazır mısınız?</p>
+      <p style="margin-top:6px"><b>Çünkü AZAP’ta kimse göründüğü kişi değildir.</b></p>
+    </div>
+    <div class="guide-card">
+      <h3>👤 Geliştirici Hakkında</h3>
+      <p>Merhaba, ben Azat Akdağ.</p>
+      <p style="margin-top:6px">AZAP, sadece bir oyun değil; dijital dünyanın sunduğu imkanları, fiziksel sosyal etkileşimin heyecanıyla birleştirme tutkumun bir ürünü. Bu projeyi; sosyal çıkarım türünü Türkçe dilinde, modern bir arayüzle, hızlı ve her an her yerden erişilebilen mobil uyumlu bir deneyime dönüştürmek amacıyla geliştiriyorum.</p>
+      <p style="margin-top:6px">Hedefim; tek düze rollerden sıyrılıp, her oyunun farklı bir hikaye yazdığı, strateji ve rol çeşitliliğinin zirve yaptığı bir platform sunmak. Teknolojiyi bizi birbirimizden koparan bir engel olarak değil, masanın etrafındaki sohbeti ve rekabeti körükleyen bir araç olarak kullanıyoruz.</p>
+      <p style="margin-top:6px">Projeye dair vizyonumu, teknik detayları veya diğer çalışmalarımı merak ederseniz; <a class="guide-link" href="https://azatakdag.com" target="_blank" rel="noopener">azatakdag.com</a> üzerinden hakkımda daha fazla bilgi alabilir, benimle doğrudan iletişim kurabilirsiniz.</p>
+      <p style="margin-top:6px">Geleceğin sosyal oyun deneyimini beraber inşa etmek dileğiyle!</p>
+    </div>
+    <div class="guide-card">
+      <h3>🎯 Oyunun Amacı</h3>
+      <p>Her oyuncu oyuna gizli bir rolle başlar. Masumlar hainleri ve tehlikeli tarafsızları bulup oylamayla saf dışı bırakmaya çalışır. Hainler gece öldürerek, gündüz manipüle ederek ve bilgi akışını bozarak çoğunluğu ele geçirmeye çalışır. Tarafsız roller ise çoğu zaman kendi özel kazanma koşulunu kovalar.</p>
+      <ul>
+        <li><b>Masumlar:</b> Hainleri ve köye tehdit olan rolleri bulup oylamayla elemelidir.</li>
+        <li><b>Hainler:</b> Masumları azaltmalı, şüpheyi dağıtmalı ve kritik rolleri susturmalıdır.</li>
+        <li><b>Tarafsızlar:</b> Kendi rolünde yazan özel kazanma şartına göre oynamalıdır.</li>
+      </ul>
+    </div>
+    <div class="guide-card">
+      <h3>🚪 En Baştan Nasıl Oynanır?</h3>
+      <ol>
+        <li><b>Giriş / Kayıt:</b> Ana ekranda hesabın varsa giriş yap. Hesabın yoksa kayıt ol. Hesap, istatistiklerini ve altın/mağaza ilerlemeni saklamak için kullanılır.</li>
+        <li><b>Profil:</b> Giriş yaptıktan sonra ismini, avatarını ve güncel durumunu kontrol edebilirsin.</li>
+        <li><b>Lobi Kurma veya Katılma:</b> Oda kurarak arkadaşlarına 4 haneli kodu verebilir ya da sana verilen kodla bir lobiye katılabilirsin.</li>
+        <li><b>Lobi Hazırlığı:</b> Oyuncular hazır olur. Lobi kurucusu oyuncu sayısını, rol havuzunu ve bazı oyun ayarlarını düzenleyebilir.</li>
+        <li><b>Rol Dağıtımı:</b> Oyun başlayınca sana gizli rolün verilir. Rol açıklamanı dikkatle oku; takımını, yeteneğini ve kazanma şartını bilmen gerekir.</li>
+        <li><b>Gece:</b> Gece aksiyonun varsa hedef seçersin. Hainler kendi aralarında konuşup saldırı veya sabotaj planlayabilir.</li>
+        <li><b>Sabah / Gündüz:</b> Gece olanlar raporlanır. Gündüz tartışma başlar; herkes konuşarak şüphelerini açıklar.</li>
+        <li><b>Oylama:</b> Oyuncular birini asmaya veya pas geçmeye oy verir. Çoğunluk sağlanırsa hedef elenir.</li>
+        <li><b>Döngü:</b> Oyun gece-gündüz şeklinde devam eder. Bir takım veya özel rol kazanma şartını tamamladığında oyun biter.</li>
+      </ol>
+    </div>
+    <div class="guide-card">
+      <h3>🧠 Meta Nedir? Neden Yapılmamalı?</h3>
+      <p><b>Meta</b>, oyunun içindeki bilgi ve davranışlar yerine oyun dışı bilgilere dayanarak karar vermektir. “Sen dün de böyle yapmıştın”, “Yan yana oturuyoruz, telefonunu gördüm”, “Sesin odadan geliyor”, “Telefonu bıraktın, demek rolün yok” veya “Gündüz telefonu bıraktın, suikastçı olamazsın” gibi çıkarımlar metadır.</p>
+      <p style="margin-top:6px">AZAP özellikle yüz yüze oynanırken telefonun oyunun parçası olduğu düşünülerek tasarlandı. Bu yüzden telefonu elinizden bırakmayın; gece telefonu bırakmanız, gündüz ekrana bakmamanız ya da bir an pasif kalmanız başka oyuncular tarafından oyun dışı kanıt gibi kullanılmamalı.</p>
+      <div class="guide-note">Telefonunuz oyununuzun kumandasıdır. Oyuncuların telefon tutuşunu, ekrana bakıp bakmamasını, uygulamada hangi butonu gördüğünü veya fiziksel davranışını kanıt olarak kullanmak AZAP’ın ruhuna aykırıdır. Sadece oyun içindeki verilere odaklanın: gece raporları, oylamalar, çelişkili iddialar, konuşmalar ve stratejik davranışlar.</div>
+    </div>
+    <div class="guide-card">
+      <h3>📜 Azap Online: Temel Kurallar ve Oyun Etiği</h3>
+      <p>Azap, sadece kodlarla değil, oyuncuların dürüstlüğü ve saygısıyla ayakta kalan bir deneyimdir. Herkesin keyif alması için aşağıdaki kurallara uyulması zorunludur:</p>
+      <ol>
+        <li><b>Kanıt ve ekran paylaşımı yasaktır:</b> Rolünü kanıtlamak için ekran görüntüsü almak, ekran paylaşmak veya arayüzdeki teknik bir detayı kullanmak kesinlikle yasaktır. İstediğin rolü iddia edebilirsin ama bunu sadece kelimelerinle ve ikna kabiliyetinle yapmalısın.</li>
+        <li><b>Ölülerin sessizliği:</b> Elenen bir oyuncu, oyunun gidişatını etkileyecek hiçbir bilgiyi yaşayanlara aktaramaz. WhatsApp, Discord, fısıldama veya yanındaki arkadaşına işaret verme gibi dış kanallar oyunun tüm mantığını çöpe atar.</li>
+        <li><b>İletişim ve saygı çerçevesi:</b> Azap bir tartışma oyunudur; suçlamalar, sert çıkışlar ve blöfler oyunun doğasında var. Ancak bu hiçbir zaman kişisel hakarete, küfüre, cinsiyetçi veya ırkçı söylemlere dönüşemez. Kişiyi değil, rolün oyun içindeki tutarsızlıklarını hedef almalısın.</li>
+        <li><b>Oyun disiplini:</b> Kendi takımına bilerek zarar vermek, takım arkadaşlarını sebepsiz yere ifşalamak veya oyunu sabote etmek yasaktır. Oyuna girdiysen masadasın demektir; uzun süre AFK kalmak oyunun akışını bozar.</li>
+        <li><b>Meta-gaming yasağı:</b> Oyun mekaniği dışındaki hiçbir bilgiyi kanıt olarak sunma. Telefon hareketleri, dış sesler, geçmiş oyun alışkanlıkları, ekran parlaması veya “telefonu bıraktı” gibi çıkarımlar oyun dışıdır.</li>
+        <li><b>Adil oyun:</b> Arkadaşınla aynı odada olsan bile oyun içinde takım değilseniz birbirinizi korumayın. Gerçek bir Azat Akdağ takipçisi, en yakın arkadaşını bile köyün selameti veya kendi gizli emelleri için feda edebilecek soğukkanlılığa sahip olmalıdır.</li>
+      </ol>
+      <div class="guide-note">Unutma: Kurallar sadece yasaklar için değil, herkesin eşit ve adil bir ortamda “Azap” çekmeden eğlenmesi içindir. Bu kurallara uymayan oyuncuları bildirmekten çekinmeyin.</div>
+      <p style="margin-top:7px">Bu kurallar dizisi oyuncuya sadece “şunu yapma” demiyor, aynı zamanda neden yapmaması gerektiğini de açıklıyor. Özellikle meta-gaming ve ölülerin sessizliği gibi başlıklar, bu tür oyunların profesyonel seviyede kalmasını sağlar.</p>
+    </div>
+    <div class="guide-card">
+      <h3>💡 Yeni Oyuncuya Hızlı Tavsiyeler</h3>
+      <ul>
+        <li>Rolünü okumadan aksiyon kullanma; bazı roller tek kullanımlıktır.</li>
+        <li>Masumsan bilgi saklamak bazen doğru olabilir ama kritik bilgiyi çok geç açıklamak köyü kaybettirebilir.</li>
+        <li>Hainsen sadece yalan söylemek yetmez; başkalarının şüphelerini yönlendirmeyi öğrenmelisin.</li>
+        <li>Tarafsızsan kazanma şartını iyi oku; her tarafsız rol aynı şekilde oynanmaz.</li>
+        <li>Birini suçlarken nedenini söyle: “şüpheli” demek yerine davranış, oy, rapor veya çelişki göster.</li>
+      </ul>
+    </div>
+    <div class="guide-card">
+      <h3>🎭 Detaylı Roller Rehberi</h3>
+      <p>Aşağıda roller takımına göre listelenmiştir. Her rolün kısa açıklaması ve mümkünse detaylı oynanış bilgisi yer alır.</p>
+    </div>
+  `;
+  teams.forEach(team=>{
+    const items=Object.entries(RDEF).filter(([k,v])=>v.t===team && k!=='DELI' && k!=='VAMPIR' && !guideDemoKeys.has(k));
+    if(items.length===0)return;
+    const sec=document.createElement('div');
+    sec.innerHTML=`<div class="st mt8" style="color:var(--${colorVars[team]||'dim'})">${titles[team]||team}</div>`;
+    items.forEach(([k,v])=>{
+      const d=document.createElement('div');
+      d.className=`role-guide-item team-${team}`;
+      d.innerHTML=`<div class="role-guide-h"><span class="em">${v.e}</span><span class="nm">${v.n}</span><span class="role-guide-tag rtag ${team}">${team.toUpperCase()}</span></div><div class="role-guide-d">${v.d}</div>${v.full?`<div class="guide-role-full">${v.full}</div>`:''}`;
+      sec.appendChild(d);
+    });
+    c.appendChild(sec);
+  });
+  const upcoming=document.createElement('div');
+  upcoming.innerHTML=`<div class="st mt8" style="color:var(--hi)">⏳ Yakında / Demo Roller</div><div class="guide-card"><p>Bu bölümdeki roller aktif rol havuzuna otomatik eklenmez. Lobi kurucusu ileride “demo rolleri dahil et” seçeneğini açarsa bu roller oyun havuzunda görünebilir; kapalıysa görünmez ve oyuna girmez.</p></div>`;
+  Object.entries({...RDEF_DEMO,VAMPIR:RDEF.VAMPIR}).forEach(([k,v])=>{
+    if(!v)return;
+    const d=document.createElement('div');
+    d.className=`role-guide-item team-${v.t}`;
+    d.innerHTML=`<div class="role-guide-h"><span class="em">${v.e}</span><span class="nm">${v.n}</span><span class="role-guide-tag rtag ${v.t}">${v.t.toUpperCase()}</span></div><div class="role-guide-d">${v.d}</div>${v.full?`<div class="guide-role-full">${v.full}</div>`:''}`;
+    upcoming.appendChild(d);
+  });
+  c.appendChild(upcoming);
+}
+
+// ── ROOM ──
+function saveLastRoom(code,name){
+  try{localStorage.setItem('azap_last_room',JSON.stringify({code,name}));}catch{}
+}
+function clearLastRoom(){
+  try{localStorage.removeItem('azap_last_room');}catch{}
+  try{localStorage.setItem('azap_left_time',Date.now().toString());}catch{}
+  console.log('[clearLastRoom] Oda verisi temizlendi, timestamp kaydedildi');
+}
+function createRoom(){
+  const n=Q('IN').value.trim();if(!n)return toast('İsim gir!',1);
+  io2.emit('room:create',{playerName:n},r=>{if(r.ok){me=io2.id;Q('LC').textContent=r.code;saveLastRoom(r.code,n);show('S2');buildRG();applyMusicForCurrentScreen();io2.emit('auth:stats',null,s=>{if(s){user=s;updateUserUI();}});}else toast(r.err,1);});
+}
+function joinRoom(){
+  const n=Q('IN').value.trim(),c=Q('IC').value.trim();
+  if(!n)return toast('İsim gir!',1);if(c.length!==4)return toast('4 haneli kod!',1);
+  io2.emit('room:join',{code:c,playerName:n},r=>{if(r.ok){me=io2.id;Q('LC').textContent=r.code;saveLastRoom(r.code,n);show('S2');applyMusicForCurrentScreen();io2.emit('auth:stats',null,s=>{if(s){user=s;updateUserUI();}});}else toast(r.err,1);});
+}
+function spectate(){
+  const c=Q('IC').value.trim();if(c.length!==4)return toast('4 haneli kod!',1);
+  io2.emit('room:spectate',{code:c},r=>{if(r.ok){isSpec=true;Q('SB').classList.add('sh');show('S10');stopMusic();}else toast(r.err,1);});
+}
+function leaveRoom(){
+  io2.emit('room:leave');
+  clearLastRoom();
+  resetClient();
+  show('S1');
+  applyMusicForCurrentScreen();
+}
+function leaveAfterGame(){
+  io2.emit('room:leave');
+  resetClient();
+  show('S1');
+  io2.emit('auth:stats',null,r=>{if(r){user=r;updateUserUI();}});
+  applyMusicForCurrentScreen();
+}
+
+// 🔄 Oyun içi sayfa yenileme (state'i resetleyip lobi/oyun ekranını tekrar yükler)
+function refreshGame(){
+  // Frontend state'i temizle ve sunucudan tekrar al
+  // Mevcut socket bağlantısını koruyoruz, sadece UI'yı yeniden çiz
+  if(gs && me){
+    // Aktif state istek
+    io2.emit('state:request', null, () => {
+      // State handler renderlayacak
+    });
+    // Aktif private state
+    io2.emit('priv:request', null, () => {});
+    toast('🔄 Yenileniyor...');
+    // 1 saniye sonra emin olmak için sayfa reload (token korunur)
+    setTimeout(() => location.reload(), 800);
+  } else {
+    location.reload();
+  }
+}
+
+// 🚪 Oyun içinden ana menüye dön (onaylı)
+function exitToMainMenu(){
+  const inActiveGame = gs && gs.phase !== 'lobby' && gs.phase !== 'post_game';
+  const msg = inActiveGame
+    ? '⚠️ Aktif bir oyundasın!\nÇıkarsan diğer oyuncular için sorun yaratabilirsin.\n\nGerçekten ana menüye dönmek istiyor musun?'
+    : 'Ana menüye dönmek istediğine emin misin?';
+  if(!confirm(msg)) return;
+  io2.emit('room:leave');
+  clearLastRoom();
+  resetClient();
+  show('S1');
+  applyMusicForCurrentScreen();
+  toast('Ana menüye döndün');
+}
+
+// Game actions (yenile/çıkış) butonlarını göster/gizle
+function updateGameActions(){
+  const ga = Q('GAME_ACTIONS');
+  if(!ga) return;
+  // S0 (auth) ve S1 (entry) dışındaki tüm ekranlarda göster
+  const currentScreen = document.querySelector('.scr.on')?.id;
+  const showActions = currentScreen && currentScreen !== 'S0' && currentScreen !== 'S1';
+  ga.style.display = showActions ? 'flex' : 'none';
+}
+function resetClient(){
+  me=null; // Ana menüye dönünce me sıfırlanır, rejoin engellenir
+  deathOk=false;lastDead=new Set();gs=null;ps=null;isSpec=false;isDead=false;mvpVoted=null;
+  const sb=Q('SB'); sb.textContent='👁️ İZLEYİCİ'; sb.classList.remove('sh');
+  Q('HT').classList.remove('sh');Q('HP').classList.remove('op');
+  Q('DOV').classList.remove('sh');
+  Q('TB').style.display='none';Q('TN').style.display='none';
+  theme(false);
+}
+function newGame(){
+  io2.emit('room:newGame');
+  deathOk=false;lastDead=new Set();isDead=false;mvpVoted=null;
+  const sb=Q('SB'); sb.textContent='👁️ İZLEYİCİ'; sb.classList.remove('sh');
+  Q('DOV').classList.remove('sh');
+}
+
+function enterDeathSpectate(){
+  Q('DOV').classList.remove('sh');
+  isDead=true;
+  const sb=Q('SB');
+  sb.textContent='👻 HAYALET';
+  sb.classList.add('sh');
+  show('S10');
+  // Eğer elimizde son spec verisi varsa hemen render et
+  if(_lastSpec) renderSpec(_lastSpec);
+}
+
+function startGame(){io2.emit('start',null,r=>{if(!r.ok)toast(r.err,1);});}
+
+let demoRolesEnabled=false; // Demo rolleri dahil etme durumu
+
+function buildRG(){
+  const g=Q('RG');g.innerHTML='';
+  // Ana roller (DELI, VAMPIR ve demo roller hariç)
+  const _demoKeys=new Set(Object.keys(RDEF_DEMO));
+  const _tOrder={masum:0,hain:1,'tarafsız':2,deli:3};
+  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='VAMPIR' && !_demoKeys.has(k)).sort((a,b)=>(_tOrder[a[1].t]??9)-(_tOrder[b[1].t]??9)).forEach(([k,v])=>{
+    const d=document.createElement('div');
+    d.className=`rchip on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
+    d.innerHTML=`<span>${v.e}</span>${v.n}`;
+    d.onclick=()=>{d.classList.toggle('on');uSet();};
+    g.appendChild(d);
+  });
+  // Demo bölüm ayırıcı
+  const sep=document.createElement('div');
+  sep.style.cssText='grid-column:1/-1;font-size:.62rem;color:var(--dim);padding:6px 0 2px;border-top:1px solid var(--brd);margin-top:4px;letter-spacing:1.5px;font-family:"Cinzel Decorative",serif';
+  sep.textContent='\u2697\ufe0f DEMO ROLLER';
+  g.appendChild(sep);
+  // Demo roller + VAMPIR (her zaman göster, on/off durumu demoRolesEnabled'a bağlı)
+  const demoAll={...RDEF_DEMO};
+  if(RDEF.VAMPIR) demoAll.VAMPIR={...RDEF.VAMPIR,n:'Vampir (Demo)'};
+  Object.entries(demoAll).forEach(([k,v])=>{
+    const d=document.createElement('div');
+    d.className=`rchip demo ${demoRolesEnabled?'on':''} ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`.trim();d.dataset.key=k;
+    d.innerHTML=`<span>${v.e}</span>${v.n}`;
+    d.onclick=()=>{d.classList.toggle('on');uSet();};
+    g.appendChild(d);
+  });
+}
+
+function uSet(){
+  const ins=Q('SI').value,ni=Q('SN').value,di=Q('SD').value,vo=Q('SV').value;
+  Q('VI').textContent='%'+ins;Q('VN').textContent=ni+'s';
+  Q('VD').textContent=di>=60?Math.floor(di/60)+'dk'+(di%60?di%60+'s':''):di+'s';
+  Q('VV').textContent=vo+'s';
+  Q('VH').textContent=Q('HC2').value;Q('VT').textContent=Q('TC2').value;
+  const hkm=document.querySelector('input[name=hkm]:checked')?.value||'multi';
+  const rsm=document.querySelector('input[name=rsm]:checked')?.value||'auto';
+  const er=[...document.querySelectorAll('.rchip.on')].map(c=>c.dataset.key);
+  // Debounce: slider sürüklenirken sürekli emit yapılmasın, son değer 200ms sonra gönderilsin
+  if(window._uSetTimer)clearTimeout(window._uSetTimer);
+  window._uSetTimer=setTimeout(()=>{
+    io2.emit('settings',{
+      enabledRoles:er,insanityRate:+ins,
+      config:{nightDuration:+ni,discussionDuration:+di,votingDuration:+vo},
+      hainKillMode:hkm,roleSelectionMode:rsm,
+      manualCounts:true,hainCount:+Q('HC2').value,tarafsizCount:+Q('TC2').value
+    });
+  },200);
+}
+
+// ── ROLE SELECTION (PICK MODE) ──
+function pickRole(choice){
+  io2.emit('roleChoice',{choice},r=>{
+    if(!r.ok)toast(r.err||'Hata!',1);
+  });
+}
+
+function renderRS(){
+  if(!gs?.roleSelection)return;
+  const rs=gs.roleSelection;
+  // Progress bar
+  Q('RS_PROG_TXT').textContent=`${rs.done} / ${rs.total} oyuncu seçti`;
+  Q('RS_PROG_FILL').style.width=(rs.done/rs.total*100)+'%';
+
+  // Şu anki kişi (avatar + isim göster, ama SIRA NUMARASI YOK)
+  const currentDiv=Q('RS_CURRENT');
+  if(rs.currentPlayerId){
+    if(rs.currentPlayerId===me){
+      currentDiv.style.display='block';
+      currentDiv.innerHTML=`<strong style="color:var(--hi)">⏳ Sıra sende!</strong>`;
+    } else {
+      currentDiv.style.display='block';
+      // ARTIK İSİM VE AVATAR YOK, GİZLİ OYUNCU YAZIYOR
+      currentDiv.innerHTML=`<div class="av av-sm">❓</div><strong>Gizli bir oyuncu</strong> seçiyor...`;
+    }
+  } else {
+    currentDiv.style.display='none';
+  }
+
+  Q('RS_SUB').textContent=rs.currentPlayerId===me?'Sıra sende!':'Bekliyor...';
+
+  // Tamamlananlar listesi (rastgele sıralanmış - kim önce seçtiği belli olmasın)
+  const list=Q('RS_LIST');
+  list.innerHTML='';
+  if(rs.completed.length===0){
+    list.innerHTML='<div style="color:var(--dim);font-size:.78rem;text-align:center;padding:8px">Henüz seçim yok.</div>';
+  } else {
+    // Sadece "1. Seçim", "2. Seçim" olarak anonim yazdırıyoruz
+    rs.completed.forEach((c, index)=>{
+      let pickHTML;
+      if(c.isRandom){
+        pickHTML='<span class="rs-comp-pick random">🎲 Rastgele</span>';
+      } else {
+        const info=ID_MAP[c.picked]||{e:'❓',n:c.picked};
+        pickHTML=`<span class="rs-comp-pick team-${roleTeamOf(c.picked)}">${info.e} ${info.n}</span>`;
+      }
+      const d=document.createElement('div');
+      d.className='rs-comp-row';
+      d.innerHTML=`<span style="color:var(--dim);margin-right:10px;font-weight:bold">${index + 1}. Seçim</span>${pickHTML}`;
+      list.appendChild(d);
+    });
+  }
+
+  // Sıra bende mi?
+  if(ps?.myRoleOptions && rs.currentPlayerId===me){
+    Q('RS_MY_OPTIONS').style.display='block';
+    const ol=Q('RS_OPT_LIST');ol.innerHTML='';
+
+    if(ps.myRoleForced){
+      // Zorla atanmış takım — kalan rollerden seçim yapılabilir + rastgele de aynı takımdan
+      const teamLabel = ps.myRoleForcedTeam ? ` (${ps.myRoleForcedTeam.toUpperCase()})` : '';
+      ps.myRoleOptions.forEach(roleId=>{
+        const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
+        const d=document.createElement('div');
+        const tc=roleTeamOf(roleId,ps.myRoleForcedTeam);
+        d.className=`rs-opt team-${tc}`;
+        d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
+        d.onclick=()=>pickRole(roleId);
+        ol.appendChild(d);
+        applyTeamStyle(d,tc);
+      });
+      // Forced durumda da rastgele opsiyonu (forced takım içinden seçer)
+      const rd=document.createElement('div');
+      const forcedTc=roleTeamClass(ps.myRoleForcedTeam);
+      rd.className=`rs-opt rs-opt-rnd team-${forcedTc}`;
+      const teamColor = ps.myRoleForcedTeam==='hain'?'var(--hain)':ps.myRoleForcedTeam==='tarafsız'?'var(--tarafsiz)':'var(--safe)';
+      rd.innerHTML=`<span class="rs-opt-em">🎲</span><div style="flex:1"><div class="rs-opt-name">Rastgele <span style="color:${teamColor};font-size:.72rem">(${ps.myRoleForcedTeam||'?'})</span></div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${ps.myRoleForcedTeam} havuzundan rastgele rol gelir.</div></div>`;
+      rd.onclick=()=>pickRole('random');
+      ol.appendChild(rd);
+      Q('RS_SUB').textContent=`Takım dengelemesi: bir ${ps.myRoleForcedTeam||'rol'} seçmelisin (rastgele de bu takımdan gelir)!`;
+    } else {
+      ps.myRoleOptions.forEach(roleId=>{
+        const info=ID_MAP[roleId]||{e:'❓',n:roleId,d:''};
+        const d=document.createElement('div');
+        const tc=roleTeamOf(roleId);
+        d.className=`rs-opt team-${tc}`;
+        d.innerHTML=`<span class="rs-opt-em">${info.e}</span><div style="flex:1"><div class="rs-opt-name">${info.n}</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">${info.d||''}</div></div>`;
+        d.onclick=()=>pickRole(roleId);
+        ol.appendChild(d);
+        applyTeamStyle(d,tc);
+      });
+      // Rastgele butonu: tüm havuzdan gelebilir
+      const rd=document.createElement('div');
+      rd.className='rs-opt rs-opt-rnd';
+      rd.innerHTML=`<span class="rs-opt-em">🎲</span><div style="flex:1"><div class="rs-opt-name">Rastgele</div><div style="font-size:.72rem;color:var(--dim);margin-top:2px">Tüm havuzdan rastgele rol gelir (diğerleri sadece "rastgele" görür)</div></div>`;
+      rd.onclick=()=>pickRole('random');
+      ol.appendChild(rd);
+    }
+  } else {
+    Q('RS_MY_OPTIONS').style.display='none';
+  }
+
+  // Kendi seçimimi göster (rastgele bile olsa rolü)
+  const myPick=ps?.myPickInfo;
+  const myPickDiv=Q('RS_MY_PICK_DISPLAY');
+  if(myPick){
+    myPickDiv.innerHTML=`<div class="rs-my-pick"><div style="font-size:.72rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase">${myPick.isRandom?'🎲 RASTGELE SEÇİLDİ — ROLÜN':'SEÇTİĞİN ROL'}</div><div class="em">${myPick.roleEmoji}</div><div class="nm">${myPick.roleName}</div></div>`;
+  } else {
+    myPickDiv.innerHTML='';
+  }
+}
+
+// ── PRESIDENT VOTE ──
+function pVote(tid){
+  io2.emit('presidentVote',{targetId:tid},r=>{
+    if(r.ok){toast('Oy verildi!');
+      document.querySelectorAll('#PV_GRID .vb').forEach(b=>b.classList.toggle('vd',b.dataset.id===tid));}
+  });
+}
+
+function renderPV(){
+  if(!gs)return;theme(false);
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='president_vote')renderPV();});}
+  const grid=Q('PV_GRID');grid.innerHTML='';
+  const isH=ps?.team==='hain';
+  const tmIds=new Set();
+  if(isH&&ps.teammates)ps.teammates.forEach(t=>tmIds.add(t.id));
+  gs.players.filter(p=>p.isAlive).forEach(p=>{
+    const isT=tmIds.has(p.id);
+    const isMe=p.id===me;
+    const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
+    const tally=gs.presidentVoteTally?.[p.id]||0;
+    const nameStyle=isT?'color:var(--hain);font-weight:600':(isMe?'color:var(--hi)':'');
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="vb-name">${cosmeticPlayerNameHTML(p,isMe,`${isMe?' (SEN)':''}${isT?' 🧛':''}`,nameStyle)}</span><span class="vc" data-pvc="${p.id}">${tally}</span>`;
+    // Kendine de oy verilebilir
+    d.onclick=()=>pVote(p.id);
+    grid.appendChild(d);
+  });
+  // Skip (atla) butonu
+  const sk=document.createElement('div');sk.className='vb';sk.dataset.id='skip';
+  sk.style.cssText='border:1px dashed var(--dim);background:rgba(255,255,255,.04)';
+  const skipCnt=gs.presidentVoteTally?.['__skip__']||0;
+  sk.innerHTML=`<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:1.2rem">⏭️</div><span class="vb-name"><span style="font-style:italic">Kimseye oy verme</span></span><span class="vc" data-pvc="skip">${skipCnt}</span>`;
+  sk.onclick=()=>pVote('skip');
+  grid.appendChild(sk);
+}
+
+function updatePVTally(tally){
+  document.querySelectorAll('[data-pvc]').forEach(el=>{
+    el.textContent=tally[el.dataset.pvc]||0;
+  });
+  const skipEl=document.querySelector('[data-pvc="skip"]');
+  if(skipEl)skipEl.textContent=tally['__skip__']||0;
+}
+
+// ── NIGHT ──
+function selT(tid){
+  const r=ps?.role;
+  if(r==='dedikoducu'){if(sel1===tid)sel1=null;else if(sel2===tid)sel2=null;else if(!sel1)sel1=tid;else if(!sel2)sel2=tid;else{sel1=tid;sel2=null;}}
+  else sel1=sel1===tid?null:tid;
+  renderTL();updAB();
+}
+function selGR(rid){selG=selG===rid?null:rid;renderEA();updAB();}
+
+function updAB(){
+  const r=ps?.role;
+  if(ps?.team==='hain'){
+    // Suikastçı dahil tüm hainler gecede sadece kill butonu
+    Q('BK').disabled=!sel1;
+    // Ability butonu: suikastçı gecede yetenek kullanmaz (gündüz kullanır)
+    if(r==='suikastci') Q('BA').disabled=true;
+    else Q('BA').disabled=!sel1;
+  }
+  else if(r==='seri_katil'){Q('BK').disabled=!sel1;}
+  else if(r==='dedikoducu')Q('BSA').disabled=!sel1||!sel2;
+  else if(r==='gazi')Q('BSA').disabled=ps?.gaziUsed;
+  else if(r==='serif')Q('BSA').disabled=!sel1||ps?.serifUsed;
+  else if(r==='bombaci'){
+    const mode=window._bombMode||'place';
+    const myBombs=ps?.myBombs||[];
+    if(mode==='place'){
+      Q('BSA').textContent = sel1 ? '💣 Bomba Koy' : '💣 Önce Hedef Seç';
+    } else {
+      Q('BSA').textContent = myBombs.length>0 ? '💥 Tüm Bombaları Patlat' : '💥 (Bomba Yok)';
+    }
+    Q('BSA').disabled=false; // daima enabled - validation conf'ta
+  }
+  else Q('BSA').disabled=!sel1;
+}
+
+function conf(type){
+  const r=ps?.role;let a={};
+  const isHain=ps?.team==='hain';
+  if(!isHain && nsent)return;
+
+  if(r==='gazi')a={action:'activate'};
+  else if(r==='gardiyan')a={action:'shield'};
+  else if(r==='pusucu')a={targetId:me};  // pusu kurmak için kendine target = aktivasyon
+  else if(r==='dedikoducu')a={target1Id:sel1,target2Id:sel2};
+  else if(r==='serif')a={action:'shoot',targetId:sel1};
+  else if(r==='cilingir')a={targetId:sel1};
+  else if(r==='demirci')a={targetId:sel1};
+  else if(r==='buzcu')a={targetId:sel1};
+  else if(r==='infazci'){
+    // İnfazcı: zindana atma + opsiyonel idam (window._infazExecute flag)
+    a={targetId:sel1, execute: !!window._infazExecute};
+  }
+  else if(r==='bombaci'){
+    const mode=window._bombMode||'place';
+    if(mode==='place'){
+      if(!sel1){toast('Hedef seç!',1);return;}
+      a={action:'place',abilityTargetId:sel1};
+    } else {
+      const myBombs=ps.myBombs||[];
+      if(myBombs.length===0){toast('Patlatacak bomba yok!',1);return;}
+      a={action:'detonate'};
+    }
+  }
+  else if(isHain){
+    if(type==='kill')a={action:'kill',killTargetId:sel1};
+    else{
+      // Suikastçı gecede ability kullanmaz (gündüz kullanır)
+      if(r==='suikastci') return;
+      // Köstebek, Virüs, Pusucu, Hacker hain ability sayılır
+      if(['kostebek','virus','hacker'].includes(r))a={abilityTargetId:sel1};
+      else a={action:'ability',abilityTargetId:sel1};
+    }
+  }
+  else if(r==='seri_katil'){a={action:'kill',targetId:sel1};}
+  else if(r==='veba')a={targetId:sel1};
+  else a={targetId:sel1};
+  io2.emit('nightAction',a,r2=>{
+    if(r2?.ok){
+      if(!isHain){nsent=true;document.querySelectorAll('.abtn .b,#BSA').forEach(b=>{b.disabled=true;b.textContent='✓';});}
+      else{toast('Aksiyon güncellendi!');}
+    } else if(r2 && r2.ok===false){
+      toast(r2.err||'Aksiyon reddedildi.',1);
+    }
+  });
+}
+
+function sendHC(){const i=Q('HCI');if(!i?.value.trim())return;io2.emit('hainChat',{msg:i.value.trim()});i.value='';}
+
+// Suikast modal fonksiyonları
+window._suikastTarget=null;
+window._suikastRole=null;
+function selSuikastRole(rid){
+  window._suikastRole=rid;
+  document.querySelectorAll('#SUIKAST_ROLES .rgb').forEach(b=>b.classList.toggle('sel',b.dataset.rid===rid));
+  updSuikastBtn();
+}
+function updSuikastBtn(){
+  const btn=Q('SUIKAST_DO_BTN');
+  if(btn)btn.disabled=!window._suikastTarget||!window._suikastRole;
+}
+function doSuikast(){
+  if(!window._suikastTarget||!window._suikastRole)return;
+  const btn=Q('SUIKAST_DO_BTN');
+  if(btn){btn.disabled=true;btn.textContent='Gönderiliyor...';}
+  io2.emit('suikast',{targetId:window._suikastTarget,guessedRole:window._suikastRole},r=>{
+    if(!r.ok){
+      Q('SUIKAST_STATUS').textContent=r.err||'Hata!';
+      Q('SUIKAST_STATUS').style.color='var(--hain)';
+      if(btn){btn.disabled=false;btn.textContent='🗡️ SUİKAST!';}
+      toast(r.err||'Hata!',1);
+    } else {
+      // Modal kapansın - sonuç overlay'i suikastResult event'i ile gelecek
+      closeSuikastModal();
+    }
+  });
+}
+// ── VOTE ──
+function doVote(tid){
+  if(voted){toast('Oyun verildi, değiştirilemez.',1);return;}
+  io2.emit('vote',{targetId:tid},r=>{
+    if(r?.ok){
+      voted=tid;
+      document.querySelectorAll('#VG .vb').forEach(b=>{b.classList.toggle('vd',b.dataset.id===tid);});
+    } else {
+      toast('Oy verilemedi.',1);
+    }
+  });
+}
+
+// ── MVP VOTE ──
+function doMvpVote(tid){
+  io2.emit('mvpVote',{targetId:tid},r=>{
+    if(r.ok){
+      mvpVoted=tid;
+      document.querySelectorAll('#MV_GRID .vb').forEach(b=>{b.classList.toggle('vd',b.dataset.id===tid);});
+      toast('İyi oyuncu oyu verildi!');
+    }
+  });
+}
+
+function renderMV(){
+  if(!gs)return;theme(false);
+  // mvpVoted'u sadece yeni MVP fazına geçildiğinde sıfırla (phase change tetikledi)
+  mvpVoted=null;
+  const grid=Q('MV_GRID');grid.innerHTML='';
+  // Tüm oyuncular (öldü ya da hayatta) — ama kendine oy verilemez (MVP için)
+  gs.players.forEach(p=>{
+    if(p.id===me)return;
+    const isMe=false;
+    const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
+    const tally=gs.mvpTally?.[p.id]||0;
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="vb-name">${cosmeticPlayerNameHTML(p,isMe)}</span><span class="vc" data-mvc="${p.id}">${tally}</span><span class="tk">✓</span>`;
+    d.onclick=()=>doMvpVote(p.id);
+    grid.appendChild(d);
+  });
+}
+
+function updateMvpTally(tally){
+  document.querySelectorAll('[data-mvc]').forEach(el=>{
+    el.textContent=tally[el.dataset.mvc]||0;
+  });
+}
+
+function renderMvpResult(result){
+  show('S_MVR');
+  if(result.mvp){
+    Q('MVR_AV').innerHTML=cosmeticPlayerAvatarHTML(result.mvp,'xl',result.mvp.id===me,'5px');
+    Q('MVR_NAME').textContent=result.mvp.name;
+    Q('MVR_VOTES').textContent=`${result.votes} oy aldı`;
+  } else {
+    Q('MVR_AV').innerHTML='';
+    Q('MVR_NAME').textContent='Kimse oy almadı';
+    Q('MVR_VOTES').textContent='';
+  }
+  // Tally
+  const tally=Q('MVR_TALLY');tally.innerHTML='';
+  const entries=Object.entries(result.tally||{}).sort((a,b)=>b[1]-a[1]);
+  if(entries.length===0){
+    tally.innerHTML='<div style="text-align:center;color:var(--dim);font-size:.8rem">Oy verilmedi.</div>';
+  } else {
+    entries.forEach(([pid,votes])=>{
+      const p=gs?.players.find(x=>x.id===pid);
+      if(!p)return;
+      const item=document.createElement('div');
+      item.className='mvp-tally-item';
+      item.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',p.id===me)}<span style="flex:1">${cosmeticPlayerNameHTML(p,p.id===me)}</span><span style="color:var(--gold);font-family:'Fira Code',monospace">${votes}</span>`;
+      tally.appendChild(item);
+    });
+  }
+  const isLeaderMVR = gs?.leaderId === me;
+  Q('BNG2').style.display = isLeaderMVR ? 'block' : 'none';
+  Q('BNG2_WAIT').style.display = isLeaderMVR ? 'none' : 'block';
+}
+
+// ── HISTORY ──
+function renderH(){
+  if(!ps?.history)return;const c=Q('HC');
+  if(!ps.history.length){c.innerHTML='<div style="color:var(--dim);font-size:.85rem;text-align:center;padding:20px">Henüz aksiyon yok.</div>';return;}
+
+  // Action ikonları
+  const actIcons={
+    'Koruma':'🩺','Engelleme':'🔦','Sorgulama':'⚖️','Araştırma':'📰',
+    'Psikoloji':'🧠','Kalkan':'🛡️','Karşılaştırma':'🗣️','Ajan':'🕵️',
+    'Vurma':'🤠','Kilit':'🔑','Takip':'👣','Hipnoz':'🌀',
+    'Bomba koyma':'💣','Patlatma':'💥','Susturma':'👤','Öldürme':'🗡️'
+  };
+  // Sonuç renkleri
+  const getResColor = (res) => {
+    if(!res) return 'var(--dim)';
+    const r = res.toLowerCase();
+    if(r.includes('başarılı')||r.includes('kurtardın')||r.includes('aktif')||r.includes('yerleştirildi'))return 'var(--safe)';
+    if(r.includes('engel')||r.includes('boş'))return 'var(--dim)';
+    if(r.includes('hain')||r.includes('katil')||r.includes('öldü'))return 'var(--hain)';
+    return 'var(--hi)';
+  };
+
+  // Turlara göre grupla
+  const byRound = {};
+  ps.history.forEach(h=>{
+    if(!byRound[h.round])byRound[h.round]=[];
+    byRound[h.round].push(h);
+  });
+
+  const html = Object.keys(byRound).sort((a,b)=>parseInt(b)-parseInt(a)).map(round=>{
+    const items = byRound[round].map(h=>{
+      const icon = actIcons[h.action] || '✨';
+      const resColor = getResColor(h.result);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.02);border-radius:5px;margin:4px 0;font-size:.82rem">
+        <span style="font-size:1rem">${icon}</span>
+        <span style="font-weight:500;min-width:70px">${h.action}</span>
+        <span style="color:var(--dim);flex:1">${h.target||'-'}</span>
+        <span style="color:${resColor};font-weight:500">${h.result||''}</span>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <span style="background:var(--hi);color:#000;padding:2px 8px;border-radius:3px;font-size:.7rem;font-weight:700;font-family:'Fira Code',monospace">TUR ${round}</span>
+      </div>
+      ${items}
+    </div>`;
+  }).join('');
+
+  c.innerHTML=html;
+}
+
+// ── RENDERS ──
+// ── KOZMETİK RENDER HELPER ──
+let _hideOtherCosmetics = false;
+try{_hideOtherCosmetics=localStorage.getItem('azap_hide_cosmetics')==='1';}catch{}
+
+function cosmeticNameHTML(name, cosm, isMe){
+  if(!cosm||(!isMe && _hideOtherCosmetics)) return esc(name);
+  let style='';
+  const fontId=cosm.font||cosm.nameFont||cosm.activeFont||cosm.yazi||cosm.yaziTipi;
+  if(fontId && _cosmeticCatalog?.[fontId]){
+    const p=_cosmeticCatalog[fontId].preview||{};
+    let family=p.family||'inherit';
+    family=family.replace(/\\"/g,'"').replace(/"/g,"'");
+    style+=`font-family:${family};`;
+    if(p.weight) style+=`font-weight:${p.weight};`;
+    if(p.size) style+=`font-size:${p.size};`;
+  }
+  return `<span style="${style}">${esc(name)}</span>`;
+}
+
+// Frame tüm kartı sarar - border+shadow+bg+anim
+function cosmeticFrameWrap(cosm, isMe){
+  if(!cosm||(!isMe && _hideOtherCosmetics)) return null;
+  const frameId=cosm.frame||cosm.avatarFrame||cosm.activeFrame||cosm.cerceve;
+  if(!frameId) return null;
+  const item = _cosmeticCatalog?.[frameId];
+  if(!item) return null;
+  const p=item.preview||{};
+  return {
+    border: p.border||'1px solid var(--brd)',
+    shadow: p.shadow||'none',
+    bg: p.bg||'transparent',
+    anim: p.anim||null
+  };
+}
+// Eski fonksiyon (name span için style)
+function cosmeticFrameStyle(cosm, isMe){
+  const w=cosmeticFrameWrap(cosm,isMe);
+  if(!w) return '';
+  let s=`border:${w.border};box-shadow:${w.shadow};background:${w.bg};padding:3px 8px;border-radius:6px;`;
+  if(w.anim) s+=`animation:${w.anim} 1.5s ease-in-out infinite;`;
+  return s;
+}
+
+function cosmeticPetHTML(cosm, isMe){
+  if(!cosm||(!isMe && _hideOtherCosmetics)) return '';
+  const petId=cosm.pet||cosm.activePet||cosm.companion;
+  if(!petId) return '';
+  const item = _cosmeticCatalog?.[petId];
+  if(!item) return '';
+  const p=item.preview||{};
+  const anim=p.anim||'catIdle';
+  const sprite=p.sprite||item.emoji;
+  return `<span style="display:inline-block;font-size:1.1rem;margin-left:4px;vertical-align:middle;animation:${anim} 3s ease-in-out infinite;line-height:1">${sprite}</span>`;
+}
+function cosmeticPlayerAvatarHTML(p, size, isMe, pad){
+  const fw=cosmeticFrameWrap(p?.cosmetics,isMe);
+  let avatar=avHTML(p?.avatar,size||'sm');
+  if(fw){
+    avatar=`<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:${pad||'3px'};margin:1px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatar}</div>`;
+  }
+  return avatar;
+}
+function cosmeticPlayerNameHTML(p, isMe, extraHtml, style){
+  const name=cosmeticNameHTML(p?.name||'',p?.cosmetics,isMe);
+  const pet=cosmeticPetHTML(p?.cosmetics,isMe);
+  return `<span style="${style||''}">${name}${extraHtml||''}${pet}</span>`;
+}
+
+function renderLobby(){
+  if(!gs)return;
+  if(!_cosmeticCatalog){
+    loadCosmeticCatalog().then(()=>{ if(gs?.phase==='lobby') renderLobby(); });
+  }
+  Q('LP').innerHTML='';
+  const isLeader = me===gs.leaderId;
+  gs.players.forEach(p=>{
+    const li=document.createElement('li');li.className='pi fade';
+    const isMe=p.id===me;
+    const showKick = isLeader && !isMe;
+    const avatarHtml = cosmeticPlayerAvatarHTML(p,'sm',isMe,'4px');
+    const nameHtml = cosmeticPlayerNameHTML(p,isMe,isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'');
+    li.innerHTML=`${avatarHtml}<span class="pi-name">${nameHtml}</span>${p.id===gs.leaderId?'<span class="badge badge-l">LİDER</span>':''}<span class="wins-badge">🏆${p.wins||0}<span class="heart">❤️${p.mvp||0}</span></span>${showKick?`<button class="kick-btn" data-pid="${p.id}" title="Oyuncuyu at">🚫</button>`:''}`;
+    Q('LP').appendChild(li);
+  });
+  // Kick butonlarına event ekle
+  if(isLeader){
+    document.querySelectorAll('.kick-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const pid=btn.getAttribute('data-pid');
+        const target=gs.players.find(p=>p.id===pid);
+        if(!target)return;
+        if(confirm(`${target.name} oyuncusunu odadan atmak istediğine emin misin?`)){
+          io2.emit('room:kick',{targetId:pid},r=>{
+            if(r?.ok){
+              toast(`${r.kickedName||target.name} atıldı.`);
+            } else {
+              toast(r?.err||'Atma işlemi başarısız.',1);
+            }
+          });
+        }
+      });
+    });
+  }
+  const sp=Q('LS');
+  sp.innerHTML=gs.spectators?.length?`<div class="lbl mt8">👁️ İzleyiciler</div>`+gs.spectators.map(s=>`<div class="pi" style="opacity:.5">${avHTML(s.avatar,'sm','👁️')}<span class="pi-name"><span>${s.name}</span></span></div>`).join(''):'';
+  Q('SP2').style.display=io2.id===gs.leaderId?'block':'none';
+  Q('BS').disabled=gs.players.length<4;
+  // Altın Havuzu paneli sadece login olmuş ve oyuncu olarak katılmış kişiye görünür
+  const bp=Q('BET_PANEL');
+  if(bp){
+    const isPlayer = gs.players.some(p=>p.id===me);
+    bp.style.display = (user && isPlayer) ? 'block' : 'none';
+    const bmc=Q('BET_MY_COINS');
+    if(bmc && user) bmc.textContent='💰 ' + (user.coins||0);
+  }
+}
+
+function renderRole(){
+  if(!ps)return;Q('RE').textContent=ps.roleEmoji;Q('RN').textContent=ps.roleName;
+  const t=Q('RT');t.textContent=ps.team.toUpperCase();t.className='rtag '+ps.team;
+  Q('RD').textContent=ps.roleDesc;
+  const x=Q('RX');
+  if(ps.teammates?.length){
+    x.innerHTML=`<div style="padding:8px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:5px">
+      <div class="lbl" style="color:var(--hain)">🧛 Hain Takımın</div>
+      <div style="font-size:.7rem;color:var(--dim);margin-bottom:4px;font-style:italic">Rolleri sen de bilmiyorsun.</div>
+      ${ps.teammates.map(t=>`<div style="display:flex;align-items:center;gap:6px;font-size:.85rem;margin:3px 0">${avHTML(t.avatar,'sm')}<span style="color:var(--hain);font-weight:600">🧛 ${t.name}</span></div>`).join('')}</div>`;
+  } else if(ps.cellatTarget){
+    x.innerHTML=`<div style="padding:8px;background:rgba(211,84,0,.06);border:1px solid rgba(211,84,0,.15);border-radius:5px">
+      <div class="lbl" style="color:var(--tarafsiz)">⛓️ Hedefin: <strong>${ps.cellatTarget}</strong></div></div>`;
+  } else if(ps.koruyucuTarget){
+    x.innerHTML=`<div style="padding:8px;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.25);border-radius:5px">
+      <div class="lbl" style="color:#2ecc71">😇 Koruman Gereken: <strong>${ps.koruyucuTarget}</strong></div>
+      <div style="font-size:.7rem;color:var(--dim);margin-top:4px">Hayatta kalırsa sen de kazanırsın!</div></div>`;
+  } else x.innerHTML='';
+}
+
+function renderNight(){
+  if(!ps||!gs)return;nsent=false;sel1=null;sel2=null;selG=null;window._bombMode='place';theme(false);
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='night')renderNight();});}
+  Q('NR').textContent='Tur '+gs.round;Q('NE').textContent=ps.roleEmoji;Q('NN').textContent=ps.roleName;
+  const r=ps.role,isH=ps.team==='hain',isSK=r==='seri_katil';
+
+  const labels={doktor:ps.doktorSelfUsed?'Korumak istediğin kişiyi seç':'Korumak istediğin kişiyi seç (kendini 1 kez koruyabilirsin)',polis:'Engellemek istediğin kişiyi seç',
+    savci:ps.savciUsed?'Sorgulama hakkını kullandın':'Rolünü öğrenmek istediğin kişiyi seç',
+    gazeteci:'Kontrol etmek istediğin kişiyi seç',
+    psikolog:'Kontrol etmek istediğin kişiyi seç',gazi:'Ölümsüzlük kalkanını aktive et',
+    dedikoducu:'Karşılaştırmak istediğin iki kişiyi seç',ajan:'İncelemek istediğin kişiyi seç',
+    serif:ps.serifUsed?'Silahını zaten kullandın':'Kimi vurmak istiyorsun? (TEK KULLANIM!)',
+    kurban:'Pasif rol. Aksiyonun yok.',
+    cilingir:'Kimi evine kilitlemek istiyorsun?',
+    demirci:'Kime Çelik Zırh giydirmek istiyorsun? (kendine yapamazsın)',
+    buzcu: (ps.buzcuLeft!==undefined && ps.buzcuLeft<=0) ? 'Karantina hakkın bitti.' : `Karantinaya almak istediğin kişiyi seç (kalan: ${ps.buzcuLeft??2})`,
+    koruyucu:'Pasif rol. Birinin koruyucususun.',
+    infazci: (ps.infazExecutionsLeft??1) > 0 ? 'Zindana kapatmak istediğin kişiyi seç. İdam etmek istersen "İdam et" seçeneğini işaretle.' : 'Zindana kapatmak istediğin kişiyi seç (idam hakkın bitti).',
+    gardiyan: ps.gardiyanUsed ? 'Sokağa Çıkma Yasağı hakkını kullandın.' : '🛡️ Bu gece Sokağa Çıkma Yasağı ilan etmek için butona bas (TEK KULLANIM!)',
+    engizitor:'Pasif rol. Gündüz infaz et.',
+    olumsuz:'Pasif rol. 1 kez canlanırsın.',
+    kostebek:'İncelemek istediğin kişiyi seç (her gece)',
+    virus:'Virüs bulaştırmak istediğin kişiyi seç (kendine yapamazsın)',
+    pusucu:'Pusu kuracak mısın? Butona bas.',
+    hacker:'Hacklemek istediğin bilgi rolünü seç',
+    veba:'Hastalık bulaştırmak istediğin kişiyi seç',
+    suikastci:'Hedef seç ve rol tahmin et',hipnotizmaci:'Kimi hipnotize etmek istiyorsun?',
+    bombaci:'Bomba koy veya patlatma',golge:'Kimi susturmak istiyorsun?',
+    seri_katil:'Kimi öldürmek istiyorsun?',muhtar:'Gece aksiyonun yok.',
+    dodo:'Gece aksiyonun yok.',cellat:'Hedefinin asılmasını bekle.',yamyam:'Yetenekler otomatik toplanır.'};
+  Q('AL').textContent=labels[r]||'Hedef seç';
+
+  if(r==='bombaci'){
+    // Bombacı özel: kill yok, iki ayrı buton (Koy / Patlat)
+    Q('AB2').style.display='none';
+    Q('SAA').style.display='block';
+  } else if(isH||isSK){Q('AB2').style.display='flex';Q('SAA').style.display='none';
+    if(isSK){Q('BA').style.display='none';Q('BK').style.display='block';}
+    else{Q('BA').style.display='block';Q('BK').style.display='block';}
+  }else if(ps.hasNightAction&&!['muhtar','dodo','cellat','yamyam','kurban','koruyucu','engizitor','olumsuz'].includes(r)){
+    Q('AB2').style.display='none';Q('SAA').style.display='block';
+  }else{Q('AB2').style.display='none';Q('SAA').style.display='none';}
+
+  Q('BK').textContent='🗡️ Öldür';Q('BK').disabled=true;
+  Q('BA').textContent='✨ Yetenek';Q('BA').disabled=true;
+  Q('BSA').textContent='Onayla';Q('BSA').disabled=true;
+
+  const hca=Q('HCA');
+  if(isH){
+    // Bombacı kill yapamaz - kill oyları kısmı gösterilmez
+    const killVotesHtml = r==='bombaci' ? '' : `<div class="hkv" id="HKVB"><div class="hkv-t">🗡️ Hain Kill Oyları (canlı)</div><div id="HKV_LIST">Henüz oy yok.</div></div>`;
+    hca.innerHTML=killVotesHtml + `<div class="hc mt8" id="HCB"><div class="hc-t">🧛 Hain Sohbeti</div><div id="HCM"></div></div>
+    <div class="hci"><input class="inp" id="HCI" placeholder="Mesaj..." onkeypress="if(event.key==='Enter')sendHC()">
+    <button class="b bs b2" onclick="sendHC()">→</button></div>`;
+    if(ps.hainKillVotes && r!=='bombaci')renderHKV(ps.hainKillVotes);
+  }
+  else hca.innerHTML='';
+
+  renderTL();renderEA();updAB();
+}
+
+function renderTL(){
+  const list=Q('NTL');if(!gs||!ps)return;
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='night')renderTL();});}
+  const r=ps.role;
+  if(['muhtar','dodo','cellat','yamyam','kurban','koruyucu','engizitor','olumsuz'].includes(r)){
+    if(r==='koruyucu'&&ps.koruyucuTarget){
+      list.innerHTML=`<div class="tc" style="padding:16px;color:#2ecc71"><div>😇 Koruman Gereken: <strong>${ps.koruyucuTarget}</strong></div><div style="font-size:.75rem;color:var(--dim);margin-top:6px">O hayatta kalırsa sen de kazanırsın!</div></div>`;return;
+    }
+    list.innerHTML=`<div class="tc" style="padding:16px;color:var(--dim)">${r==='yamyam'&&ps.yamyamAbilities?.length?'Toplanan: '+ps.yamyamAbilities.join(', '):'Bu gece aksiyonun yok.'}</div>`;return;}
+  if(r==='gazi'){
+    list.innerHTML=ps.gaziUsed?'<div class="tc" style="padding:16px;color:var(--dim)">Hakkını kullandın.</div>'
+      :'<div class="tc" style="padding:16px"><div style="font-size:2rem">🛡️</div><div class="mt8" style="color:var(--dim)">Kalkanı aktive et</div></div>';return;}
+  if(r==='savci'&&ps.savciUsed){list.innerHTML='<div class="tc" style="padding:16px;color:var(--dim)">Sorgulama hakkın bitti.</div>';
+    Q('SAA').style.display='none';return;}
+  if(r==='serif'&&ps.serifUsed){list.innerHTML='<div class="tc" style="padding:16px;color:var(--dim)">Silahını zaten kullandın.</div>';
+    Q('SAA').style.display='none';return;}
+
+  // Gardiyan özel UI: tek butonla aktivasyon
+  if(r==='gardiyan'){
+    if(ps.gardiyanUsed){
+      list.innerHTML='<div class="tc" style="padding:16px;color:var(--dim)">Sokağa Çıkma Yasağı hakkını kullandın.</div>';
+      Q('SAA').style.display='none';
+      return;
+    }
+    list.innerHTML=`<div class="tc" style="padding:16px">
+      <div style="font-size:2rem">🛡️</div>
+      <div class="mt8" style="color:var(--dim);font-size:.85rem">Bu gece SOKAĞA ÇIKMA YASAĞI ilan etmek için onayla.<br>Hiç kimse zarar görmez (TEK KULLANIM).</div>
+    </div>`;
+    sel1 = me; // Onayla butonunu aktif et
+    return;
+  }
+  // Pusucu özel UI: tek butonla pusu kur
+  if(r==='pusucu'){
+    list.innerHTML=`<div class="tc" style="padding:16px">
+      <div style="font-size:2rem">🪤</div>
+      <div class="mt8" style="color:var(--dim);font-size:.85rem">Pusu kurmak için onayla.<br>Bu gece evine gelen oyunculardan biri rastgele ölür.</div>
+    </div>`;
+    // sel1'i kendi id'ye set et ki onay aktif olsun
+    sel1 = me;
+    return;
+  }
+
+  // Bombacı özel UI: 2 ayrı buton (Bomba Koy / Patlat)
+  if(r==='bombaci'){
+    const myBombs = ps.myBombs || [];
+    const oldBombs = myBombs.filter(()=>true); // tüm bombalar (önceki turlardan)
+
+    // Bomba listesi (varsa göster)
+    const bombListHtml = myBombs.length > 0
+      ? `<div style="padding:8px;background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.3);border-radius:5px;margin-bottom:10px">
+          <div style="font-size:.78rem;color:var(--hain);margin-bottom:4px">💣 Yerleştirdiğin bombalar:</div>
+          ${myBombs.map(bid=>{
+            const bp=gs.players.find(pp=>pp.id===bid);
+            return bp ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,0,0,.3);padding:3px 8px;border-radius:4px;margin:2px;font-size:.82rem">💣 ${bp.name}</span>` : '';
+          }).join('')}
+        </div>`
+      : '';
+
+    // Aktif mod (place / detonate)
+    const mode = window._bombMode || 'place';
+
+    // Hedef listesi (sadece place modunda)
+    let targetListHtml = '';
+    if(mode === 'place'){
+      const isHain=ps?.team==='hain';
+      const teammateIds = new Set();
+      if(isHain && ps.teammates) ps.teammates.forEach(t=>teammateIds.add(t.id));
+      const myBombSet = new Set(myBombs);
+      const alive = gs.players.filter(p=>p.isAlive&&p.id!==me);
+      targetListHtml = `<div class="lbl">Bomba koymak istediğin kişi:</div>` +
+        alive.map(p=>{
+          const isT = teammateIds.has(p.id);
+          const has = myBombSet.has(p.id);
+          const sel = p.id===sel1?'sel':'';
+          const ns = isT ? 'color:var(--hain);font-weight:600' : '';
+          const isMe = p.id===me;
+          return `<div class="tb ${sel}" data-bid="${p.id}" onclick="selBombTarget('${p.id}')">
+            ${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="tb-name">${cosmeticPlayerNameHTML(p,isMe,`${isT?' 🧛':''}${has?' <span style="color:var(--hain)">💣</span>':''}`,ns)}${p.isPresident?'<span class="crown">👑</span>':''}</span>
+          </div>`;
+        }).join('');
+    } else {
+      targetListHtml = `<div style="padding:14px;text-align:center;color:var(--dim);background:var(--bg2);border-radius:5px">
+        <div style="font-size:1.5rem">💥</div>
+        <div class="mt8">${myBombs.length>0?`Tüm bombalarını patlat (${myBombs.length} kişi)`:'Hiç bomba koymadın!'}</div>
+      </div>`;
+    }
+
+    list.innerHTML = bombListHtml + `
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="b ${mode==='place'?'b1':'b2'} bs" style="flex:1" onclick="setBombMode('place')">💣 Bomba Koy</button>
+        <button class="b ${mode==='detonate'?'b1':'b2'} bs" style="flex:1" onclick="setBombMode('detonate')" ${myBombs.length===0?'disabled':''}>💥 Patlat</button>
+      </div>
+    ` + targetListHtml;
+    // BSA butonunun durumunu doğrudan ayarla — daima enabled (validation conf'ta)
+    const bsa = Q('BSA');
+    if(bsa){
+      if(mode==='place'){
+        bsa.textContent = sel1 ? '💣 Bomba Koy' : '💣 Önce Hedef Seç';
+        bsa.disabled = false;
+      } else {
+        bsa.textContent = myBombs.length>0 ? '💥 Tüm Bombaları Patlat' : '💥 (Bomba Yok)';
+        bsa.disabled = false;
+      }
+    }
+    return;
+  }
+
+  // İnfazcı: hedef listesi + idam et seçeneği
+  if(r==='infazci'){
+    // Önce hedef listesi normal şekilde render edilir (sonra altta idam checkbox)
+    // bu özel UI buton'ın altına idam checkbox koyacağız
+    // sel1 set edildikten sonra idam onay kutusu görünür
+    setTimeout(()=>{
+      const saa = Q('SAA');
+      if(!saa) return;
+      const left = ps.infazExecutionsLeft ?? 1;
+      // Idam checkbox HTML
+      let infazUI = Q('INFAZ_UI');
+      if(!infazUI){
+        infazUI = document.createElement('div');
+        infazUI.id = 'INFAZ_UI';
+        infazUI.style.cssText = 'margin:8px 0;padding:8px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.3);border-radius:5px;font-size:.78rem';
+        saa.parentNode.insertBefore(infazUI, saa);
+      }
+      if(left > 0){
+        infazUI.innerHTML = `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--hain)">
+          <input type="checkbox" id="INFAZ_EXEC" onchange="window._infazExecute=this.checked;updAB()"> 
+          🔨 İdam et (kalan: ${left}, GERİ ALINAMAZ!)
+        </label>`;
+      } else {
+        infazUI.innerHTML = '<span style="color:var(--dim)">İdam hakkın bitti — sadece zindana atabilirsin.</span>';
+      }
+    }, 50);
+  } else {
+    // İnfazcı dışı: temizle
+    const u = Q('INFAZ_UI');
+    if(u) u.remove();
+    window._infazExecute = false;
+  }
+
+  // Doktor kendini koruyabilir (1 kez), bu yüzden kendi de listede olsun
+  const allowSelf = r==='doktor' && !ps.doktorSelfUsed;
+  const alive=gs.players.filter(p=>p.isAlive && (p.id!==me || allowSelf));
+  const isHain=ps?.team==='hain';
+  // Hain ise: diğer hain takım arkadaşlarının id'lerini topla
+  const teammateIds = new Set();
+  if(isHain && ps.teammates){
+    ps.teammates.forEach(t=>teammateIds.add(t.id));
+  }
+  // Bombacı: kendi bombalarını işaretle
+  const myBombIds = new Set(ps.myBombs || []);
+  // Cellat: kendi hedefini işaretle (sadece cellat görür)
+  const cellatTargetId = r==='cellat' ? ps.cellatTargetId : null;
+  list.innerHTML='';
+  alive.forEach(p=>{
+    const s=p.id===sel1||p.id===sel2;
+    const isTeammate = teammateIds.has(p.id);
+    const hasBomb = myBombIds.has(p.id);
+    const isCellatTarget = p.id===cellatTargetId;
+    const isMe = p.id===me;
+    const d=document.createElement('div');d.className='tb'+(s?' sel':'');
+    const nameStyle = isTeammate ? 'color:var(--hain);font-weight:600' : (isCellatTarget ? 'color:var(--tarafsiz);font-weight:600' : (isMe ? 'color:var(--hi);font-weight:600' : ''));
+    const bombIcon = hasBomb ? ' <span style="color:var(--hain);" title="Bomba kondu">💣</span>' : '';
+    const cellatIcon = isCellatTarget ? ' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>' : '';
+    const meTag = isMe ? ' <span style="font-size:.7rem;color:var(--hi)">(SEN — TEK KULLANIM!)</span>' : '';
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="tb-name">${cosmeticPlayerNameHTML(p,isMe,`${isTeammate?' 🧛':''}${cellatIcon}${bombIcon}${meTag}`,nameStyle)}${p.isPresident?'<span class="crown">👑</span>':''}</span>`;
+    d.onclick=()=>selT(p.id);list.appendChild(d);
+  });
+}
+
+function renderEA(){
+  const a=Q('EA');
+  // Bombacı için ayrı UI renderTL'de var — burada gösterme
+  a.innerHTML='';
+}
+
+// Bombacı yardımcıları
+window._bombMode = 'place';
+function setBombMode(m){
+  window._bombMode = m;
+  if(m==='detonate'){sel1=null;sel2=null;}
+  renderTL();
+  updAB();
+}
+function selBombTarget(pid){
+  sel1 = sel1===pid ? null : pid;
+  renderTL();
+  updAB();
+}
+
+function renderHKV(votes){
+  const list=Q('HKV_LIST');
+  if(!list||!gs)return;
+  const entries=Object.entries(votes||{});
+  if(!entries.length){list.innerHTML='<div class="hkv-r" style="font-style:italic">Henüz oy yok.</div>';return;}
+  list.innerHTML=entries.map(([hid,tid])=>{
+    const h=gs.players.find(p=>p.id===hid),t=gs.players.find(p=>p.id===tid);
+    if(!h||!t)return '';
+    return `<div class="hkv-r"><strong style="color:var(--hain)">${h.name}</strong> → ${t.name}</div>`;
+  }).join('');
+}
+
+function renderReport(reps){
+  Q('RR').textContent='Tur '+(gs?.round||1);
+  const l=Q('RL');
+  // Şafak efekti: gece→sabah geçişi
+  const dawn=Q('DAWN');
+  dawn.classList.add('active');
+  setTimeout(()=>dawn.classList.remove('active'),8000);
+  if(!reps?.length){l.innerHTML='<div class="rep" style="border-left-color:var(--dim)">Sakin bir gece. Rapor yok.</div>';return;}
+  l.innerHTML=reps.map((r,i)=>`<div class="rep" style="animation-delay:${i*.12}s">${r.i} ${r.t}</div>`).join('');
+}
+
+function renderDay(){
+  if(!gs)return;theme(true);
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='day_discussion')renderDay();});}
+  Q('DAY_PS').textContent=gs.presidentId?`Başkan: ${gs.players.find(p=>p.id===gs.presidentId)?.name||'-'} • Oylama yaklaşıyor...`:'Tartışın! Oylama 20 saniye sonra başlıyor...';
+  Q('SM').innerHTML=ps?.isSilenced?'<div class="silban">🤐 Susturuldun! Bu tur konuşamazsın.</div>':'';
+  const da=Q('DA');
+  // Gece ölenler: backend'den gelen deadThisNight (gündüz ölenler dahil değil)
+  const deadIds=gs.deadThisNight||[];
+  if(deadIds.length){
+    const names=deadIds.map(id=>gs.players.find(p=>p.id===id)?.name).filter(Boolean);
+    da.innerHTML=`<div style="padding:11px;background:rgba(139,0,0,.08);border:1px solid rgba(139,0,0,.15);border-radius:5px;text-align:center">
+      <div style="font-size:1.7rem">💀</div><div class="mt8"><strong>${names.join(', ')}</strong> gece hayatını kaybetti.</div></div>`;
+  }
+  else if(gs.round>1)da.innerHTML='<div style="padding:11px;background:rgba(39,174,96,.06);border:1px solid rgba(39,174,96,.15);border-radius:5px;text-align:center;color:var(--safe)">🌅 Herkes sağ salim uyandı!</div>';
+  else da.innerHTML='';
+  Q('DP').innerHTML='';
+  const isHain2=ps?.team==='hain';
+  const tmIds=new Set();
+  if(isHain2&&ps.teammates)ps.teammates.forEach(t=>tmIds.add(t.id));
+  // Cellat: kendi hedefi
+  const cellatTargetId = ps?.role==='cellat' ? ps.cellatTargetId : null;
+  gs.players.forEach(p=>{
+    const isT=tmIds.has(p.id);
+    const isMe=p.id===me;
+    const isCT=p.id===cellatTargetId;
+    const li=document.createElement('li');li.className='pi'+(p.isAlive?'':' dead')+(p.isPresident?' president':'');
+    const nameStyle=isT?'color:var(--hain);font-weight:600':(isCT?'color:var(--tarafsiz);font-weight:600':'');
+    const meTag=isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'';
+    const ctIcon=isCT?' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>':'';
+    li.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="pi-name">${cosmeticPlayerNameHTML(p,isMe,`${meTag}${isT?' 🧛':''}${ctIcon}`,nameStyle)}${p.isPresident?'<span class="crown">👑</span>':''}</span>${!p.isAlive?'<span style="font-size:.85rem">💀</span>':''}`;
+    Q('DP').appendChild(li);
+  });
+  // Suikastçı floating butonu güncelle (gündüzde görünür)
+  updateSuikastFloatingBtn();updateRoleInfoBtn();
+}
+
+// Suikast modal & floating buton mantığı
+function updateSuikastFloatingBtn(){
+  const btn=Q('SUIKAST_BTN_FLOAT');
+  if(!btn)return;
+  const isSuikastci = ps?.role==='suikastci' && ps?.isAlive;
+  const inDayPhase = gs?.phase==='day_discussion' || gs?.phase==='voting';
+  if(isSuikastci && inDayPhase){
+    btn.classList.add('sh');
+    btn.disabled = !!gs?.suikastUsedThisRound;
+    btn.title = gs?.suikastUsedThisRound ? 'Bu tur zaten suikast denedin' : 'Suikast yap';
+  } else {
+    btn.classList.remove('sh');
+  }
+  // Engizitör butonu (sadece tartışma fazında, kullanılmadıysa)
+  const ebtn = Q('ENGIZITOR_BTN_FLOAT');
+  if(ebtn){
+    const isEngizitor = ps?.role==='engizitor' && ps?.isAlive && !ps?.engizitorUsed;
+    if(isEngizitor && gs?.phase==='day_discussion'){
+      ebtn.style.display='flex';
+    } else {
+      ebtn.style.display='none';
+    }
+  }
+  // Floating sabotaj butonu (hain takım, gece fazında)
+  const sbtn = Q('SABOTAJ_BTN_FLOAT');
+  if(sbtn){
+    const isHain = ps?.team === 'hain' && ps?.isAlive;
+    if(isHain && gs?.phase === 'night'){
+      sbtn.style.display='flex';
+      if(ps?.sabotageVoted){
+        sbtn.style.background='linear-gradient(135deg,#a04020,#c25030)';
+        sbtn.style.boxShadow='0 0 12px rgba(192,80,40,.5)';
+        sbtn.title='Sabotaj oyunu geri çek';
+      } else {
+        sbtn.style.background='linear-gradient(135deg,#5e2c1c,#8e3a1a)';
+        sbtn.style.boxShadow='';
+        sbtn.title='Sabotaj oyu ver';
+      }
+    } else {
+      sbtn.style.display='none';
+    }
+  }
+  // Mini Oyun butonu (sadece HAINLER için — sahte mod, coin yok, eğlence)
+  const mgBtn = Q('MINIGAME_BTN_FLOAT');
+  if(mgBtn){
+    const inDayPhase = gs?.phase === 'day_discussion' || gs?.phase === 'voting';
+    const isAlive = ps?.isAlive;
+    const isHain = ps?.team === 'hain';
+    const sabotageActive = !!ps?.sabotageGame;
+    if(inDayPhase && isAlive && isHain && !sabotageActive){
+      mgBtn.style.display='flex';
+    } else {
+      mgBtn.style.display='none';
+    }
+  }
+}
+
+// Sahte mini oyun (eğlence — coin yok, sabotaj sırası dışı)
+function openFakeMinigame(){
+  if(!confirm('🎮 Mini Oyun (Eğlence)\n\nBilgisayara karşı sahte mini oyun. Coin kazanamazsın, sadece eğlence amaçlı. Devam?'))return;
+  // Rastgele oyun seç
+  const games = ['xox','rps','colorword'];
+  const gType = games[Math.floor(Math.random()*games.length)];
+  // Sahte oyun ayar
+  Q('SABO_OV').classList.add('sh');
+  Q('SABO_SUB').textContent = '🎮 Eğlence Modu — Coin yok';
+  window._saboFakeMode = true;
+  if(gType === 'xox') initXOX();
+  else if(gType === 'rps') initRPS();
+  else if(gType === 'colorword') initColorWord();
+}
+
+function toggleSabotage(){
+  const isVoted = ps?.sabotageVoted;
+  const msg = isVoted
+    ? '🚨 Sabotaj oyunu geri çekmek istediğine emin misin?'
+    : '🚨 SABOTAJ\nGündüz rastgele bir anda 2-3 oyuncuya mini oyun gelir. Senin oyun yeterli (1 hain). Devam?';
+  if(!confirm(msg))return;
+  io2.emit('sabotage:vote', null, r => {
+    if(r?.ok){
+      const m = r.voted
+        ? '✅ Sabotaj oyu verildi'
+        : '⏪ Sabotaj oyun geri alındı';
+      toast(m);
+    }
+  });
+}
+
+// Sabotaj durum güncellemesi (hain takımına özel)
+io2.on('sabotage:update', d => {
+  const sbtn = Q('SABOTAJ_BTN_FLOAT');
+  if(sbtn){
+    sbtn.title = `Sabotaj: ${d.totalVotes}/${d.neededVotes} hain oy verdi`;
+  }
+});
+
+// Genel toast event (server tarafından gönderilen)
+io2.on('toast', d => {
+  if(d?.msg) toast(d.msg, d.type === 'error' ? 1 : 0);
+});
+
+// ── SABOTAJ MİNİ OYUNLAR ──
+let _saboGame = null;
+let _saboShown = false;
+let _saboStarted = false;
+let _saboDeathToasted = false;
+let _saboPromptTimer = null;
+let _saboCountdownInterval = null;
+
+function sabotageCheck(){
+  if(!ps?.sabotageGame || ps.sabotageGame.completed){
+    if(ps?.sabotageGame?.status === 'timeout' && !ps?.isAlive && !_saboDeathToasted){
+      _saboDeathToasted = true;
+      toast('💀 Öldün!', 1);
+    }
+    Q('SABO_OV').classList.remove('sh');
+    _saboShown = false;
+    _saboStarted = false;
+    if(_saboCountdownInterval){clearInterval(_saboCountdownInterval);_saboCountdownInterval=null;}
+    const cdEl=Q('SABO_COUNTDOWN');if(cdEl)cdEl.textContent='';
+    if(_saboPromptTimer){clearTimeout(_saboPromptTimer);_saboPromptTimer=null;}
+    return;
+  }
+  if(gs?.phase !== 'morning_report' && gs?.phase !== 'day_discussion' && gs?.phase !== 'voting') return;
+  if(_saboShown) return;
+  const promptAt = ps.sabotageGame.promptAt || Date.now();
+  const wait = Math.max(0, promptAt - Date.now());
+  if(_saboPromptTimer) return;
+  _saboPromptTimer = setTimeout(() => {
+    _saboPromptTimer = null;
+    // Hâlâ aktif mi (faz değişti mi, sabotaj sona erdi mi)
+    if(!ps?.sabotageGame || ps.sabotageGame.completed) return;
+    if(gs?.phase !== 'morning_report' && gs?.phase !== 'day_discussion' && gs?.phase !== 'voting') return;
+    _saboShown = true;
+    startSabotageGame(ps.sabotageGame.gameType);
+  }, wait);
+}
+
+function startSabotageGame(gameType){
+  Q('SABO_OV').classList.add('sh');
+  _saboStarted = false;
+  if(!window._saboFakeMode){
+    const dl = ps?.sabotageGame?.deadlineAt;
+    if(dl) _startSaboCountdown(dl);
+  }
+  const sub = Q('SABO_SUB');
+  if(gameType === 'xox'){
+    sub.textContent = 'XOX — Bilgisayara karşı kazanmaya çalış!';
+    initXOX();
+  } else if(gameType === 'rps'){
+    sub.textContent = 'Taş Kağıt Makas — Üst üste 2 raunt kazan!';
+    initRPS();
+  } else if(gameType === 'colorword'){
+    sub.textContent = 'Renk Yaz — Yazıdaki RENGE bas, kelimeye değil!';
+    initColorWord();
+  }
+}
+
+function _startSaboCountdown(deadline){
+  if(_saboCountdownInterval){clearInterval(_saboCountdownInterval);_saboCountdownInterval=null;}
+  const el=Q('SABO_COUNTDOWN');
+  const isHain = ps?.team === 'hain';
+  const tick = () => {
+    if(!el) return;
+    const left = Math.ceil((deadline - Date.now()) / 1000);
+    if(left <= 0){
+      clearInterval(_saboCountdownInterval);
+      _saboCountdownInterval = null;
+      if(!_saboStarted && !isHain){
+        el.textContent = '💀 Süre doldu!';
+        el.style.color = '#c0392b';
+      } else {
+        el.textContent = '';
+      }
+      return;
+    }
+    el.textContent = isHain ? `⏰ ${left}s (hain: ölüm yok)` : `⚠️ ${left}s içinde başla veya ölürsün!`;
+    el.style.color = left <= 3 ? '#c0392b' : left <= 5 ? '#f39c12' : '#e0e0e0';
+  };
+  tick();
+  _saboCountdownInterval = setInterval(tick, 500);
+}
+
+function saboMarkStarted(){
+  if(_saboStarted) return;
+  _saboStarted = true;
+  if(_saboCountdownInterval){clearInterval(_saboCountdownInterval);_saboCountdownInterval=null;}
+  const el=Q('SABO_COUNTDOWN');if(el)el.textContent='';
+  if(!window._saboFakeMode){
+    io2.emit('sabotage:begin', null, ()=>{});
+  }
+}
+
+function sabotageSkip(){
+  if(window._saboFakeMode){
+    if(!confirm('Mini oyunu kapatmak istiyor musun?'))return;
+    window._saboFakeMode = false;
+    Q('SABO_OV').classList.remove('sh');
+    _saboShown = false;
+    return;
+  }
+  if(!confirm('Mini oyunu geçmek istiyor musun? (kaybetmiş sayılırsın)'))return;
+  io2.emit('sabotage:result', { won: false }, ()=>{
+    Q('SABO_OV').classList.remove('sh');
+    _saboShown = false;
+  });
+}
+
+function sabotageEnd(won){
+  // Sahte mod: server'a kayıt yok
+  if(window._saboFakeMode){
+    window._saboFakeMode = false;
+    setTimeout(()=>{
+      Q('SABO_OV').classList.remove('sh');
+      _saboShown = false;
+    }, 1500);
+    return;
+  }
+  io2.emit('sabotage:result', { won }, ()=>{
+    setTimeout(()=>{
+      Q('SABO_OV').classList.remove('sh');
+      _saboShown = false;
+    }, 1500);
+  });
+}
+
+// ── XOX (Tic Tac Toe) ──
+function initXOX(){
+  _saboGame = { board: Array(9).fill(null), playerSymbol: 'X', aiSymbol: 'O', turn: 'player' };
+  renderXOX();
+}
+
+function renderXOX(){
+  const g = _saboGame;
+  const status = g.winner === 'player' ? '🎉 Kazandın!' : g.winner === 'ai' ? '💀 Kaybettin!' : g.winner === 'draw' ? '🤝 Berabere!' : (g.turn === 'player' ? 'Senin sıran (X)' : 'Bilgisayar düşünüyor...');
+  let html = `<div class="xox-status">${status}</div><div class="xox-board">`;
+  g.board.forEach((cell, i) => {
+    const cls = cell ? `taken ${cell.toLowerCase()}` : '';
+    html += `<div class="xox-cell ${cls}" onclick="xoxClick(${i})">${cell || ''}</div>`;
+  });
+  html += '</div>';
+  Q('SABO_BODY').innerHTML = html;
+}
+
+function xoxClick(i){
+  const g = _saboGame;
+  if(g.winner || g.turn !== 'player' || g.board[i]) return;
+  saboMarkStarted();
+  g.board[i] = g.playerSymbol;
+  const w = xoxCheckWin();
+  if(w){ g.winner = w; renderXOX(); sabotageEnd(w === 'player'); return; }
+  g.turn = 'ai';
+  renderXOX();
+  setTimeout(xoxAI, 600);
+}
+
+function xoxAI(){
+  const g = _saboGame;
+  if(g.winner) return;
+  // Basit AI: kazanma → blokla → ortaya/köşeye
+  let move = xoxBestMove(g.aiSymbol) || xoxBestMove(g.playerSymbol);
+  if(move === null){
+    // Orta varsa orta, yoksa rastgele boş köşe
+    if(g.board[4] === null) move = 4;
+    else {
+      const corners = [0,2,6,8].filter(i => g.board[i] === null);
+      if(corners.length) move = corners[Math.floor(Math.random()*corners.length)];
+      else {
+        const empty = g.board.map((v,i)=>v===null?i:-1).filter(i=>i>=0);
+        move = empty[Math.floor(Math.random()*empty.length)];
+      }
+    }
+  }
+  if(move !== null){
+    g.board[move] = g.aiSymbol;
+    const w = xoxCheckWin();
+    if(w){ g.winner = w; renderXOX(); sabotageEnd(w === 'player'); return; }
+    g.turn = 'player';
+    renderXOX();
+  }
+}
+
+function xoxBestMove(symbol){
+  const g = _saboGame;
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const [a,b,c] of lines){
+    const cells = [g.board[a], g.board[b], g.board[c]];
+    const symCount = cells.filter(x => x === symbol).length;
+    const emptyIdx = [a,b,c][cells.findIndex(x => x === null)];
+    if(symCount === 2 && emptyIdx !== undefined && cells.filter(x=>x===null).length === 1) return emptyIdx;
+  }
+  return null;
+}
+
+function xoxCheckWin(){
+  const g = _saboGame;
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const [a,b,c] of lines){
+    if(g.board[a] && g.board[a]===g.board[b] && g.board[b]===g.board[c]){
+      return g.board[a] === g.playerSymbol ? 'player' : 'ai';
+    }
+  }
+  if(!g.board.includes(null)) return 'draw';
+  return null;
+}
+
+// ── TAŞ KAĞIT MAKAS ──
+function initRPS(){
+  _saboGame = { playerScore: 0, aiScore: 0, round: 1, maxRound: 3 };
+  renderRPS();
+}
+
+function renderRPS(){
+  const g = _saboGame;
+  const html = `
+    <div class="cw-score">Round ${g.round}/${g.maxRound} · Sen: ${g.playerScore} | AI: ${g.aiScore}</div>
+    ${g.lastResult ? `<div class="rps-vs">${g.lastPlayerEmoji}<span class="vs">VS</span>${g.lastAiEmoji}</div>` : ''}
+    ${g.lastResult ? `<div class="rps-result" style="color:${g.lastResult==='win'?'var(--safe)':g.lastResult==='lose'?'var(--hain)':'var(--dim)'}">${g.lastResult==='win'?'🎉 Kazandın!':g.lastResult==='lose'?'💀 Kaybettin!':'🤝 Berabere!'}</div>` : ''}
+    <div class="rps-buttons">
+      <button class="rps-btn" onclick="rpsPlay('rock')">🪨</button>
+      <button class="rps-btn" onclick="rpsPlay('paper')">📄</button>
+      <button class="rps-btn" onclick="rpsPlay('scissors')">✂️</button>
+    </div>
+  `;
+  Q('SABO_BODY').innerHTML = html;
+}
+
+function rpsPlay(playerChoice){
+  const g = _saboGame;
+  if(g.gameOver) return;
+  saboMarkStarted();
+  const choices = ['rock','paper','scissors'];
+  const aiChoice = choices[Math.floor(Math.random()*3)];
+  const emoji = { rock:'🪨', paper:'📄', scissors:'✂️' };
+  g.lastPlayerEmoji = emoji[playerChoice];
+  g.lastAiEmoji = emoji[aiChoice];
+  if(playerChoice === aiChoice){ g.lastResult = 'draw'; }
+  else if(
+    (playerChoice==='rock' && aiChoice==='scissors') ||
+    (playerChoice==='paper' && aiChoice==='rock') ||
+    (playerChoice==='scissors' && aiChoice==='paper')
+  ){ g.playerScore++; g.lastResult = 'win'; }
+  else { g.aiScore++; g.lastResult = 'lose'; }
+  g.round++;
+  if(g.round > g.maxRound){
+    g.gameOver = true;
+    renderRPS();
+    sabotageEnd(g.playerScore > g.aiScore);
+    return;
+  }
+  renderRPS();
+}
+
+// ── RENK YAZ (Stroop test) ──
+function initColorWord(){
+  _saboGame = {
+    score: 0,
+    target: 5, // kazanmak için doğru cevap
+    timeLeft: 30,
+    timerInterval: null
+  };
+  cwNextRound();
+  _saboGame.timerInterval = setInterval(() => {
+    _saboGame.timeLeft--;
+    if(_saboGame.timeLeft <= 0){
+      clearInterval(_saboGame.timerInterval);
+      sabotageEnd(_saboGame.score >= _saboGame.target);
+      Q('SABO_BODY').innerHTML = `<div class="xox-status">${_saboGame.score >= _saboGame.target ? '🎉 Tamam!' : '⏰ Süre doldu'}</div>`;
+      return;
+    }
+    cwUpdateTimer();
+  }, 1000);
+}
+
+function cwNextRound(){
+  const colors = [
+    {name:'KIRMIZI', color:'#e74c3c'},
+    {name:'MAVİ', color:'#3498db'},
+    {name:'YEŞİL', color:'#27ae60'},
+    {name:'SARI', color:'#f1c40f'},
+    {name:'MOR', color:'#9b59b6'},
+    {name:'PEMBE', color:'#e91e63'}
+  ];
+  const wordObj = colors[Math.floor(Math.random()*colors.length)];
+  // Renk yazı renginden farklı olsun
+  let colorObj;
+  do { colorObj = colors[Math.floor(Math.random()*colors.length)]; } while(colorObj.name === wordObj.name);
+
+  // 3 seçenek: doğru cevap (renk) + 2 yanlış
+  const wrongOptions = colors.filter(c => c.name !== colorObj.name);
+  const options = [colorObj, ...wrongOptions.slice(0,2).sort(()=>Math.random()-0.5)].sort(()=>Math.random()-0.5);
+
+  _saboGame.correctAnswer = colorObj.name;
+
+  Q('SABO_BODY').innerHTML = `
+    <div class="cw-timer">⏱️ ${_saboGame.timeLeft} saniye</div>
+    <div class="cw-score">Doğru: ${_saboGame.score} / ${_saboGame.target}</div>
+    <div class="cw-display" style="color:${colorObj.color}">${wordObj.name}</div>
+    <div style="font-size:.78rem;color:var(--dim);text-align:center;margin-bottom:6px">YAZIDAKI RENGE bas, kelimeye değil!</div>
+    <div class="cw-options">
+      ${options.map(o => `<div class="cw-opt" style="color:${o.color};border-color:${o.color}" onclick="cwAnswer('${o.name}')">${o.name}</div>`).join('')}
+    </div>
+  `;
+}
+
+function cwUpdateTimer(){
+  const t = document.querySelector('.cw-timer');
+  if(t) t.textContent = `⏱️ ${_saboGame.timeLeft} saniye`;
+}
+
+function cwAnswer(answer){
+  saboMarkStarted();
+  if(answer === _saboGame.correctAnswer){
+    _saboGame.score++;
+    if(_saboGame.score >= _saboGame.target){
+      clearInterval(_saboGame.timerInterval);
+      Q('SABO_BODY').innerHTML = `<div class="xox-status">🎉 Tamam, başardın!</div>`;
+      sabotageEnd(true);
+      return;
+    }
+  } else {
+    // Yanlış cevap: 2 saniye ceza
+    _saboGame.timeLeft = Math.max(0, _saboGame.timeLeft - 2);
+  }
+  cwNextRound();
+}
+
+// Engizitör modal — tartışma fazında infaz
+window._engizitorTarget = null;
+function openEngizitorModal(){
+  if(ps?.engizitorUsed){
+    toast('Yeteneğini zaten kullandın!',1);
+    return;
+  }
+  window._engizitorTarget = null;
+  const list = Q('ENGIZITOR_TARGETS');
+  list.innerHTML = '';
+  gs.players.filter(p => p.isAlive && p.id !== me).forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'tb';
+    d.innerHTML = `${cosmeticPlayerAvatarHTML(p,'sm',false)}<span class="tb-name">${cosmeticPlayerNameHTML(p,false)}</span>`;
+    d.onclick = () => {
+      window._engizitorTarget = p.id;
+      document.querySelectorAll('#ENGIZITOR_TARGETS .tb').forEach(el => el.classList.remove('sel'));
+      d.classList.add('sel');
+      Q('ENGIZITOR_CONFIRM').disabled = false;
+    };
+    list.appendChild(d);
+  });
+  Q('ENGIZITOR_CONFIRM').disabled = true;
+  Q('ENGIZITOR_MODAL').classList.add('sh');
+}
+function confirmEngizitor(){
+  if(!window._engizitorTarget){toast('Hedef seç!',1);return;}
+  if(!confirm('Bu eylem GERİ ALINAMAZ! Hain/tarafsız değilse SEN ölürsün. Devam?'))return;
+  io2.emit('engizitor', { targetId: window._engizitorTarget }, (r) => {
+    if(r?.ok){
+      Q('ENGIZITOR_MODAL').classList.remove('sh');
+      toast('İnfaz gerçekleşti!');
+    } else {
+      toast(r?.err || 'İnfaz başarısız.',1);
+    }
+  });
+}
+
+// Rol bilgi badge ve modal
+function updateRoleInfoBtn(){
+  const btn=Q('ROLE_INFO_BTN');
+  const guideBtn=Q('ROLE_GUIDE_BTN');
+  const adminBtn=Q('ADMIN_BTN');
+  if(!btn||!guideBtn)return;
+  const inGame = gs && gs.phase!=='lobby' && gs.phase!=='auth' && gs.phase!=='post_game' && gs.phase!=='game_over';
+  // Rol info badge — sadece oyun içindeyken ve rolü olan oyuncular
+  if(inGame && ps?.role && !isSpec){
+    btn.classList.add('sh');
+    Q('ROLE_INFO_EMOJI').textContent = ps.roleEmoji || '🎭';
+    Q('ROLE_INFO_NAME').textContent = ps.roleName || 'Rol';
+    const teamColor = ps.team==='hain' ? 'var(--hain)' : ps.team==='tarafsız' ? 'var(--tarafsiz)' : 'var(--safe)';
+    btn.style.borderColor = teamColor;
+  } else {
+    btn.classList.remove('sh');
+  }
+  // Rol rehberi butonu — oyun içinde her zaman göster
+  if(inGame){
+    guideBtn.classList.add('sh');
+  } else {
+    guideBtn.classList.remove('sh');
+  }
+  // Admin butonu — sadece admin oyuncular oyun içindeyken (oyun bakış)
+  if(adminBtn){
+    if(inGame && ps?.isAdmin){
+      adminBtn.classList.add('sh');
+    } else {
+      adminBtn.classList.remove('sh');
+    }
+  }
+  // Admin menü butonu — admin için her zaman (giriş yapmışsa)
+  const adminMenuBtn=Q('ADMIN_MENU_BTN');
+  if(adminMenuBtn){
+    if(user?.isAdmin){
+      adminMenuBtn.classList.add('sh');
+    } else {
+      adminMenuBtn.classList.remove('sh');
+    }
+  }
+  // Report butonu — giriş yapmış herkes için (giriş ekranında değilse)
+  const reportBtn=Q('REPORT_BTN');
+  if(reportBtn){
+    if(user){
+      reportBtn.style.display='flex';
+      setupReportImg();
+    } else {
+      reportBtn.style.display='none';
+    }
+  }
+}
+
+// Admin Bakış modal — tüm rolleri göster
+function openAdminModal(){
+  if(!ps?.isAdmin || !ps.adminAllRoles){
+    toast('Admin yetkin yok ya da veri henüz gelmedi.',1);
+    return;
+  }
+  const body=Q('ADMIN_BODY');
+  // Takım gruplarına ayır
+  const masum=ps.adminAllRoles.filter(p=>p.team==='masum');
+  const hain=ps.adminAllRoles.filter(p=>p.team==='hain');
+  const tarafsız=ps.adminAllRoles.filter(p=>p.team==='tarafsız');
+
+  const renderRow = (p) => `
+    <div class="admin-row t-${p.team}${!p.isAlive?' dead':''}">
+      <span style="font-size:1.1rem">${p.roleEmoji}</span>
+      <span><span class="name">${p.name}${p.id===me?' (SEN)':''}</span> ${!p.isAlive?'💀':''}</span>
+      <span class="role">${p.roleName}</span>
+      ${p.isInsane?'<span class="insane">DELİ</span>':''}
+    </div>
+  `;
+
+  let html='';
+  if(masum.length){html+=`<div style="font-size:.78rem;color:var(--safe);font-weight:600;margin:8px 0 4px">🌅 Masumlar (${masum.length})</div>`+masum.map(renderRow).join('');}
+  if(hain.length){html+=`<div style="font-size:.78rem;color:var(--hain);font-weight:600;margin:8px 0 4px">🧛 Hainler (${hain.length})</div>`+hain.map(renderRow).join('');}
+  if(tarafsız.length){html+=`<div style="font-size:.78rem;color:var(--tarafsiz);font-weight:600;margin:8px 0 4px">⚖️ Tarafsızlar (${tarafsız.length})</div>`+tarafsız.map(renderRow).join('');}
+
+  // Cellat hedefi gibi ek bilgiler
+  const cellat = ps.adminAllRoles.find(p=>p.roleId==='cellat' && p.cellatTargetName);
+  if(cellat){
+    html+=`<div style="margin-top:12px;padding:8px;background:rgba(41,128,185,.08);border-radius:4px;font-size:.78rem"><strong style="color:var(--tarafsiz)">⛓️ Cellat Hedefi:</strong> ${cellat.name} → <strong>${cellat.cellatTargetName}</strong></div>`;
+  }
+
+  body.innerHTML=html;
+  Q('ADMIN_MODAL').classList.add('sh');
+}
+
+// ── ADMIN MENÜ (kullanıcı yönetimi + raporlar) ──
+function openAdminMenuModal(){
+  if(!user?.isAdmin){toast('Admin yetkin yok!',1);return;}
+  Q('ADMIN_MENU_MODAL').classList.add('sh');
+  amSwitchTab('users');
+}
+function amSwitchTab(tab){
+  document.querySelectorAll('[data-amtab]').forEach(b=>b.classList.toggle('active',b.dataset.amtab===tab));
+  Q('AM_USERS_PANE').style.display = tab==='users' ? 'block' : 'none';
+  Q('AM_STATS_PANE').style.display = tab==='stats' ? 'block' : 'none';
+  Q('AM_REPORTS_PANE').style.display = tab==='reports' ? 'block' : 'none';
+  if(tab==='users')amLoadUsers();
+  else if(tab==='stats')amLoadStats();
+  else if(tab==='reports')amLoadReports();
+}
+
+// Site istatistikleri
+function amLoadStats(){
+  const body = Q('AM_STATS_BODY');
+  body.innerHTML = 'Yükleniyor...';
+  io2.emit('admin:siteStats', {}, r => {
+    if(!r?.ok){body.innerHTML = `<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
+    const s = r.stats;
+    body.innerHTML = `
+      <!-- Üst Özet Kutuları -->
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${s.users.total}</div><div class="stat-lbl">Toplam Kullanıcı</div></div>
+        <div class="stat-card"><div class="stat-icon">👁️</div><div class="stat-num">${s.users.admins}</div><div class="stat-lbl">Admin</div></div>
+        <div class="stat-card premium"><div class="stat-icon">👑</div><div class="stat-num">${s.users.premium}</div><div class="stat-lbl">Aktif Premium</div></div>
+        <div class="stat-card live"><div class="stat-icon">🟢</div><div class="stat-num">${s.live.activeRooms}</div><div class="stat-lbl">Aktif Oda</div></div>
+        <div class="stat-card live"><div class="stat-icon">🎮</div><div class="stat-num">${s.live.playersInRooms}</div><div class="stat-lbl">Aktif Oyuncu</div></div>
+        <div class="stat-card finance"><div class="stat-icon">💝</div><div class="stat-num">₺${s.finance.totalDonations.toFixed(0)}</div><div class="stat-lbl">Toplam Bağış</div></div>
+        <div class="stat-card gold"><div class="stat-icon">💰</div><div class="stat-num">${s.finance.totalCoins.toLocaleString('tr-TR')}</div><div class="stat-lbl">Toplam Altın</div></div>
+        <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-num">${s.games.played}</div><div class="stat-lbl">Toplam Oyun</div></div>
+        <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-num">${s.games.won}</div><div class="stat-lbl">Toplam Galibiyet</div></div>
+        <div class="stat-card"><div class="stat-icon">❤️</div><div class="stat-num">${s.games.mvps}</div><div class="stat-lbl">Toplam MVP</div></div>
+        <div class="stat-card"><div class="stat-icon">🐛</div><div class="stat-num">${s.reports.open}</div><div class="stat-lbl">Açık Bug</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${s.reports.closed}</div><div class="stat-lbl">Çözülen Bug</div></div>
+      </div>
+
+      <!-- En Aktif Oyuncular -->
+      <div class="st mt12">🎮 En Aktif Oyuncular (Top 10)</div>
+      <div class="leaderboard">
+        ${s.topPlayers.length ? s.topPlayers.map((p,i)=>`
+          <div class="lb-row${i<3?' lb-top':''}">
+            <span class="lb-rank">${i+1}</span>
+            <span class="lb-name">${esc(p.username)}${p.premium?' 👑':''}</span>
+            <span class="lb-stat">🎮 ${p.played}</span>
+            <span class="lb-stat">🏆 ${p.won}</span>
+            <span class="lb-stat" style="color:var(--gold)">💰 ${p.coins}</span>
+          </div>
+        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+      </div>
+
+      <!-- En Çok Kazananlar -->
+      <div class="st mt12">🏆 En Çok Kazananlar (Top 10)</div>
+      <div class="leaderboard">
+        ${s.topWinners.length ? s.topWinners.map((p,i)=>`
+          <div class="lb-row${i<3?' lb-top':''}">
+            <span class="lb-rank">${i+1}</span>
+            <span class="lb-name">${esc(p.username)}</span>
+            <span class="lb-stat">${p.won}/${p.played}</span>
+            <span class="lb-stat" style="color:var(--safe)">%${p.winRate}</span>
+          </div>
+        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+      </div>
+
+      <!-- Bağışçılar -->
+      <div class="st mt12">💝 En Çok Destekçiler (Top 10)</div>
+      <div class="leaderboard">
+        ${s.topDonors.length ? s.topDonors.map((p,i)=>`
+          <div class="lb-row${i<3?' lb-top':''}">
+            <span class="lb-rank">${i+1}</span>
+            <span class="lb-name">${esc(p.username)}</span>
+            <span class="lb-stat" style="color:#e91e63;font-weight:700">₺${p.totalDonated.toFixed(0)}</span>
+          </div>
+        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Henüz bağış yapan yok</div>'}
+      </div>
+
+      <!-- En Zenginler -->
+      <div class="st mt12">💰 En Zenginler (Top 10)</div>
+      <div class="leaderboard">
+        ${s.topRichest.length ? s.topRichest.map((p,i)=>`
+          <div class="lb-row${i<3?' lb-top':''}">
+            <span class="lb-rank">${i+1}</span>
+            <span class="lb-name">${esc(p.username)}</span>
+            <span class="lb-stat" style="color:var(--gold);font-weight:700">${p.coins.toLocaleString('tr-TR')} 💰</span>
+          </div>
+        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+      </div>
+
+      <!-- Son 30 gün kayıtlar -->
+      <div class="st mt12">📅 Son 30 Gün Kayıtları</div>
+      <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px">
+        ${s.registrationsByDay.length ? renderRegistrationChart(s.registrationsByDay) : '<div style="color:var(--dim);text-align:center">Son 30 günde kayıt yok</div>'}
+      </div>
+    `;
+  });
+}
+
+// Basit ASCII bar chart (kayıt sayısına göre)
+function renderRegistrationChart(data){
+  const max = Math.max(...data.map(d => d[1]), 1);
+  return data.map(([day, count]) => {
+    const width = (count / max) * 100;
+    const dateStr = new Date(day).toLocaleDateString('tr-TR', {month:'short', day:'numeric'});
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:.78rem">
+      <span style="width:60px;color:var(--dim);font-size:.7rem">${dateStr}</span>
+      <div style="flex:1;background:var(--bg3);border-radius:3px;overflow:hidden;height:18px;position:relative">
+        <div style="background:linear-gradient(90deg,#bb8fce,#8e44ad);width:${width}%;height:100%;border-radius:3px;transition:width .3s"></div>
+        <span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:.7rem;font-weight:700">${count}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function amLoadUsers(){
+  const list=Q('AM_USERS_LIST');
+  list.innerHTML='Yükleniyor...';
+  io2.emit('admin:listUsers',{},r=>{
+    if(!r?.ok){list.innerHTML=`<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
+    if(!r.users.length){list.innerHTML='<div style="color:var(--dim)">Henüz kullanıcı yok.</div>';return;}
+    list.innerHTML=r.users.map(u=>`
+      <div class="am-user${u.isAdmin?' is-admin':''}">
+        <span style="font-size:1.2rem">${u.isAdmin?'👁️':'👤'}</span>
+        <div>
+          <div style="font-weight:600">${u.username}${u.isAdmin?' <span style="color:#bb8fce;font-size:.7rem">(ADMIN)</span>':''}</div>
+          <div style="font-size:.7rem;color:var(--dim)">🏆 ${u.stats.won} • 🎮 ${u.stats.played} • ❤️ ${u.stats.mvp||0} • <span style="color:var(--gold)">💰 ${u.coins??0}</span></div>
+        </div>
+        <div class="am-user-actions">
+          <button class="am-btn info" onclick="amEditStats('${u.username}')" title="İstatistikleri">📊</button>
+          <button class="am-btn" style="background:rgba(255,215,0,.15);color:var(--gold);border:1px solid var(--gold)" onclick="amEditCoins('${u.username}',${u.coins??0})" title="Coin yönet">💰</button>
+          <button class="am-btn warn" onclick="amResetPassword('${u.username}')" title="Şifre sıfırla">🔑</button>
+          <button class="am-btn ${u.isAdmin?'warn':'ok'}" onclick="amToggleAdmin('${u.username}',${!u.isAdmin})">${u.isAdmin?'⬇️':'⬆️'}</button>
+          <button class="am-btn danger" onclick="amDeleteUser('${u.username}')">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+function amCreateUser(){
+  const u=Q('AM_NEW_U').value.trim();
+  const p=Q('AM_NEW_P').value;
+  const ad=Q('AM_NEW_ADMIN').checked;
+  if(!u||!p){toast('Kullanıcı adı ve şifre boş bırakılamaz!',1);return;}
+  io2.emit('admin:createUser',{username:u,password:p,isAdmin:ad},r=>{
+    if(r.ok){
+      toast('Hesap oluşturuldu!');
+      Q('AM_NEW_U').value=''; Q('AM_NEW_P').value=''; Q('AM_NEW_ADMIN').checked=false;
+      amLoadUsers();
+    } else toast(r.err||'Hata!',1);
+  });
+}
+function amDeleteUser(username){
+  if(!confirm(`"${username}" hesabını silmek istediğine emin misin?`))return;
+  io2.emit('admin:deleteUser',{username},r=>{
+    if(r.ok){toast('Hesap silindi.');amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amToggleAdmin(username,makeAdmin){
+  io2.emit('admin:toggleAdmin',{username,isAdmin:makeAdmin},r=>{
+    if(r.ok){toast(makeAdmin?'Admin yapıldı.':'Admin yetkisi kaldırıldı.');amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amResetPassword(username){
+  const np=prompt(`"${username}" için yeni şifre (min 3):`);
+  if(!np||np.length<3)return;
+  io2.emit('admin:resetPassword',{username,newPassword:np},r=>{
+    if(r.ok)toast('Şifre güncellendi.');
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amEditStats(username){
+  const won=prompt(`"${username}" — Kazanılan oyun sayısı?`,'0');
+  if(won===null)return;
+  const played=prompt(`Oynanan toplam oyun sayısı?`,won);
+  if(played===null)return;
+  const mvp=prompt(`MVP sayısı?`,'0');
+  if(mvp===null)return;
+  const lost=Math.max(0, parseInt(played)-parseInt(won));
+  io2.emit('admin:setStats',{username,stats:{
+    played:parseInt(played)||0,
+    won:parseInt(won)||0,
+    lost,
+    mvp:parseInt(mvp)||0
+  }},r=>{
+    if(r.ok){toast('İstatistik güncellendi.');amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+
+function amEditCoins(username, currentCoins){
+  const action = prompt(`"${username}" coin yönetimi:\n\nMevcut bakiye: ${currentCoins} 💰\n\n"+50" → 50 ekle\n"-30" → 30 çıkar\n"100" → tam 100'e ayarla\n\nİşlem:`, '+0');
+  if(action === null || action === '') return;
+  const trimmed = action.trim();
+  let payload;
+  if(trimmed.startsWith('+') || trimmed.startsWith('-')){
+    const delta = parseInt(trimmed);
+    if(isNaN(delta)){toast('Geçersiz miktar',1);return;}
+    payload = { username, delta };
+  } else {
+    const coins = parseInt(trimmed);
+    if(isNaN(coins) || coins < 0){toast('Geçersiz miktar',1);return;}
+    payload = { username, coins };
+  }
+  io2.emit('admin:setCoins', payload, r => {
+    if(r.ok){toast(`💰 Yeni bakiye: ${r.coins}`);amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amLoadReports(){
+  const list=Q('AM_REPORTS_LIST');
+  list.innerHTML='Yükleniyor...';
+  io2.emit('admin:getToken',{},tr=>{
+    const token = tr?.token;
+    io2.emit('admin:listReports',{},r=>{
+      if(!r?.ok){list.innerHTML=`<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
+      if(!r.reports.length){list.innerHTML='<div style="color:var(--dim);text-align:center;padding:20px">📭 Henüz rapor yok.</div>';return;}
+      list.innerHTML=r.reports.map(rp=>{
+        const date=new Date(rp.createdAt).toLocaleString('tr-TR');
+        const escaped=rp.description.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const imgHtml=rp.screenshot?`<img class="am-report-img" src="/admin/screenshot/${rp.screenshot}?token=${token}" onclick="window.open(this.src,'_blank')">`:'';
+        return `<div class="am-report${rp.status==='closed'?' closed':''}">
+          <div class="am-report-hdr">
+            <span><span class="am-report-user">${rp.username}</span> <span style="font-family:monospace;font-size:.65rem;opacity:.6">${rp.id}</span></span>
+            <span>${date}</span>
+          </div>
+          <div class="am-report-desc">${escaped}</div>
+          ${imgHtml}
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="am-btn ${rp.status==='closed'?'info':'ok'}" onclick="amSetReportStatus('${rp.id}','${rp.status==='closed'?'open':'closed'}')">${rp.status==='closed'?'↩️ Aç':'✓ Kapat'}</button>
+            <button class="am-btn danger" onclick="amDeleteReport('${rp.id}')">🗑️ Sil</button>
+          </div>
+        </div>`;
+      }).join('');
+    });
+  });
+}
+function amDeleteReport(id){
+  if(!confirm('Bu raporu silmek istediğine emin misin?'))return;
+  io2.emit('admin:deleteReport',{id},r=>{
+    if(r.ok){toast('Rapor silindi.');amLoadReports();}
+    else toast('Hata!',1);
+  });
+}
+function amSetReportStatus(id,status){
+  io2.emit('admin:setReportStatus',{id,status},r=>{
+    if(r.ok)amLoadReports();
+  });
+}
+function amExportReports(){
+  io2.emit('admin:getToken',{},r=>{
+    if(!r?.ok)return;
+    window.open(`/admin/export-reports?token=${r.token}`,'_blank');
+  });
+}
+
+// ── REPORT (her oyuncu) ──
+function openReportModal(){
+  Q('RPT_DESC').value='';
+  Q('RPT_IMG').value='';
+  Q('RPT_PREVIEW').innerHTML='';
+  window._rptImg=null;
+  Q('REPORT_MODAL').classList.add('sh');
+}
+window._rptImg=null;
+function setupReportImg(){
+  const inp=Q('RPT_IMG');
+  if(!inp || inp._setupDone)return;
+  inp._setupDone=true;
+  inp.addEventListener('change',(e)=>{
+    const f=e.target.files?.[0];
+    if(!f){window._rptImg=null;Q('RPT_PREVIEW').innerHTML='';return;}
+    if(f.size>5*1024*1024){toast('Görüntü çok büyük (max 5MB).',1);inp.value='';return;}
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      window._rptImg=ev.target.result;
+      Q('RPT_PREVIEW').innerHTML=`<img src="${ev.target.result}" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--brd)">`;
+    };
+    reader.readAsDataURL(f);
+  });
+}
+function submitReport(){
+  const desc=Q('RPT_DESC').value.trim();
+  if(desc.length<5){toast('Açıklama en az 5 karakter olmalı.',1);return;}
+  const btn=Q('RPT_SUBMIT');
+  btn.disabled=true;btn.textContent='Gönderiliyor...';
+  io2.emit('report:create',{description:desc,screenshot:window._rptImg},r=>{
+    btn.disabled=false;btn.textContent='📤 Raporu Gönder';
+    if(r.success){
+      toast('🐛 Rapor gönderildi! Teşekkürler.');
+      Q('REPORT_MODAL').classList.remove('sh');
+    } else toast(r.error||'Hata!',1);
+  });
+}
+
+function openMyRoleModal(){
+  if(!ps?.role)return;
+  const body=Q('MY_ROLE_BODY');
+  // Kendi rolünü RDEF'ten bul (id'den key'e çevir)
+  const roleKey=ps.role.toUpperCase().replace(/_/g,'_');
+  // ID -> key mapping
+  const keyMap={doktor:'DOKTOR',polis:'POLIS',savci:'SAVCI',muhtar:'MUHTAR',gazeteci:'GAZETECI',
+    psikolog:'PSIKOLOG',gazi:'GAZI',dedikoducu:'DEDIKODUCU',ajan:'AJAN',serif:'SERIF',kurban:'KURBAN',
+    cilingir:'CILINGIR',takipci:'TAKIPCI',suikastci:'SUIKASTCI',hipnotizmaci:'HIPNOTIZMACI',
+    bombaci:'BOMBACI',golge:'GOLGE',dodo:'DODO',seri_katil:'SERI_KATIL',cellat:'CELLAT',yamyam:'YAMYAM',
+    koruyucu:'KORUYUCU',demirci:'DEMIRCI',buzcu:'BUZCU',infazci:'INFAZCI',gardiyan:'GARDIYAN',
+    engizitor:'ENGIZITOR',olumsuz:'OLUMSUZ',pusucu:'PUSUCU',hacker:'HACKER',veba:'VEBA'};
+  const rd=RDEF[keyMap[ps.role]];
+  if(!rd){body.innerHTML='<div style="color:var(--dim)">Rol bilgisi bulunamadı.</div>';
+    Q('MY_ROLE_MODAL').classList.add('sh');return;}
+  body.innerHTML=`
+    <div class="role-card">
+      <div class="role-card-hdr">
+        <div class="role-card-emoji t-${rd.t}">${rd.e}</div>
+        <div style="flex:1">
+          <div class="role-card-name">${rd.n}</div>
+          <span class="role-card-team t-${rd.t}">${rd.t.toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="role-card-desc" style="font-size:.85rem;line-height:1.6">${rd.full||rd.d}</div>
+    </div>
+    ${ps.teammates&&ps.teammates.length?`
+      <div style="margin-top:10px;padding:10px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:5px">
+        <div style="font-size:.78rem;color:var(--hain);margin-bottom:4px;font-weight:600">🧛 Takım Arkadaşların</div>
+        <div style="font-size:.7rem;color:var(--dim);margin-bottom:6px;font-style:italic">Rollerini sen de bilmiyorsun. Sohbette koordine olun.</div>
+        ${ps.teammates.map(t=>`<div style="display:flex;align-items:center;gap:6px;font-size:.85rem;margin:3px 0;color:var(--hain)">🧛 <strong>${t.name}</strong></div>`).join('')}
+      </div>`:''}
+    ${ps.cellatTarget?`
+      <div style="margin-top:10px;padding:10px;background:rgba(41,128,185,.08);border:1px solid rgba(41,128,185,.25);border-radius:5px">
+        <div style="font-size:.78rem;color:var(--tarafsiz);margin-bottom:4px;font-weight:600">⛓️ Hedefin</div>
+        <div style="font-size:.85rem">${ps.cellatTarget}</div>
+      </div>`:''}
+  `;
+  Q('MY_ROLE_MODAL').classList.add('sh');
+}
+
+function openRoleGuideModal(){
+  // Tüm RDEF'i göster, sekmeli
+  const tabs=[
+    {id:'all',l:'Tümü'},
+    {id:'masum',l:'Masum'},
+    {id:'hain',l:'Hain'},
+    {id:'tarafsız',l:'Tarafsız'},
+    {id:'deli',l:'Deli'}
+  ];
+  const tabEl=Q('ROLE_GUIDE_TABS');
+  tabEl.innerHTML=tabs.map(t=>`<button class="role-tab ${t.id==='all'?'active':''}" data-rgt="${t.id}" onclick="filterRoleGuide('${t.id}')">${t.l}</button>`).join('');
+  filterRoleGuide('all');
+  Q('ROLE_GUIDE_MODAL').classList.add('sh');
+}
+
+function filterRoleGuide(team){
+  document.querySelectorAll('[data-rgt]').forEach(b=>b.classList.toggle('active',b.dataset.rgt===team));
+  const body=Q('ROLE_GUIDE_BODY');
+  const entries=Object.entries(RDEF).filter(([k,v])=>team==='all'||v.t===team);
+  body.innerHTML=entries.map(([k,rd])=>`
+    <div class="role-card">
+      <div class="role-card-hdr">
+        <div class="role-card-emoji t-${rd.t}">${rd.e}</div>
+        <div style="flex:1">
+          <div class="role-card-name">${rd.n}</div>
+          <span class="role-card-team t-${rd.t}">${rd.t.toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="role-card-desc">${rd.full||rd.d}</div>
+    </div>
+  `).join('');
+}
+
+function openSuikastModal(){
+  if(!ps||ps.role!=='suikastci'||!ps.isAlive)return;
+  if(gs?.suikastUsedThisRound){toast('Bu tur zaten suikast denedin!',1);return;}
+  // Modal içeriği doldur
+  window._suikastTarget=null;
+  window._suikastRole=null;
+  const tg=Q('SUIKAST_TARGETS');
+  tg.innerHTML='';
+  const isH=ps.team==='hain';
+  const tmIds=new Set();
+  if(isH&&ps.teammates)ps.teammates.forEach(t=>tmIds.add(t.id));
+  gs.players.filter(p=>p.isAlive&&p.id!==me).forEach(p=>{
+    const isT=tmIds.has(p.id);
+    const d=document.createElement('div');d.className='vb';d.dataset.id=p.id;
+    const nameStyle=isT?'color:var(--hain);font-weight:600':'';
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',false)}<span class="vb-name">${cosmeticPlayerNameHTML(p,false,isT?' 🧛':'',nameStyle)}</span>`;
+    d.onclick=()=>{
+      document.querySelectorAll('#SUIKAST_TARGETS .vb').forEach(b=>b.classList.remove('vd'));
+      d.classList.add('vd');window._suikastTarget=p.id;updSuikastBtn();
+    };
+    tg.appendChild(d);
+  });
+  const roles=[
+    // Masumlar
+    ['doktor','Doktor','🩺'],['polis','Polis','🔦'],['savci','Savcı','⚖️'],
+    ['muhtar','Muhtar','🏛️'],['gazeteci','Gazeteci','📰'],['psikolog','Psikolog','🧠'],['gazi','Gazi','🛡️'],
+    ['dedikoducu','Dedikocucu','🗣️'],['ajan','Ajan','🕵️'],['serif','Şerif','🤠'],['kurban','Kurban','🩸'],
+    ['cilingir','Çilingir','🔑'],['takipci','Takipçi','👣'],
+    ['demirci','Demirci','⚒️'],['infazci','İnfazcı','🔨'],['gardiyan','Gardiyan','🛡️'],
+    ['engizitor','Engizitör','⚖️'],['buzcu','Buzcu','❄️'],
+    // Tarafsızlar
+    ['koruyucu','Koruyucu','😇'],['dodo','Dodo','🦤'],['seri_katil','Seri Katil','🔪'],
+    ['cellat','Cellat','⛓️'],['yamyam','Yamyam','🍖'],['veba','Veba','☠️']
+  ];
+  Q('SUIKAST_ROLES').innerHTML=roles.map(([id,n,e])=>`<div class="rgb" data-rid="${id}" onclick="selSuikastRole('${id}')">${e} ${n}</div>`).join('');
+  Q('SUIKAST_DO_BTN').disabled=true;
+  Q('SUIKAST_DO_BTN').textContent='🗡️ SUİKAST!';
+  Q('SUIKAST_STATUS').textContent='';
+  Q('SUIKAST_MODAL').classList.add('sh');
+}
+
+function closeSuikastModal(){
+  Q('SUIKAST_MODAL').classList.remove('sh');
+}
+
+function renderVote(){
+  if(!gs)return;theme(true);voted=null;
+  if(!_cosmeticCatalog){loadCosmeticCatalog().then(()=>{if(gs?.phase==='voting')renderVote();});}
+  const grid=Q('VG');grid.innerHTML='';
+  const isH=ps?.team==='hain';
+  const tmIds=new Set();
+  if(isH&&ps.teammates)ps.teammates.forEach(t=>tmIds.add(t.id));
+  const cellatTargetId = ps?.role==='cellat' ? ps.cellatTargetId : null;
+  // Tüm oyuncular (canlı + ölü). Ölülere oy verilemez ama görsel olarak gösterilir
+  gs.players.forEach(p=>{
+    const isT=tmIds.has(p.id);
+    const isMe=p.id===me;
+    const isCT=p.id===cellatTargetId;
+    const d=document.createElement('div');
+    d.className='vb' + (p.isAlive ? '' : ' dead');
+    d.dataset.id=p.id;
+    const nameStyle=isT?'color:var(--hain);font-weight:600':(isCT?'color:var(--tarafsiz);font-weight:600':(isMe?'color:var(--hi)':''));
+    const ctIcon=isCT?' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>':'';
+    const deadIcon = !p.isAlive ? ' 💀' : '';
+    if(p.isAlive){
+      d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="vb-name">${cosmeticPlayerNameHTML(p,isMe,`${isMe?' (SEN)':''}${isT?' 🧛':''}${ctIcon}`,nameStyle)}${p.isPresident?'<span class="crown">👑</span>':''}</span><span class="vc" data-vc="${p.id}">0</span><span class="tk">✓</span>`;
+      d.onclick=()=>doVote(p.id);
+    } else {
+      // Ölü: tıklanamaz, üst çizili, soluk
+      d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="vb-name">${cosmeticPlayerNameHTML(p,isMe,deadIcon,'text-decoration:line-through;color:var(--dim)')}</span>`;
+    }
+    grid.appendChild(d);
+  });
+  // Pas butonu - gerçek oy seçeneği
+  const sk=document.createElement('div');sk.className='vb';sk.dataset.id='skip';
+  sk.style.cssText='border:1px dashed var(--dim);background:rgba(255,255,255,.04)';
+  const skipCnt=gs.voteTally?.['__skip__']||0;
+  sk.innerHTML=`<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:1.2rem">⏭️</div><span class="vb-name"><span style="font-style:italic">Pas</span></span><span class="vc" data-vc="skip">${skipCnt}</span><span class="tk">✓</span>`;
+  sk.onclick=()=>doVote('skip');
+  grid.appendChild(sk);
+  if(gs.voteTally)updateTally(gs.voteTally);
+  // Eğer ölü/izleyiciysek tüm tıklamaları engelle
+  if(!ps?.isAlive){grid.querySelectorAll('.vb').forEach(b=>{b.style.opacity='0.5';b.style.pointerEvents='none';});}
+}
+
+function updateTally(tally){
+  document.querySelectorAll('[data-vc]').forEach(el=>{
+    el.textContent=tally[el.dataset.vc]||0;
+  });
+  // Skip sayısı
+  const skipEl=document.querySelector('[data-vc="skip"]');
+  if(skipEl)skipEl.textContent=tally['__skip__']||0;
+}
+
+function renderVR(res){
+  theme(true);
+  Q('VRE').textContent=res.eliminated?'🪦':'⚖️';
+  Q('VRT').textContent=res.eliminated?res.eliminated.name+' Elendi!':'Berabere!';
+  Q('VRM').textContent=res.message;
+}
+
+function renderGO(data){
+  theme(false);
+  const winEmojis={
+    masum:'🌅', hain:'🧛', seri_katil:'🔪', dodo:'🦤', cellat:'⛓️'
+  };
+  Q('GE').textContent=winEmojis[data.winner]||'🏆';
+  Q('GT').textContent=data.msg||'Oyun Bitti!';
+  // Kazanan rengini ayarla
+  const gtEl=Q('GT');
+  if(data.winner==='masum')gtEl.style.color='var(--safe)';
+  else if(data.winner==='hain')gtEl.style.color='var(--hain)';
+  else if(data.winner==='seri_katil'||data.winner==='dodo'||data.winner==='cellat')gtEl.style.color='var(--tarafsiz)';
+  else gtEl.style.color='';
+
+  // Kendi coin değişimini büyük göster (önce username, sonra id ile fallback)
+  const myUname = user?.username;
+  const myUpdate = (myUname && data.coinUpdates?.[myUname]) || (data.coinUpdatesById?.[me]) || null;
+  const myChange = myUpdate?.coinChange || 0;
+  const myTotalCoins = myUpdate?.totalCoins;
+  if(myChange !== 0){
+    const coinColor = myChange > 0 ? 'var(--gold)' : 'var(--hain)';
+    const sign = myChange > 0 ? '+' : '';
+    Q('GM').innerHTML = `<div style="margin-top:8px;padding:10px 14px;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);border-radius:6px;display:inline-block">
+      <span style="color:${coinColor};font-weight:700;font-size:1.2rem">${sign}${myChange} 💰</span>
+      ${myTotalCoins!==undefined ? `<span style="color:var(--dim);font-size:.78rem;margin-left:8px">(toplam: ${myTotalCoins})</span>` : ''}
+      ${data.totalBetPool ? `<div style="font-size:.7rem;color:var(--dim);margin-top:3px">Bahis havuzu: ${data.totalBetPool}</div>` : ''}
+    </div>`;
+  } else if(!user) {
+    Q('GM').innerHTML = `<div style="margin-top:8px;padding:8px;color:var(--dim);font-size:.78rem">💡 Giriş yaparak oyun başına altın kazanabilirsin!</div>`;
+  } else {
+    Q('GM').textContent='';
+  }
+
+  // Kazananlar kutusu
+  const winBox=Q('WIN_BOX');
+  const winList=Q('WIN_LIST');
+  if(data.winners?.length){
+    winBox.style.display='block';
+    winList.innerHTML=data.winners.map(w=>{
+      const cc = w.coinChange ? `<span style="color:var(--gold);font-size:.74rem;margin-left:4px">+${w.coinChange}💰</span>` : '';
+      return `<div class="winner-item">${cosmeticPlayerAvatarHTML(w,'sm',w.id===me)}<span class="trophy">🏆</span><span style="flex:1;font-weight:700">${cosmeticPlayerNameHTML(w,w.id===me,cc)}</span><span style="color:var(--dim);font-size:.78rem">${w.roleEmoji} ${w.roleName} ${w.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span></div>`;
+    }).join('');
+  } else {
+    winBox.style.display='none';
+  }
+
+  // Tüm rolleri göster
+  const l=Q('GR');l.innerHTML='';
+  if(data.players)data.players.forEach(p=>{
+    const isMe=p.id===me;
+    const d=document.createElement('div');d.className='gop'+(p.isWinner?' winner':'');
+    const meTag=isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'';
+    const cc = p.coinChange ? `<span style="color:${p.coinChange>0?'var(--gold)':'var(--hain)'};font-size:.7rem;margin-left:4px">${p.coinChange>0?'+':''}${p.coinChange}💰</span>` : '';
+    d.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span>${p.isAlive?'✅':'💀'}</span><span>${p.roleEmoji}</span>
+      <span style="flex:1">${cosmeticPlayerNameHTML(p,isMe,`${meTag}${cc}`)}</span><span style="color:var(--dim);font-size:.74rem">${p.roleName} (${p.team}) ${p.isInsane ? '<span class="deli-tag">DELİ</span>' : ''}</span>
+      ${p.isWinner?'<span class="ib">🏆 KAZANDI</span>':''}`;
+    l.appendChild(d);});
+  const isLeaderGO = gs?.leaderId === me;
+  Q('BNG').style.display = isLeaderGO ? 'block' : 'none';
+  Q('BNG_WAIT').style.display = isLeaderGO ? 'none' : 'block';
+}
+
+function renderSpec(data){
+  if(!data)return;
+  const dayPhases=['day_discussion','voting','vote_result'];
+  theme(dayPhases.includes(data.phase));
+  const pn={lobby:'Lobi',role_selection:'Rol Seçimi',role_reveal:'Rol Dağıtımı',president_vote:'Başkan Oylaması',night:'Gece',morning_report:'Sabah',day_discussion:'Tartışma',voting:'Oylama',vote_result:'Sonuç',mvp_vote:'MVP Oylama',mvp_result:'MVP Sonucu',game_over:'Bitti',post_game:'Bitti'};
+  Q('SPH').textContent=`${pn[data.phase]||data.phase} - Tur ${data.round}`;
+  // Ölü oyuncuysa ekranın üstündeki ikon/başlık güncelle
+  const pb=Q('S10').querySelector('.pb');
+  if(pb){
+    const pi2=pb.querySelector('.pi2'), pt=pb.querySelector('.pt');
+    if(isDead){ if(pi2)pi2.textContent='👻'; if(pt)pt.textContent='Hayalet'; }
+    else { if(pi2)pi2.textContent='👁️'; if(pt)pt.textContent='İzleyici'; }
+  }
+  // Ölü/izleyici S10 butonunu güncelle (ölüyse "Odadan Çık", izleyiciyse "İzleyiciden Çık")
+  const leaveBtn=Q('S10').querySelector('button.b');
+  if(leaveBtn){
+    leaveBtn.textContent = isDead ? '↩️ Odadan Çık' : '↩️ İzleyiciden Çık';
+  }
+  // İzleyici DELİ rozetini görür - kim deli net belli
+  Q('SPP').innerHTML='<div id="SPP_GRID">'+data.players.map(p=>
+    `<div class="pi ${p.isAlive?'':'dead'}${p.isPresident?' president':''}">${cosmeticPlayerAvatarHTML(p,'sm',p.id===me)}<span class="pi-name">${cosmeticPlayerNameHTML(p,p.id===me,p.id===me?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'')}${p.isPresident?'<span class="crown">👑</span>':''}</span>
+      <span style="font-size:.74rem;color:var(--dim)">${p.roleEmoji} ${p.roleName}</span>
+      ${p.isInsane?'<span class="deli-tag">DELİ</span>':''}
+      ${p.isSilenced?'<span style="font-size:.72rem">🤐</span>':''}</div>`).join('')+'</div>';
+  Q('SLG').innerHTML=data.gameLog.map(l=>`<div class="sli"><span class="fm" style="color:var(--hi)">[${l.round}]</span> ${l.msg}</div>`).join('');
+  Q('SLG').scrollTop=Q('SLG').scrollHeight;
+}
+
+// ── SÜRÜKLENEBİLİR BUTONLAR ──
+// Floating butonları basılı tutarak (long-press) istediğin yere taşıyabilirsin.
+// Konumlar localStorage'da kalır, sayfayı kapatıp açtığında aynı konumda durur.
+function makeDraggable(elementId, opts={}){
+  const el = Q(elementId);
+  if(!el || el._draggableSetup) return;
+  el._draggableSetup = true;
+  const LONG_PRESS_MS = 400;
+  const STORAGE_KEY = 'azap_pos_' + elementId;
+
+  // Kayıtlı konumu yükle
+  try{
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved){
+      const pos = JSON.parse(saved);
+      if(pos && typeof pos.left==='number' && typeof pos.top==='number'){
+        // Ekran sınırları içindeyse uygula
+        const maxL = window.innerWidth - el.offsetWidth - 5;
+        const maxT = window.innerHeight - el.offsetHeight - 5;
+        el.style.left = Math.max(5, Math.min(pos.left, maxL)) + 'px';
+        el.style.top = Math.max(5, Math.min(pos.top, maxT)) + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+      }
+    }
+  }catch{}
+
+  let pressTimer = null;
+  let isDragging = false;
+  let startX=0, startY=0, startLeft=0, startTop=0;
+
+  function getPoint(e){
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX, y: t.clientY };
+  }
+
+  function onPressStart(e){
+    if(e.button===2)return; // sağ tık değil
+    const pt = getPoint(e);
+    startX = pt.x; startY = pt.y;
+
+    // Long-press timer
+    pressTimer = setTimeout(()=>{
+      pressTimer = null;
+      isDragging = true;
+      // Mevcut absolute pozisyona dönüştür
+      const r = el.getBoundingClientRect();
+      startLeft = r.left;
+      startTop = r.top;
+      el.style.left = r.left + 'px';
+      el.style.top = r.top + 'px';
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+      el.style.transition = 'none';
+      el.style.opacity = '0.7';
+      el.style.transform = 'scale(1.15)';
+      // Haptic feedback (mobil)
+      if(navigator.vibrate)try{navigator.vibrate(50);}catch{}
+    }, LONG_PRESS_MS);
+  }
+
+  function onPressMove(e){
+    if(pressTimer){
+      // Long-press tetiklenmeden çok hareket varsa iptal et (kaydırma niyeti)
+      const pt = getPoint(e);
+      const dx = Math.abs(pt.x - startX), dy = Math.abs(pt.y - startY);
+      if(dx > 8 || dy > 8){
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+      return;
+    }
+    if(!isDragging) return;
+    e.preventDefault();
+    const pt = getPoint(e);
+    const dx = pt.x - startX, dy = pt.y - startY;
+    let newLeft = startLeft + dx;
+    let newTop = startTop + dy;
+    // Ekran sınırları
+    newLeft = Math.max(5, Math.min(newLeft, window.innerWidth - el.offsetWidth - 5));
+    newTop = Math.max(5, Math.min(newTop, window.innerHeight - el.offsetHeight - 5));
+    el.style.left = newLeft + 'px';
+    el.style.top = newTop + 'px';
+  }
+
+  function onPressEnd(e){
+    if(pressTimer){
+      clearTimeout(pressTimer);
+      pressTimer = null;
+      // Normal click — onclick handler çalışsın (engellemiyoruz)
+      return;
+    }
+    if(isDragging){
+      e.preventDefault();
+      e.stopPropagation();
+      isDragging = false;
+      el.style.transition = '';
+      el.style.opacity = '';
+      el.style.transform = '';
+      // Konumu kaydet
+      const r = el.getBoundingClientRect();
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({left: r.left, top: r.top}));
+      }catch{}
+    }
+  }
+
+  // Mouse
+  el.addEventListener('mousedown', onPressStart);
+  document.addEventListener('mousemove', onPressMove);
+  document.addEventListener('mouseup', onPressEnd);
+  // Touch
+  el.addEventListener('touchstart', onPressStart, {passive:true});
+  document.addEventListener('touchmove', onPressMove, {passive:false});
+  document.addEventListener('touchend', onPressEnd);
+  document.addEventListener('touchcancel', ()=>{
+    if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}
+    if(isDragging){isDragging=false;el.style.opacity='';el.style.transform='';}
+  });
+  // Click sırasında drag tetiklenmişse onclick'i engelle
+  el.addEventListener('click', (e)=>{
+    if(isDragging){e.preventDefault();e.stopPropagation();isDragging=false;}
+  }, true);
+  // Sağ tık ile sıfırla menüsü (opsiyonel - basit)
+  el.addEventListener('contextmenu', (e)=>{
+    e.preventDefault();
+    if(confirm(`"${el.title || elementId}" konumunu varsayılana sıfırla?`)){
+      try{ localStorage.removeItem(STORAGE_KEY); }catch{}
+      el.style.left=''; el.style.top=''; el.style.right=''; el.style.bottom='';
+    }
+  });
+}
+
+// Tüm floating butonları sürüklenebilir yap
+function setupDraggableButtons(){
+  ['ROLE_INFO_BTN','ROLE_GUIDE_BTN','ADMIN_BTN','ADMIN_MENU_BTN','REPORT_BTN','SUIKAST_BTN_FLOAT','SABOTAJ_BTN_FLOAT','MINIGAME_BTN_FLOAT','HT'].forEach(id=>{
+    if(Q(id)) makeDraggable(id);
+  });
+}
+
+// Sekme arkaya atılıp geri gelince bağlantı durumunu kontrol et
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (!io2.connected) {
+      console.log('[visibility] Sekme aktif, bağlantı yok — yeniden bağlanılıyor');
+      io2.connect();
+    } else {
+      // Bağlı ama state bayat olabilir — dünya düzenini yenile
+      io2.emit('state:request');
+      const activePhases=['night','day_discussion','voting','vote_result','morning_report','president_vote','mvp_vote'];
+      if(activePhases.includes(gs?.phase)) io2.emit('priv:request');
+      let token = null;
+      try{ token = localStorage.getItem('azap_token'); }catch{}
+      if(token && user) io2.emit('auth:loginByToken',{token},()=>{});
+    }
+  }
+});
+
+io2.on('connect',()=>{
+  me=io2.id;
+  Q('CONN_BANNER').style.display='none';
+  console.log('[connect] Socket bağlandı, id:',me);
+  // HER bağlantıda (ilk + reconnect) token varsa server'da authed map'e kayıt ettir
+  // Aksi halde room:create gibi auth gerektiren işlemler başarısız olur
+  let token = null;
+  try{ token = localStorage.getItem('azap_token'); }catch{}
+  if(token){
+    io2.emit('auth:loginByToken',{token},r=>{
+      if(r?.success){
+        if(!user){
+          // İlk yükleme — UI'yı kur
+          user = r.user;
+          updateUserUI();
+          userMusicPref = true;
+          loadYouTubeAPI();
+          setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); setupDraggableButtons(); }, 300);
+          updateRoleInfoBtn();
+        } else {
+          user = { ...user, ...r.user };
+          updateUserUI();
+        }
+        // Bağlantı sonrası rejoin kontrolü (sayfa yenilenme/reconnect durumları için)
+        setTimeout(()=>{
+          tryAutoRejoin();
+        }, 500);
+      } else {
+        // Token geçersiz - sil ve user'ı sıfırla
+        try{ localStorage.removeItem('azap_token'); }catch{}
+        if(user){
+          user = null;
+          updateUserUI();
+          show('S0');
+          toast('Oturumun sona erdi, tekrar giriş yap.',1);
+        }
+        // Token geçersiz olsa bile rejoin dene (anonim oyuncu için)
+        setTimeout(()=>{
+          tryAutoRejoin();
+        }, 500);
+      }
+    });
+  } else {
+    // Token yoksa bile rejoin dene (anonim oyuncu için)
+    setTimeout(()=>{
+      tryAutoRejoin();
+    }, 500);
+  }
+  // Sürüklenebilir butonları kur (DOM hazır olduktan sonra)
+  setTimeout(setupDraggableButtons, 100);
+  // İlk yüklemede game-actions (yenile/çıkış) görünürlüğünü ayarla (S0/S1'de gizli)
+  setTimeout(updateGameActions, 100);
+});
+
+// Bağlantı watchdog: aktif oyunda 45 saniye state gelmezse state:request at
+let _lastStateTime = Date.now();
+setInterval(()=>{
+  if(!io2.connected||!gs)return;
+  const activePhases=['night','day_discussion','voting','vote_result','morning_report','president_vote'];
+  if(!activePhases.includes(gs.phase))return;
+  if(Date.now()-_lastStateTime>45000){
+    console.warn('[watchdog] 45sn state gelmedi, yenileniyor');
+    io2.emit('state:request');
+    io2.emit('priv:request');
+    _lastStateTime=Date.now();
+  }
+},15000);
+
+// Phase tracking for optimized rendering
+let _lastPhase = null;
+let _lastRound = -1;
+let _lastCosmSig = '';
+let _lastAliveSig = '';
+let _seenSaboDeaths = new Set();
+
+io2.on('state',s=>{
+  _lastStateTime = Date.now();
+  console.log('[state] Phase:',s.phase,'Round:',s.round,'Players:',s.players?.length);
+  gs=s;
+  const phaseChanged = _lastPhase !== s.phase;
+  const roundChanged = _lastRound !== s.round;
+  const cosmSig = (s.players||[]).map(p=>p.id+':'+(p.cosmetics?.frame||'')+'/'+(p.cosmetics?.font||'')+'/'+(p.cosmetics?.pet||'')).join(',');
+  const cosmeticsChanged = _lastCosmSig !== cosmSig;
+  const aliveSig = (s.players||[]).map(p=>p.id+':'+(p.isAlive?1:0)).join(',');
+  const aliveChanged = _lastAliveSig !== aliveSig;
+  if(phaseChanged) console.log('[state] Phase değişti:',_lastPhase,'->',s.phase);
+  _lastPhase = s.phase;
+  _lastRound = s.round;
+  _lastCosmSig = cosmSig;
+  _lastAliveSig = aliveSig;
+  if(!_cosmeticCatalog){
+    loadCosmeticCatalog().then(()=>{
+      if(!gs)return;
+      if(gs.phase==='lobby')renderLobby();
+      else if(gs.phase==='president_vote')renderPV();
+      else if(gs.phase==='night'){renderTL();renderEA();}
+      else if(gs.phase==='day_discussion')renderDay();
+      else if(gs.phase==='voting')renderVote();
+      else if(gs.phase==='mvp_vote')renderMV();
+    });
+  }
+
+  // Oda kodunu kaydet (rejoin için) - oyun aktifken veya lobideyken
+  // me null ise kullanıcı ana menüye dönmüş demektir, kaydetme
+  const currentCode = Q('LC')?.textContent;
+  if(me && currentCode && currentCode.length === 4 && s.phase !== 'game_over' && s.phase !== 'post_game'){
+    saveLastRoom(currentCode, user?.username || Q('IN')?.value?.trim() || 'Oyuncu');
+  }
+
+  // İzleyici veya ölmüş oyuncu — bitiş ekranlarına ve lobiye dönüşe izin ver
+  if(isSpec||isDead){
+    // Oyun sonu ekranları + lobby (yeni oyun)
+    if(s.phase==='game_over'||s.phase==='post_game'||s.phase==='mvp_vote'||s.phase==='mvp_result'||s.phase==='lobby'){
+      const m={mvp_vote:'S_MV',mvp_result:'S_MVR',game_over:'S9',post_game:'S9',lobby:'S2'};
+      const target=m[s.phase];
+      if(target){
+        // Lobby'ye dönüldüyse (yeni oyun) — ölü/izleyici durumu sıfırla
+        if(s.phase==='lobby'){
+          isDead=false;
+          deathOk=false;
+          lastDead=new Set();
+          const sb=Q('SB');sb.textContent='👁️ İZLEYİCİ';sb.classList.remove('sh');
+          Q('DOV').classList.remove('sh');
+          show(target);
+          renderLobby();
+        } else {
+          // ÖNEMLİ: Ölü/izleyici için her zaman ekranı güncelle (phaseChanged'a bakma)
+          // Çünkü S10'dan başka ekrana geçmesi gerekebilir
+          show(target);
+          // DOV overlay'i kapat (mvp/game_over fazlarında lazım değil)
+          Q('DOV').classList.remove('sh');
+          if(s.phase==='mvp_vote')renderMV();
+          if(s.phase==='mvp_result' && s.mvpResult)renderMvpResult(s.mvpResult);
+        }
+        Q('HT').classList.remove('sh');
+      }
+    }
+    return;
+  }
+  const m={lobby:'S2',role_selection:'S_RS',role_reveal:'S3',president_vote:'S_PV',night:'S4',morning_report:'S5',day_discussion:'S6',voting:'S7',vote_result:'S8',mvp_vote:'S_MV',mvp_result:'S_MVR',game_over:'S9',post_game:'S9'};
+  // Sadece phase değiştiğinde ekranı değiştir (gereksiz redraw önler)
+  if(phaseChanged && m[s.phase])show(m[s.phase]);
+  // Render fonksiyonları sadece phase'a yeni geçildiğinde tam çalıştırılır.
+  if(s.phase==='lobby')renderLobby();
+  if(s.phase==='role_selection')renderRS();
+  if(s.phase==='president_vote'&&(phaseChanged||cosmeticsChanged))renderPV();
+  if(s.phase==='night'&&(phaseChanged||cosmeticsChanged))renderNight();
+  if(s.phase==='day_discussion'){
+    if(phaseChanged||roundChanged||cosmeticsChanged||aliveChanged)renderDay();
+    else updateDayPlayerList();
+  }
+  if(s.phase==='voting'&&(phaseChanged||cosmeticsChanged||aliveChanged))renderVote();
+  if(s.phase==='mvp_vote'&&(phaseChanged||cosmeticsChanged))renderMV();
+  if(s.phase==='mvp_result' && s.mvpResult)renderMvpResult(s.mvpResult);
+  // Sabotaj gündüz ölümleri: yeni ölenler için toast göster
+  if(s.sabotageDayDeaths?.length){
+    s.sabotageDayDeaths.forEach(d=>{
+      if(!_seenSaboDeaths.has(d.id)){
+        _seenSaboDeaths.add(d.id);
+        if(d.id !== me) toast(`💀 ${d.name} öldü!`, 1);
+      }
+    });
+  }
+  if(s.phase==='lobby'){ _seenSaboDeaths.clear(); _saboDeathToasted=false; }
+  // Suikast butonu her state güncellemesinde kontrol edilsin (suikastUsedThisRound değişebilir)
+  updateSuikastFloatingBtn();
+  // Bu işlemler sadece phase değişiminde gereklidir — gereksiz DOM mutasyonu önlemek için
+  if(phaseChanged){
+    updateRoleInfoBtn();
+    Q('HT').classList.toggle('sh',['night','morning_report','day_discussion','voting','vote_result'].includes(s.phase));
+    applyMusicForCurrentScreen();
+  }
+});
+
+// Gündüz oyuncu listesini sadece güncelle (re-render olmadan)
+function updateDayPlayerList(){
+  if(!gs)return;
+  const dpEl=Q('DP');
+  if(!dpEl||dpEl.children.length===0){renderDay();return;}
+  const isHain2=ps?.team==='hain';
+  const tmIds=new Set();
+  if(isHain2&&ps.teammates)ps.teammates.forEach(t=>tmIds.add(t.id));
+  // Ölüm durumlarını güncelle
+  gs.players.forEach((p,idx)=>{
+    const li=dpEl.children[idx];
+    if(!li)return;
+    const wasAlive=!li.classList.contains('dead');
+    if(wasAlive!==p.isAlive){
+      li.classList.toggle('dead',!p.isAlive);
+      // Ölüm ikonu ekle/kaldır
+      const skull=li.querySelector('span:last-child');
+      if(!p.isAlive){
+        if(!skull||skull.textContent!=='💀'){
+          li.insertAdjacentHTML('beforeend','<span style="font-size:.85rem">💀</span>');
+        }
+      }
+    }
+    // Başkanlık güncellemesi
+    li.classList.toggle('president',!!p.isPresident);
+  });
+}
+
+io2.on('priv',s=>{
+  ps=s;
+  // Ölü/izleyici ise normal render yapma — S10'da kalsın
+  if(isSpec||isDead){
+    if(!s.isAlive&&!deathOk){Q('DOV').classList.add('sh');deathOk=true;}
+    updateSuikastFloatingBtn();updateRoleInfoBtn();
+    return;
+  }
+  if(gs?.phase==='role_reveal')renderRole();
+  if(gs?.phase==='role_selection')renderRS();
+  if(gs?.phase==='night'){Q('NE').textContent=s.roleEmoji;Q('NN').textContent=s.roleName;
+    if(s.hainKillVotes&&s.team==='hain')renderHKV(s.hainKillVotes);}
+  renderH();
+  // Suikastçı durumu değişebilir - butonu güncelle
+  updateSuikastFloatingBtn();updateRoleInfoBtn();
+  // Sabotaj mini oyun gösterilmeli mi?
+  sabotageCheck();
+  if(!s.isAlive&&!deathOk){
+    Q('DOV').classList.add('sh');
+    deathOk=true;
+    // 3 saniye sonra otomatik izleyici moduna geç
+    setTimeout(()=>{
+      if(!isDead) enterDeathSpectate();
+    },3000);
+  }
+});
+
+io2.on('timer',({rem,total})=>{
+  Q('TB').style.display='block';Q('TN').style.display='block';
+  Q('TN').textContent=rem+'s';Q('TF').style.width=(rem/total*100)+'%';
+  Q('TN').classList.toggle('w',rem<=5);
+});
+
+io2.on('report',({reports})=>renderReport(reports));
+io2.on('voteResult',r=>renderVR(r));
+
+// Cellat hedefini astırdı bildirimi - tüm oyunculara (cellat anonim, sadece hedef gözükür)
+io2.on('cellatVictory',d=>{
+  const ov=Q('SUIKAST_OV');
+  Q('SUIKAST_TXT').textContent=`⛓️ ${d.targetName}'in eceli oldu!`;
+  Q('SUIKAST_SUB').textContent=`Bir cellat hedefini buldu. Oyun devam ediyor.`;
+  ov.style.background='rgba(0,30,60,.96)';
+  ov.classList.add('sh');
+  setTimeout(()=>ov.classList.remove('sh'),4500);
+});
+
+// Sadece cellata özel bildirim
+io2.on('cellatPrivateWin',d=>{
+  toast(`⛓️ Hedefini ${d.targetName} astırdın! Kazandın.`);
+});
+// Engizitör infaz sonucu - herkese yayın
+io2.on('engizitorResult',d=>{
+  const ov=Q('SUIKAST_OV');
+  Q('SUIKAST_TXT').textContent=`⚖️ ${d.msg}`;
+  Q('SUIKAST_SUB').textContent=d.killedName?`${d.killedName} infaz edildi.`:'';
+  ov.style.background='rgba(94,58,135,.96)';
+  ov.classList.add('sh');
+  setTimeout(()=>ov.classList.remove('sh'),4500);
+});
+
+io2.on('voteTally',t=>updateTally(t));
+io2.on('presidentVoteTally',t=>updatePVTally(t));
+io2.on('hainKillVotes',v=>renderHKV(v));
+io2.on('mvpTally',t=>updateMvpTally(t));
+io2.on('mvpResult',r=>renderMvpResult(r));
+
+io2.on('gameOver',d=>{
+  // Tüm oyuncular (canlı, ölü, izleyici) oyun sonunu anında görsün
+  show('S9');
+  renderGO(d);
+  Q('TB').style.display='none';Q('TN').style.display='none';
+  Q('HT').classList.remove('sh');
+  Q('DOV').classList.remove('sh');
+  // Ölü oyuncu artık game over ekranında, izleyici ekranı değil
+  // Ama isDead durumu post_game/lobby'de sıfırlanacak
+});
+
+io2.on('statsUpdate',r=>{
+  if(r){
+    user=r;
+    updateUserUI();
+    // Profil veya mağaza modal açıksa anında güncelle
+    const cm=Q('MOD_COINS');if(cm)cm.textContent=r.coins??0;
+    const sc=Q('SHOP_COINS');if(sc)sc.textContent=r.coins??0;
+    const sp=Q('MOD_SP');if(sp)sp.textContent=r.stats?.played??0;
+    const sw=Q('MOD_SW');if(sw)sw.textContent=r.stats?.won??0;
+    const sl=Q('MOD_SL');if(sl)sl.textContent=r.stats?.lost??0;
+    const mv=Q('MOD_MV');if(mv)mv.textContent=r.stats?.mvp??0;
+    const bmc=Q('BET_MY_COINS');if(bmc)bmc.textContent='💰 ' + (r.coins??0);
+  }
+});
+
+// ── ÖDEME BAŞARILI BİLDİRİMİ (Socket.io ile anlık teslimat — Madde XI-e) ──
+io2.on('payment:success',data=>{
+  toast(`✅ ${data.label||'Ödeme'} başarılı! Hesabına tanımlandı.`);
+  // Güncel bakiyeyi çek
+  io2.emit('auth:stats',null,r=>{if(r){user=r;updateUserUI();updateShopHeader();}});
+});
+// Popup pencereden gelen ödeme sonuç mesajını dinle
+window.addEventListener('message',e=>{
+  if(e.data?.type==='payment_result'){
+    if(e.data.status==='success') toast('✅ Ödeme başarılı!');
+    else toast('❌ Ödeme tamamlanamadı.',1);
+  }
+});
+
+io2.on('spec',d=>{
+  _lastSpec=d;
+  // Oyun sonu/MVP/lobby fazlarında S10'a zorlamayalım — state handler doğru ekrana yönlendirsin
+  if(d.phase==='mvp_vote'||d.phase==='mvp_result'||d.phase==='game_over'||d.phase==='post_game'||d.phase==='lobby')return;
+  if(isSpec||isDead){show('S10');renderSpec(d);}
+});
+
+io2.on('hainMsg',({from,msg})=>{const b=Q('HCM');if(b){b.innerHTML+=`<div class="hm"><span class="hs">${from}:</span> ${msg}</div>`;b.parentElement.scrollTop=b.parentElement.scrollHeight;}});
+
+// Bomba patlama efekti
+io2.on('bombExplosion',({victims})=>{
+  if(!victims||!victims.length)return;
+  // Ses efekti
+  try{const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sawtooth';o.frequency.setValueAtTime(80,ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(20,ctx.currentTime+0.5);
+    g.gain.setValueAtTime(0.6,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.8);
+    o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.8);
+    // İkinci patlama sesi
+    setTimeout(()=>{const o2=ctx.createOscillator(),g2=ctx.createGain();
+      o2.type='square';o2.frequency.setValueAtTime(40,ctx.currentTime);
+      g2.gain.setValueAtTime(0.4,ctx.currentTime);g2.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.6);
+      o2.connect(g2);g2.connect(ctx.destination);o2.start();o2.stop(ctx.currentTime+0.6);},150);
+  }catch(e){}
+  // Overlay
+  const names=victims.map(v=>v.name).join(', ');
+  Q('BOMB_VICTIMS').textContent=names+' patlamada hayatını kaybetti!';
+  Q('BOMB_OV').classList.add('sh');
+  // Ölen oyuncunun kendi ekranına ayrıca ölüm gösterilecek (priv event'inde)
+  setTimeout(()=>Q('BOMB_OV').classList.remove('sh'),4000);
+});
+
+// Suikast sonucu efekti
+// Suikast sonucu — herkese gönderilen anonim mesaj (kim öldürdü/öldürmedi gizli)
+io2.on('suikastPublic',(res)=>{
+  const ov=Q('SUIKAST_OV');
+  Q('SUIKAST_TXT').textContent=`☀️ ${res.deadName} gündüz öldürüldü!`;
+  Q('SUIKAST_SUB').textContent='';
+  ov.style.background='rgba(60,30,0,.96)';
+  ov.classList.add('sh');
+  setTimeout(()=>ov.classList.remove('sh'),3500);
+});
+
+// Suikast sonucu — sadece suikastçıya giden detay (toast olarak göster)
+io2.on('suikastPrivate',(res)=>{
+  const roleName=ID_MAP[res.guessedRole]?.n||res.guessedRole;
+  if(res.correct){
+    toast(`🗡️ Doğru tahmin! ${res.targetName} (${roleName}) öldü.`);
+  } else {
+    toast(`🗡️ Yanlış! ${res.targetName} ${roleName} değildi. Öldün!`,1);
+  }
+});
+
+io2.on('disconnect',(reason)=>{
+  console.log('[socket] disconnect:', reason);
+  if(reason!=='io client disconnect'){
+    Q('CONN_BANNER').style.display='block';
+  }
+  if(reason==='io server disconnect'){
+    toast('Sunucudan ayrıldın.',1);
+  }
+  if(reason==='ping timeout'||reason==='transport close'||reason==='transport error'){
+    setTimeout(()=>{
+      if(io2.disconnected)tryAutoRejoin();
+    },1000);
+  }
+});
+
+// Oda kurucusu tarafından atıldı
+io2.on('kicked',({reason})=>{
+  clearLastRoom();
+  resetClient();
+  show('S1');
+  toast(reason||'Odadan atıldın.',1);
+});
+
+// Başka cihazda giriş yapıldı
+io2.on('forceLogout',({reason})=>{
+  clearLastRoom();
+  resetClient();
+  user=null;
+  try{localStorage.removeItem('azap_token');}catch{}
+  show('S0');
+  toast(reason||'Başka bir cihazda giriş yapıldı.',1);
+});
+
+io2.on('reconnect_attempt',(n)=>{
+  if(n>2)Q('TN').textContent='⟳ bağlanıyor...';
+});
+
+io2.on('reconnect',()=>{
+  toast('Bağlantı kuruldu!');
+  if(!user) tryAutoLogin();
+  else {
+    // Giriş yapılmış ama socket yenilendi — re-auth + rejoin
+    let token=null; try{token=localStorage.getItem('azap_token');}catch{}
+    if(token) io2.emit('auth:loginByToken',{token},r=>{ if(r?.success) setTimeout(tryAutoRejoin,300); });
+  }
+});
+
+io2.on('connect_error',(err)=>{
+  console.log('[socket] connect_error:', err.message);
+});
+
+Q('IC').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'')});
+Q('AU').addEventListener('keypress',e=>{if(e.key==='Enter')Q('AP').focus()});
+Q('AP').addEventListener('keypress',e=>{if(e.key==='Enter')doAuth()});
