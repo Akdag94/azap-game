@@ -134,75 +134,24 @@ const COSMETIC_CATALOG = {
   font_pixel:   { cat:'font',  name:'Piksel Yazı',    emoji:'👾', price:750,  rarity:'epic',      desc:'Retro 8-bit piksel yazı tipi.',                 preview:{family:'"Courier New",monospace',weight:'700',size:'.72rem'} }
 };
 
-// Paket katalog endpoint'i (frontend mağazada gösterir)
-app.get('/api/shop/packages', apiLimiter, (req, res) => {
-  res.json({
-    packages: PAYMENT_PACKAGES,
-    donationPresets: DONATION_PRESETS,
-    paymentEnabled: !!process.env.IYZICO_API_KEY
-  });
-});
-
 // Kozmetik eşya kataloğu endpoint'i
 app.get('/api/shop/cosmetics', apiLimiter, (req, res) => {
   res.json({ items: COSMETIC_CATALOG });
 });
 
-// ── İYZİCO ÖDEME OLUŞTURMA ──
-app.post('/api/payment/create', paymentLimiter, async (req, res) => {
-  const { username, packageId, donationAmount } = req.body || {};
-
-  // ── GÜVENLİK: username sanitize ve doğrulama ──
-  if (typeof username !== 'string' || username.length < 2 || username.length > 16) {
-    return res.status(400).json({ ok: false, error: 'Kullanıcı adı geçersiz' });
-  }
-  // Kullanıcı sistemde var mı kontrol et
-  const userStats = Accounts.getStats(username);
-  if (!userStats) return res.status(404).json({ ok: false, error: 'Kullanıcı bulunamadı' });
-
-  // packageId whitelist kontrolü
-  if (packageId !== 'donation' && !PAYMENT_PACKAGES[packageId]) {
-    return res.status(400).json({ ok: false, error: 'Geçersiz paket' });
-  }
-
-  let amount, label, type, payload;
-  if (packageId === 'donation') {
-    const amt = parseFloat(donationAmount);
-    if (!amt || amt < 5 || amt > 5000 || isNaN(amt)) {
-      return res.status(400).json({ ok: false, error: 'Bağış 5-5000 TL arası olmalı' });
-    }
-    amount = amt;
-    label = `${amount} TL Bağış`;
-    type = 'donation';
-    payload = { amount };
-  } else {
-    const pkg = PAYMENT_PACKAGES[packageId];
-    amount = pkg.price;
-    label = pkg.label;
-    type = pkg.type;
-    payload = pkg;
-  }
-
-  // İyzico bağlı değilse hata döndür
-  if (!process.env.IYZICO_API_KEY) {
-    return res.status(503).json({ ok: false, error: 'Ödeme sistemi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.' });
-  }
-
-  // TODO: Gerçek İyzico Checkout Form
-  return res.status(501).json({ ok: false, error: 'Ödeme sistemi henüz hazır değil.' });
+// ── ÖDEME SİSTEMİ (Provider-agnostic, SOLID/DIP) ──
+const { setupPayment } = require('./payment');
+setupPayment(app, io, {
+  packages: PAYMENT_PACKAGES,
+  donationPresets: DONATION_PRESETS,
+  getUser: (username) => Accounts.getStats(username),
+  applyPayment,
+  authed,
+  paymentLimiter,
+  apiLimiter
 });
 
-// İyzico callback (ödeme tamamlandığında)
-// TODO: gerçek webhook imzasını doğrula
-app.post('/api/payment/callback', async (req, res) => {
-  // TODO: req.body.token ile Iyzico'dan ödeme detayını doğrula
-  // Sonra: applyPayment(username, packageId)
-  res.json({ ok: true });
-});
-
-// DEV MODE kaldırıldı — tüm ödemeler İyzico üzerinden yapılır
-
-// Ödeme başarılı sonrası uygulama
+// Ödeme başarılı sonrası uygulama (PaymentService tarafından çağrılır)
 function applyPayment(username, packageId, donationAmount) {
   if (packageId === 'donation') {
     Accounts.recordDonation(username, donationAmount);

@@ -900,15 +900,31 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 
 </div>
 
-<div style="margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:5px;font-size:.7rem;color:var(--dim);text-align:center;line-height:1.6">
-  🔒 Tüm ödemeler <strong>İyzico</strong> güvencesiyle işlenir. Kart bilgilerin AZAP'ta saklanmaz.<br>
+<!-- Ödeme Öncesi Zorunlu Onaylar -->
+<div id="SHOP_CONSENTS" style="margin-top:10px;padding:10px;background:rgba(0,0,0,.25);border:1px solid var(--brd);border-radius:6px;font-size:.7rem;color:var(--dim);line-height:1.8">
+  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
+    <input type="checkbox" id="CHK_KVKK" style="margin-top:2px">
+    <span><a href="/yasal/kvkk" target="_blank" style="color:var(--hi);text-decoration:underline">KVKK Aydınlatma Metni</a>'ni okudum, kabul ediyorum.</span>
+  </label>
+  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
+    <input type="checkbox" id="CHK_MSS" style="margin-top:2px">
+    <span><a href="/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a>'ni okudum, kabul ediyorum.</span>
+  </label>
+  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
+    <input type="checkbox" id="CHK_CAYMA" style="margin-top:2px">
+    <span>Dijital içeriğin <strong>anında teslim</strong> edileceğini ve teslim sonrası <a href="/yasal/iptal-iade" target="_blank" style="color:var(--hi);text-decoration:underline">cayma hakkından feragat</a> ettiğimi onayıyorum.</span>
+  </label>
+</div>
+<div style="margin-top:8px;padding:8px;background:rgba(0,0,0,.15);border-radius:5px;font-size:.68rem;color:var(--dim);text-align:center;line-height:1.6">
+  🔒 Tüm ödemeler PCI-DSS uyumlu lisanslı ödeme sağlayıcısı üzerinden <strong>3D Secure</strong> ile işlenir. Kart bilgilerin AZAP'ta saklanmaz.<br>
   <span style="display:inline-flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;justify-content:center">
     <img src="https://www.mastercard.com.tr/content/dam/public/mastercardcom/eu/tr/logos/mc-logo-52.svg" alt="Mastercard" style="height:20px;opacity:.7">
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/200px-Visa_Inc._logo.svg.png" alt="Visa" style="height:14px;opacity:.7">
     <span style="color:#e91e63;font-weight:700;font-size:.75rem">TROY</span>
   </span><br>
   <a href="/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a> &nbsp;·&nbsp;
-  <a href="/yasal/iptal-iade" target="_blank" style="color:var(--hi);text-decoration:underline">İptal &amp; İade Koşulları</a>
+  <a href="/yasal/iptal-iade" target="_blank" style="color:var(--hi);text-decoration:underline">İptal &amp; İade Koşulları</a> &nbsp;·&nbsp;
+  <a href="/yasal/kvkk" target="_blank" style="color:var(--hi);text-decoration:underline">KVKK</a>
 </div>
 </div></div>
 
@@ -1626,6 +1642,32 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
 }
 </script>
 <script>
+// ── TARAYICI UYUMLULUK KONTROLÜ (Madde IV-a) ──
+(function checkBrowserCompat(){
+  const ua = navigator.userAgent;
+  let ok = true, msg = '';
+  const ver = (re) => { const m = ua.match(re); return m ? parseInt(m[1],10) : 0; };
+  if(/Chrome\//.test(ua) && !/Edg\//.test(ua) && !/OPR\//.test(ua)){
+    if(ver(/Chrome\/(\d+)/) < 90){ ok=false; msg='Chrome 90+'; }
+  } else if(/Edg\//.test(ua)){
+    if(ver(/Edg\/(\d+)/) < 100){ ok=false; msg='Edge 100+'; }
+  } else if(/OPR\//.test(ua)){
+    if(ver(/OPR\/(\d+)/) < 90){ ok=false; msg='Opera 90+'; }
+  } else if(/Firefox\//.test(ua)){
+    if(ver(/Firefox\/(\d+)/) < 100){ ok=false; msg='Firefox 100+'; }
+  } else if(/Version\//.test(ua) && /Safari\//.test(ua)){
+    if(ver(/Version\/(\d+)/) < 12){ ok=false; msg='Safari 12+'; }
+  }
+  if(!ok){
+    document.addEventListener('DOMContentLoaded',()=>{
+      const d=document.createElement('div');
+      d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99998;background:#1a1a2e;color:#ffb347;text-align:center;padding:8px 12px;font-size:.75rem;font-weight:600;border-bottom:1px solid #ffb347';
+      d.innerHTML='⚠️ Tarayıcınız eski bir sürüm. Güvenli ödeme ve en iyi deneyim için <strong>'+msg+'</strong> veya üstüne güncelleyin.';
+      document.body.prepend(d);
+    });
+  }
+})();
+
 // (müzik sistemi kaldırıldı)
 const io2=io({
   reconnection: true,
@@ -2089,21 +2131,35 @@ function shopSwitchTab(tab){
   if(tab === 'items') renderShopItems();
 }
 
+function getPaymentConsents(){
+  const kvkk = Q('CHK_KVKK')?.checked;
+  const mesafeliSatis = Q('CHK_MSS')?.checked;
+  const caymaHakki = Q('CHK_CAYMA')?.checked;
+  if(!kvkk || !mesafeliSatis || !caymaHakki){
+    toast('Lütfen tüm yasal onayları (KVKK, Mesafeli Satış, Cayma Hakkı) işaretleyin.',1);
+    return null;
+  }
+  return { kvkk, mesafeliSatis, caymaHakki };
+}
+
 async function shopBuy(packageId){
   if(!user){toast('Giriş yap!',1);return;}
   const pkg = _shopPackages?.[packageId];
   if(!pkg){toast('Paket yok',1);return;}
-  if(!confirm(`${pkg.label} satın alacaksın.\nFiyat: ₺${pkg.price.toFixed(2)}\nSatın alma işlemi ile Mesafeli Satış Sözleşmesi'ni kabul etmiş olursunuz.\nDevam?`))return;
+  const consents = getPaymentConsents();
+  if(!consents) return;
+  if(!confirm(`${pkg.label} satın alacaksın.\nFiyat: ₺${pkg.price.toFixed(2)}\nDevam?`))return;
   try{
     const r = await fetch('/api/payment/create',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ username: user.username, packageId })
+      body: JSON.stringify({ username: user.username, packageId, consents })
     });
     const d = await r.json();
     if(d.checkoutFormContent){
-      const w = window.open('','iyzico','width=500,height=700');
-      w.document.write(d.checkoutFormContent);
+      const w = window.open('','azap_pay','width=500,height=700');
+      if(w){w.document.write(d.checkoutFormContent);}
+      else{toast('Ödeme penceresi açılamadı. Popup engelleyiciyi kapatın.',1);}
     } else {
       toast(d.error || 'Satın alma gerçekleşmedi.',1);
     }
@@ -2117,17 +2173,20 @@ async function shopDonate(){
   const amt = parseFloat(Q('SHOP_DONATE_AMOUNT').value);
   if(!amt || amt < 5){toast('Min 5 TL!',1);return;}
   if(amt > 5000){toast('Max 5000 TL!',1);return;}
+  const consents = getPaymentConsents();
+  if(!consents) return;
   if(!confirm(`₺${amt} bağış yapacaksın. ❤️\nDestek için teşekkürler!`))return;
   try{
     const r = await fetch('/api/payment/create',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt })
+      body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt, consents })
     });
     const d = await r.json();
     if(d.checkoutFormContent){
-      const w = window.open('','iyzico','width=500,height=700');
-      w.document.write(d.checkoutFormContent);
+      const w = window.open('','azap_pay','width=500,height=700');
+      if(w){w.document.write(d.checkoutFormContent);}
+      else{toast('Ödeme penceresi açılamadı. Popup engelleyiciyi kapatın.',1);}
     } else {
       toast(d.error || 'Bağış gerçekleşmedi.',1);
     }
@@ -5219,6 +5278,20 @@ io2.on('statsUpdate',r=>{
     const sw=Q('MOD_SW');if(sw)sw.textContent=r.stats?.won??0;
     const sl=Q('MOD_SL');if(sl)sl.textContent=r.stats?.lost??0;
     const mv=Q('MOD_MV');if(mv)mv.textContent=r.stats?.mvp??0;
+  }
+});
+
+// ── ÖDEME BAŞARILI BİLDİRİMİ (Socket.io ile anlık teslimat — Madde XI-e) ──
+io2.on('payment:success',data=>{
+  toast(`✅ ${data.label||'Ödeme'} başarılı! Hesabına tanımlandı.`);
+  // Güncel bakiyeyi çek
+  io2.emit('auth:stats',null,r=>{if(r){user=r;updateUserUI();updateShopHeader();}});
+});
+// Popup pencereden gelen ödeme sonuç mesajını dinle
+window.addEventListener('message',e=>{
+  if(e.data?.type==='payment_result'){
+    if(e.data.status==='success') toast('✅ Ödeme başarılı!');
+    else toast('❌ Ödeme tamamlanamadı.',1);
   }
 });
 

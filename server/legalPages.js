@@ -4,8 +4,15 @@
 const SITE_NAME = 'AZAP';
 const SITE_URL  = 'https://azap.online';
 const OWNER     = 'Azat Akdağ';
-const EMAIL     = 'destek@azap.online';   // gerçek e-posta ile değiştir
-const ADDRESS   = 'Türkiye';              // tam adres eklenirse buraya
+const EMAIL     = 'destek@azap.online';
+const KEP_EMAIL = '';              // KEP adresi alındığında buraya yaz
+const PHONE     = '';              // Telefon numarası
+const ADDRESS   = 'Türkiye';      // Ticaret Sicili merkez adresi
+const MERSIS_NO = '';              // MERSİS numarası (alındığında doldur)
+const VKN       = '';              // Vergi Kimlik No
+const TRADE_REG = '';              // Ticaret Sicili / Esnaf Sicili bilgisi
+const CURRENCY  = 'Türk Lirası (₺ TRY)';
+const MIN_AGE   = 18;
 
 function legalHtml(title, body) {
   return `<!DOCTYPE html>
@@ -87,7 +94,7 @@ const pages = {
 <ul>
   <li><strong>Hesap verileri:</strong> Kullanıcı adı, şifrelenmiş parola.</li>
   <li><strong>Oyun verileri:</strong> Oynanan oyun sayısı, kazanma oranı, MVP sayısı.</li>
-  <li><strong>Ödeme verileri:</strong> Ödeme tarihi, tutar, işlem durumu (kart numarası gibi hassas veriler <strong>AZAP'ta saklanmaz</strong>, İyzico altyapısında tutulur).</li>
+  <li><strong>Ödeme verileri:</strong> Ödeme tarihi, tutar, işlem durumu (kart numarası gibi hassas veriler <strong>AZAP'ta saklanmaz</strong>, PCI-DSS uyumlu lisanslı ödeme hizmeti sağlayıcısı altyapısında tutulur).</li>
   <li><strong>Teknik veriler:</strong> IP adresi (güvenlik & oran sınırlama), tarayıcı tipi, bağlantı zamanı (anonimleştirilmiş istatistik olarak).</li>
 </ul>
 
@@ -100,10 +107,10 @@ const pages = {
 </ul>
 
 <h2>4. Üçüncü Taraf Paylaşımı</h2>
-<p>Kişisel verileriniz; yasal zorunluluklar ve ödeme işlemcisi (İyzico) dışında hiçbir üçüncü tarafla paylaşılmaz, satılmaz veya kiralanmaz.</p>
+<p>Kişisel verileriniz; yasal zorunluluklar ve ödeme hizmeti sağlayıcısı dışında hiçbir üçüncü tarafla paylaşılmaz, satılmaz veya kiralanmaz. Ödeme hizmeti sağlayıcısı ile paylaşılan veriler yalnızca ödeme işleminin gerçekleştirilmesi amacıyla iletilir.</p>
 
 <h2>5. Veri Güvenliği</h2>
-<p>Parolalar bcrypt ile şifrelenir. Sunucu trafiği SSL/TLS ile korunur. Ödeme bilgileri yalnızca PCI-DSS uyumlu İyzico altyapısında saklanır.</p>
+<p>Parolalar bcrypt ile şifrelenir. Sunucu trafiği SSL/TLS ile korunur. Ödeme bilgileri yalnızca PCI-DSS uyumlu lisanslı ödeme hizmeti sağlayıcısı altyapısında saklanır; ${SITE_NAME} sunucularında hiçbir kart verisi loglanmaz veya işlenmez.</p>
 
 <h2>6. Haklarınız (KVKK Madde 11)</h2>
 <ul>
@@ -123,27 +130,45 @@ const pages = {
   'mesafeli-satis': legalHtml('Mesafeli Satış Sözleşmesi', `
 <div class="box">Bu sözleşme, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği kapsamında düzenlenmiştir.</div>
 
-<h2>1. Satıcı Bilgileri</h2>
-<p><strong>İsim:</strong> ${OWNER}<br>
-<strong>Platform:</strong> ${SITE_URL}<br>
+<h2>1. Satıcı Bilgileri (Madde V-c)</h2>
+<div class="box">
+<strong>Adı Soyadı / Ticari Unvan:</strong> ${OWNER}<br>
+<strong>MERSİS No:</strong> ${MERSIS_NO || 'Başvuru sürecinde'}<br>
+<strong>Vergi Kimlik No:</strong> ${VKN || 'Başvuru sürecinde'}<br>
+<strong>Merkez Adresi:</strong> ${ADDRESS}<br>
+<strong>KEP Adresi:</strong> ${KEP_EMAIL || 'Başvuru sürecinde'}<br>
 <strong>E-posta:</strong> <a href="mailto:${EMAIL}">${EMAIL}</a><br>
-<strong>Adres:</strong> ${ADDRESS}</p>
+<strong>Telefon:</strong> ${PHONE || 'E-posta ile iletişim'}<br>
+<strong>Platform:</strong> <a href="${SITE_URL}">${SITE_URL}</a><br>
+<strong>Ödeme Kabul Edilen Para Birimi:</strong> ${CURRENCY}<br>
+<strong>Yaş Kısıtlaması:</strong> ${MIN_AGE}+ (veya ebeveyn izni)
+</div>
 
 <h2>2. Ürün ve Hizmet Bilgileri</h2>
+<p><strong>Önemli Not:</strong> ${SITE_NAME}, tamamen <strong>beceri ve sosyal çıkarım</strong> temelli bir eğlence oyunudur. Platformda <u>kumar, şans oyunu veya bahis bulunmamaktadır</u>. Tüm satın alımlar kozmetik veya sanal bakiye niteliğindedir ve gerçek paraya çevrilemez.</p>
 <ul>
-  <li><strong>Altın Paketleri:</strong> ${SITE_NAME} oyununda kullanılabilen sanal para birimi. Oyun içi özellikler için kullanılır; gerçek para ile değiştirilemez, iade edilemez.</li>
-  <li><strong>Premium Üyelik:</strong> Belirtilen süre boyunca özel oyun içi avantajlar sağlayan dijital üyelik hizmeti (ör. +%50 altın kazanımı, özel çerçeve).</li>
+  <li><strong>Altın Paketleri (Sanal Para Birimi):</strong> ${SITE_NAME} oyununda kullanılabilen sanal para birimi. Yalnızca oyun içi kozmetik eşyalar ve özellikler için kullanılır; gerçek para ile değiştirilemez, nakit olarak çekilemez.</li>
+  <li><strong>Premium Üyelik (Dijital Abonelik):</strong> Belirtilen süre boyunca özel oyun içi avantajlar sağlayan dijital üzelik hizmeti (ör. +%50 altın kazanımı, özel çerçeve). Abonelik süresi başladıktan sonra otomatik olarak tüketilmiş sayılır.</li>
+  <li><strong>Kozmetik Eşyalar:</strong> Oyun içi görsel öğeler (çerçeve, pet, yazı tipi vb.). Oyun sonucunu etkilemez, salt eğlence amaçlıdır.</li>
   <li><strong>Bağış:</strong> Platformu destekleme amaçlı gönüllü ödeme; karşılığında destek rozeti verilir.</li>
 </ul>
 
 <h2>3. Ödeme Koşulları</h2>
-<p>Tüm ödemeler Türk Lirası (₺) cinsinden alınır. Ödemeler, PCI-DSS uyumlu <strong>İyzico</strong> altyapısı üzerinden gerçekleştirilir. Kart bilgileri ${SITE_NAME} sunucularında saklanmaz.</p>
+<p>Tüm ödemeler <strong>${CURRENCY}</strong> cinsinden alınır. Ödemeler, PCI-DSS uyumlu lisanslı ödeme hizmeti sağlayıcısı altyapısı üzerinden gerçekleştirilir. <strong>Kredi kartı bilgileri ${SITE_NAME} sunucularında asla saklanmaz, işlenmez ve loglanmaz.</strong></p>
+<p>Ödeme güvenliği için <strong>3D Secure</strong> doğrulama kullanılmaktadır. Ödeme işlemi sırasında bankanız tarafından ek doğrulama istenebilir.</p>
 
 <h2>4. Teslimat</h2>
 <p>Dijital ürünler (altın, premium üyelik) ödeme onayının ardından <strong>anında</strong> hesabınıza tanımlanır. Teslimat kanıtı olarak veritabanı kayıtları kullanılmaktadır.</p>
 
-<h2>5. Cayma Hakkı</h2>
-<p>6502 sayılı Kanun'un 49. maddesi gereği, <strong>dijital içerik tüketilmiş ise</strong> (altın kullanılmış, premium süresi başlamış ise) cayma hakkı kullanılamaz. Henüz kullanılmamış altın paketleri için satın alma tarihinden itibaren <strong>14 gün</strong> içinde cayma hakkı kullanılabilir.</p>
+<h2>5. Cayma Hakkı ve Dijital İçerik İstisnası</h2>
+<div class="box"><strong>Önemli:</strong> 6502 sayılı Tüketicinin Korunması Hakkında Kanun'un 53/ü maddesi ve Mesafeli Sözleşmeler Yönetmeliği'nin 15/ğ maddesi gereği;</div>
+<p>Aşağıdaki koşullar sağlandığında <strong>cayma hakkı kullanılamaz</strong>:</p>
+<ul>
+  <li>Dijital içeriğin (altın, premium üzelik) <strong>ifasına/teslimatına başlanmış</strong> ise (hesabınıza tanımlanmış ise),</li>
+  <li>Tüketici, dijital içeriğin anlık olarak teslim edileceğini ve bu durumda cayma hakkından feragat ettiğini <strong>ödeme öncesinde açıkça onaylamış</strong> ise.</li>
+</ul>
+<p>Henüz hesaba tanımlanmamış (teknik hata gibi nedenlerle) dijital ürünler için satın alma tarihinden itibaren <strong>14 gün</strong> içinde cayma hakkı kullanılabilir.</p>
+<p><strong>Cayma hakkı talebi:</strong> <a href="mailto:${EMAIL}">${EMAIL}</a> adresine kullanıcı adınız ve işlem tarihini içeren e-posta gönderiniz.</p>
 
 <h2>6. Uyuşmazlık</h2>
 <p>Uyuşmazlıklarda önce <a href="mailto:${EMAIL}">${EMAIL}</a> üzerinden iletişime geçiniz. Çözüme kavuşturulamazsa Tüketici Hakem Heyeti veya Tüketici Mahkemesi'ne başvurulabilir.</p>
