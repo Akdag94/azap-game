@@ -267,6 +267,7 @@ function show(id){
   if(id==='S0') startAiAuthBg(); else stopAiAuthBg();
 }
 function toast(m,e){const t=Q('T');t.textContent=m;t.className='toast'+(e?' er':'');t.classList.add('sh');setTimeout(()=>t.classList.remove('sh'),3e3)}
+
 function theme(day){document.body.classList.toggle('day',day)}
 function openModal(id){Q(id).classList.add('sh')}
 function closeModal(id){Q(id).classList.remove('sh')}
@@ -401,6 +402,7 @@ function checkRejoin(){
   });
 }
 function doRejoin(){
+  _intentionalLeave=false;
   Q('REJOIN_MODAL').classList.remove('on');
   var saved=null;
   try{saved=JSON.parse(localStorage.getItem('azap_last_room'));}catch{}
@@ -433,8 +435,13 @@ function dismissRejoin(){
 
 // Otomatik rejoin - sayfa yenilendiğinde veya reconnect olduğunda sessizce dene
 function tryAutoRejoin(){
+  // Kasıtlı çıkış yapıldıysa (Ana Menü, leaveRoom) kesinlikle rejoin yapma
+  if(_intentionalLeave){
+    console.log('[tryAutoRejoin] Kasıtlı çıkış flag aktif, rejoin yapılmıyor');
+    return;
+  }
   console.log('[tryAutoRejoin] Başladı');
-  // Son 30 saniye içinde kullanıcı bilerek çıktıysa rejoin yapma
+  // Son 30 saniye içinde kullanıcı bilerek çıktıysa rejoin yapma (sayfa yenileme sonrası)
   var leftTime=null;
   try{leftTime=parseInt(localStorage.getItem('azap_left_time'),10);}catch{}
   if(leftTime && (Date.now()-leftTime)<30000){
@@ -1265,21 +1272,27 @@ function renderGuide(){
 }
 
 // ── ROOM ──
+// Kasıtlı çıkış flag'i: leaveRoom/exitToMainMenu sonrası rejoin asla yapılmasın
+let _intentionalLeave = false;
+
 function saveLastRoom(code,name){
   try{localStorage.setItem('azap_last_room',JSON.stringify({code,name}));}catch{}
 }
 function clearLastRoom(){
+  _intentionalLeave = true;
   try{localStorage.removeItem('azap_last_room');}catch{}
   try{localStorage.setItem('azap_left_time',Date.now().toString());}catch{}
-  console.log('[clearLastRoom] Oda verisi temizlendi, timestamp kaydedildi');
+  console.log('[clearLastRoom] Oda verisi temizlendi, kasıtlı çıkış flag\'i set edildi');
 }
 function createRoom(){
   const n=Q('IN').value.trim();if(!n)return toast('İsim gir!',1);
+  _intentionalLeave=false;
   io2.emit('room:create',{playerName:n},r=>{if(r.ok){me=io2.id;Q('LC').textContent=r.code;saveLastRoom(r.code,n);show('S2');buildRG();applyMusicForCurrentScreen();io2.emit('auth:stats',null,s=>{if(s){user=s;updateUserUI();}});}else toast(r.err,1);});
 }
 function joinRoom(){
   const n=Q('IN').value.trim(),c=Q('IC').value.trim();
   if(!n)return toast('İsim gir!',1);if(c.length!==4)return toast('4 haneli kod!',1);
+  _intentionalLeave=false;
   io2.emit('room:join',{code:c,playerName:n},r=>{if(r.ok){me=io2.id;Q('LC').textContent=r.code;saveLastRoom(r.code,n);show('S2');applyMusicForCurrentScreen();io2.emit('auth:stats',null,s=>{if(s){user=s;updateUserUI();}});}else toast(r.err,1);});
 }
 function spectate(){

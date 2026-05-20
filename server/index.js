@@ -1421,22 +1421,26 @@ function watchSabotage(rc) {
 
 function _emitImmediate(rc) {
   const g = rooms.get(rc); if (!g) return;
-  const pub = g.publicState();
-  io.to(rc).emit('state', pub);
-  // Sadece odadaki canlı/ölü oyunculara priv gönder (not: spec data sadece ölülere gönderiliyor)
-  let spec = null;
-  g.players.forEach((p, pid) => {
-    const sock = io.sockets.sockets.get(pid);
-    if (!sock) return;
-    sock.emit('priv', g.privateState(pid));
-    if (!p.isAlive) {
-      if (!spec) spec = g.spectatorState(); // lazy compute
-      sock.emit('spec', spec);
+  try {
+    const pub = g.publicState();
+    io.to(rc).emit('state', pub);
+    // Sadece odadaki canlı/ölü oyunculara priv gönder (not: spec data sadece ölülere gönderiliyor)
+    let spec = null;
+    g.players.forEach((p, pid) => {
+      const sock = io.sockets.sockets.get(pid);
+      if (!sock) return;
+      try { sock.emit('priv', g.privateState(pid)); } catch(e) { console.error('[emit] priv hatası:', pid, e.message); }
+      if (!p.isAlive) {
+        if (!spec) spec = g.spectatorState(); // lazy compute
+        sock.emit('spec', spec);
+      }
+    });
+    if (g.spectators.size > 0) {
+      if (!spec) spec = g.spectatorState();
+      g.spectators.forEach((_, sid) => io.sockets.sockets.get(sid)?.emit('spec', spec));
     }
-  });
-  if (g.spectators.size > 0) {
-    if (!spec) spec = g.spectatorState();
-    g.spectators.forEach((_, sid) => io.sockets.sockets.get(sid)?.emit('spec', spec));
+  } catch(err) {
+    console.error('[emit] Kritik hata, oda:', rc, err.message, err.stack?.split('\n')[1]);
   }
 }
 
