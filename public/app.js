@@ -484,9 +484,22 @@ function tryAutoRejoin(){
         }
       });
     } else {
-      console.log('[tryAutoRejoin] Oda lobide, modal gösteriliyor');
-      // Lobi durumu — modal göster
-      checkRejoin();
+      // Lobi durumu — otomatik rejoin dene (modal açma, kullanıcı yeniledi)
+      console.log('[tryAutoRejoin] Oda lobide, otomatik rejoin deneniyor');
+      var name=saved.name||user?.username||'Oyuncu';
+      io2.emit('room:rejoin',{code:saved.code,playerName:name},function(rejoinRes){
+        console.log('[tryAutoRejoin] lobi rejoin cevabı:',rejoinRes);
+        if(rejoinRes?.ok){
+          me=io2.id;
+          Q('LC').textContent=rejoinRes.code;
+          show('S2');
+          applyMusicForCurrentScreen();
+          toast('Lobiye geri döndün!');
+          io2.emit('state:request');
+        } else {
+          clearLastRoom();
+        }
+      });
     }
   });
 }

@@ -1712,7 +1712,25 @@ io.on('connection', (socket) => {
       const priv = g.privateState(socket.id);
       if (priv) socket.emit('priv', priv);
     } else {
-      // Lobi / post_game: normal addPlayer
+      // Lobi / post_game: önce username ile grace-period oyuncusunu bul (sayfa yenileme)
+      const existing = [...g.players.entries()].find(([_, p]) => p.username === u);
+      if (existing) {
+        const [oldId, player] = existing;
+        if (disconnectTimers.has(oldId)) {
+          clearTimeout(disconnectTimers.get(oldId));
+          disconnectTimers.delete(oldId);
+        }
+        g.players.delete(oldId);
+        player.id = socket.id;
+        player.isDisconnected = false;
+        g.players.set(socket.id, player);
+        if (g.leaderId === oldId) g.leaderId = socket.id;
+        prooms.set(socket.id, rc); socket.join(rc);
+        cb?.({ ok: true, code: rc, active: false });
+        emit(rc);
+        return;
+      }
+      // Yeni oyuncu olarak ekle
       const cleanName = sanitizePlayerName(playerName);
       if (!cleanName) return cb?.({ ok: false, err: 'İsim gerekli' });
       const stats = Accounts.getStats(u);
@@ -2429,21 +2447,39 @@ io.on('connection', (socket) => {
       const g = rooms.get(rc);
       if (g) {
         if (g.phase === PHASES.LOBBY || g.phase === PHASES.POST_GAME) {
-          // Lobide bahis varsa geri ver
+          const p = g.players.get(socket.id);
           const u = authed.get(socket.id);
-          if (u && g.bets?.has(u) && g.phase === PHASES.LOBBY) {
-            Accounts.addCoins(u, g.bets.get(u));
-            g.bets.delete(u);
-            io.to(rc).emit('betUpdate', {
-              bets: Object.fromEntries(g.bets || new Map()),
-              total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)
-            });
-          }
-          g.removePlayer(socket.id); g.removeSpectator(socket.id);
-          if (g.players.size === 0 && g.spectators.size === 0) { rooms.delete(rc); clearTimer(rc); }
-          else {
-            if (g.leaderId === socket.id && g.players.size > 0) g.leaderId = [...g.players.keys()][0];
+          if (p) {
+            // Oyuncuyu hemen silme — 15sn grace period (sayfa yenileme için)
+            p.isDisconnected = true;
             emit(rc);
+            const _sid = socket.id, _rc = rc, _u = u;
+            if (disconnectTimers.has(_sid)) clearTimeout(disconnectTimers.get(_sid));
+            disconnectTimers.set(_sid, setTimeout(() => {
+              disconnectTimers.delete(_sid);
+              const g2 = rooms.get(_rc);
+              if (!g2 || (g2.phase !== PHASES.LOBBY && g2.phase !== PHASES.POST_GAME)) return;
+              // Bet'i geri ver (gerçekten çıkıyor)
+              if (_u && g2.bets?.has(_u) && g2.phase === PHASES.LOBBY) {
+                Accounts.addCoins(_u, g2.bets.get(_u));
+                g2.bets.delete(_u);
+                io.to(_rc).emit('betUpdate', {
+                  bets: Object.fromEntries(g2.bets || new Map()),
+                  total: [...(g2.bets?.values() || [])].reduce((a, b) => a + b, 0)
+                });
+              }
+              g2.removePlayer(_sid); g2.removeSpectator(_sid);
+              if (g2.players.size === 0 && g2.spectators.size === 0) { rooms.delete(_rc); clearTimer(_rc); }
+              else {
+                if (g2.leaderId === _sid && g2.players.size > 0) g2.leaderId = [...g2.players.keys()][0];
+                emit(_rc);
+              }
+            }, 15 * 1000));
+          } else {
+            // Spectator → hemen çıkar
+            g.removeSpectator(socket.id);
+            if (g.players.size === 0 && g.spectators.size === 0) { rooms.delete(rc); clearTimer(rc); }
+            else emit(rc);
           }
         } else {
           // Aktif oyunda oyuncuyu silme, sadece bağlantıyı izole et
