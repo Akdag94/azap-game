@@ -1161,8 +1161,8 @@ function openGiphy(){
 }
 
 function _giphyItemHtml(g){
-  return `<div class="giphy-item" onclick="selectGiphy('${g.url.replace(/'/g,"\\'")}')" style="cursor:pointer;border:1px solid var(--brd);border-radius:8px;overflow:hidden;aspect-ratio:1;background:#000;display:flex;align-items:center;justify-content:center;transition:transform .15s,border-color .15s" onmouseover="this.style.transform='scale(1.05)';this.style.borderColor='#bb8fce'" onmouseout="this.style.transform='';this.style.borderColor='var(--brd)'">
-      <img src="${g.url}" style="width:100%;height:100%;object-fit:cover" loading="lazy" alt="${(g.title||'').replace(/"/g,'')}">
+  return `<div class="giphy-item" onclick="selectGiphy('${g.url.replace(/'/g,"\\'")}')" style="cursor:pointer;border:1px solid var(--brd);border-radius:8px;overflow:hidden;background:#111;display:flex;align-items:center;justify-content:center;transition:transform .15s,border-color .15s;min-height:80px" onmouseover="this.style.transform='scale(1.05)';this.style.borderColor='#bb8fce'" onmouseout="this.style.transform='';this.style.borderColor='var(--brd)'">
+      <img src="${g.url}" style="width:100%;height:auto;max-height:160px;object-fit:contain" loading="lazy" alt="${(g.title||'').replace(/"/g,'')}">
     </div>`;
 }
 
