@@ -2013,7 +2013,7 @@ function renderNight(){
     kostebek:'İncelemek istediğin kişiyi seç (her gece)',
     virus:'Virüs bulaştırmak istediğin kişiyi seç (kendine yapamazsın)',
     pusucu:'Pusu kuracak mısın? Butona bas.',
-    hacker:'Hacklemek istediğin bilgi rolünü seç',
+    hacker: ps.hackerUsesLeft===0 ? 'Tüm hack haklarını kullandın.' : `Hacklemek istediğin bilgi rolünü seç (kalan: ${ps.hackerUsesLeft??2})`,
     veba:'Hastalık bulaştırmak istediğin kişiyi seç',
     suikastci:'Hedef seç ve rol tahmin et',hipnotizmaci:'Kimi hipnotize etmek istiyorsun?',
     bombaci:'Bomba koy veya patlatma',golge:'Kimi susturmak istiyorsun?',
@@ -2261,6 +2261,54 @@ function renderReport(reps){
   setTimeout(()=>dawn.classList.remove('active'),8000);
   if(!reps?.length){l.innerHTML='<div class="rep" style="border-left-color:var(--dim)">Sakin bir gece. Rapor yok.</div>';return;}
   l.innerHTML=reps.map((r,i)=>`<div class="rep" style="animation-delay:${i*.12}s">${r.i} ${r.t}</div>`).join('');
+}
+
+function openHistoryModal(){
+  const history = ps?.myRoundHistory;
+  if(!history?.length){
+    toast('Henüz geçmiş rapor yok.',0);
+    return;
+  }
+  const tabs = Q('HISTORY_TABS');
+  const content = Q('HISTORY_CONTENT');
+  let activeRound = history[history.length-1].round;
+
+  function renderRound(entry){
+    const deathStr = entry.deaths?.length
+      ? entry.deaths.map(d=>d.name).join(', ') + ' hayatını kaybetti.'
+      : 'Herkes sağ salim uyandı.';
+    const reportsHtml = entry.reports?.length
+      ? entry.reports.map(r=>`<div class="rep" style="margin:4px 0;animation:none">${r.i||''} ${r.t}</div>`).join('')
+      : '<div style="color:var(--dim);font-size:.82rem;padding:6px 0">Rapor yok.</div>';
+    content.innerHTML = `
+      <div style="padding:6px 0 10px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <span style="font-size:1.2rem">💀</span>
+          <span style="font-size:.85rem;color:var(--dim)">${deathStr}</span>
+        </div>
+        <div style="font-size:.78rem;color:var(--dim);margin-bottom:6px;font-weight:600;letter-spacing:.5px">KİŞİSEL RAPORLAR</div>
+        ${reportsHtml}
+      </div>`;
+  }
+
+  function renderTabs(){
+    tabs.innerHTML = history.map(e=>{
+      const active = e.round===activeRound;
+      return `<button onclick="window._histTab(${e.round})" style="flex-shrink:0;padding:4px 10px;border-radius:20px;border:1px solid var(--brd);background:${active?'var(--hi)':'var(--bg2)'};color:${active?'#fff':'var(--txt)'};font-size:.78rem;cursor:pointer">Tur ${e.round}</button>`;
+    }).join('');
+  }
+
+  window._histTab = (round)=>{
+    activeRound = round;
+    renderTabs();
+    const entry = history.find(e=>e.round===round);
+    if(entry) renderRound(entry);
+  };
+
+  renderTabs();
+  const activeEntry = history.find(e=>e.round===activeRound);
+  if(activeEntry) renderRound(activeEntry);
+  openModal('MDL_HISTORY');
 }
 
 function renderDay(){

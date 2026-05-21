@@ -60,6 +60,9 @@ class GameEngine {
     this.gameEnded = false;
     this.gameResult = null;
 
+    // Tur geçmişi (her gece çözümlemesinin snapshot'ı)
+    this.roundHistory = []; // [{round, deaths:[{id,name}], playerReports:{pid:[...]}}]
+
     // MVP voting (oyun sonu - en iyi oyuncu)
     this.mvpVotes = new Map();
     this.mvpResult = null;
@@ -90,8 +93,10 @@ class GameEngine {
     this.virusInactiveRounds = new Map();
     // Pusucu (Hain, henüz IMPLEMENTED:false)
     this.ambushTrap = new Map();
-    // Hacker (Hain, henüz IMPLEMENTED:false)
+    // Hacker (Hain)
     this.hackedTarget = new Map();
+    this.hackerUsesLeft = new Map();   // hackerId -> kalan kullanım (max 2)
+    this.hackerLastTarget = new Map(); // hackerId -> önceki tur hedefi (üst üste aynı kişi yasak)
     // Veba (Tarafsız, henüz IMPLEMENTED:false)
     this.plagued = new Map();
 
@@ -705,6 +710,11 @@ class GameEngine {
       }
       // Pusucu, Hacker hain ability sayılır (kill değil)
       if (['pusucu', 'hacker'].includes(p.role)) {
+        if (p.role === 'hacker' && action.abilityTargetId) {
+          const usesLeft = this.hackerUsesLeft.has(pid) ? this.hackerUsesLeft.get(pid) : 2;
+          if (usesLeft <= 0) return false;
+          if (this.hackerLastTarget.get(pid) === action.abilityTargetId) return false;
+        }
         this.nightActions.set(pid, { pid, role: p.role, team: p.actualTeam, ...action });
         return true;
       }
@@ -841,15 +851,27 @@ class GameEngine {
       this.hist(a.pid, 'Zindan', t.name, 'Başarılı');
     });
 
-    // HACKER: bilgi toplayan rolü hedef alır
+    // HACKER: bilgi toplayan rolü hedef alır (2 hak, üst üste aynı kişiye yasak)
     acts.filter(a => a.role === 'hacker' && a.abilityTargetId).forEach(a => {
       const insane = this.isInsane(a.pid);
+      const usesLeft = this.hackerUsesLeft.has(a.pid) ? this.hackerUsesLeft.get(a.pid) : 2;
+      if (usesLeft <= 0) {
+        rep.get(a.pid)?.push({ i: '💻', t: 'Tüm hack haklarını kullandın.' });
+        return;
+      }
+      if (this.hackerLastTarget.get(a.pid) === a.abilityTargetId) {
+        rep.get(a.pid)?.push({ i: '💻', t: 'Aynı kişiye üst üste hack yapamazsın.' });
+        return;
+      }
       if (insane) {
         rep.get(a.pid)?.push({ i: '💻', t: `${this.pn(a.abilityTargetId)} hacklendi (sahte)` });
         return;
       }
+      this.hackerUsesLeft.set(a.pid, usesLeft - 1);
+      this.hackerLastTarget.set(a.pid, a.abilityTargetId);
       this.hackedTarget.set(a.pid, a.abilityTargetId);
-      rep.get(a.pid)?.push({ i: '💻', t: `${this.pn(a.abilityTargetId)} hacklendi.` });
+      const remaining = usesLeft - 1;
+      rep.get(a.pid)?.push({ i: '💻', t: `${this.pn(a.abilityTargetId)} hacklendi. (${remaining} hak kaldı)` });
       this.hist(a.pid, 'Hack', this.pn(a.abilityTargetId), 'Başarılı');
     });
 
@@ -1070,6 +1092,17 @@ class GameEngine {
     this.deadThisNight.forEach(did => {
       const dead = this.players.get(did);
       if (!dead || dead.role !== 'kurban') return;
+
+      // Hacker kurbanı hackledi mi? → vasiyet engellenir
+      const kurbanHackedEntry = [...this.hackedTarget.entries()].find(([_, tid]) => tid === did);
+      if (kurbanHackedEntry) {
+        this.players.forEach((_, pid) => {
+          rep.get(pid)?.push({ i: '💻', t: `Kurban ${dead.name} son nefesinde konuşmak istedi ama bilgi erişimi engellendi!` });
+        });
+        this.log(`💻 Kurban ${dead.name} vasiyet → hacker (${this.pn(kurbanHackedEntry[0])}) engelledi`);
+        return;
+      }
+
       const isDeadInsane = dead.isInsane || dead.isTempInsane;
 
       // Seri katil mi öldürdü?
@@ -1428,27 +1461,26 @@ class GameEngine {
     });
 
     // ── HACKER FİLTRESİ ──
-    // Hacker hedefi olan ve bilgi toplayan rolün raporlarını sil
-    // Bilgi toplayan roller: gazeteci, savcı, psikolog, dedikoducu, ajan, takipçi, polis (bilgi alır), köstebek, kostebek
-    const infoCollectorRoles = ['gazeteci','savci','psikolog','dedikoducu','ajan','takipci','kostebek','polis','cilingir'];
+    // Hacker hedefi olan ve bilgi toplayan rolün raporlarını sil + herkese duyur
+    const infoCollectorRoles = ['gazeteci','savci','psikolog','dedikoducu','ajan','takipci','kostebek','polis','cilingir','doktor','gazi'];
     this.hackedTarget.forEach((targetId, hackerId) => {
       const t = this.players.get(targetId);
-      if (!t?.isAlive) return;
+      if (!t?.isAlive) return; // Ölüler buraya gelmez (kurban vasiyette zaten işlendi)
       if (!infoCollectorRoles.includes(t.role)) return;
-      // Eğer bu kişi gece aksiyon yaptıysa ve gazi gibi koruyucu kullanmadıysa raporları temizle
       const action = eff.find(a => a.pid === targetId);
-      if (!action) return;
-      // Gazi self-shield kullanmışsa hacker etkisiz
-      if (action.role === 'gazi' && action.action === 'activate') return;
-      // Raporları sil
+      if (!action) return; // Gece aksiyonu yoksa hack etkisiz
+      // Raporları sil — saldırı/ölüm/sistem bildirimleri korunur, bilgi raporları temizlenir
       const oldReports = rep.get(targetId) || [];
-      const filteredReports = oldReports.filter(r => 
-        // Sadece sistem mesajlarını koru (saldırı, ölüm vb. bilgiler)
-        !r.i || ['🛡️','⚒️','💀','🪦','🪤','🦠','🤐','🔑','🔦','❄️','🔨','💣'].includes(r.i)
+      const filteredReports = oldReports.filter(r =>
+        !r.i || ['⚒️','💀','🪦','🪤','🦠','🤐','❄️','🔨','💣'].includes(r.i)
       );
-      filteredReports.push({ i: '💻', t: 'İletişim ağı bozuldu! Bu gece hiçbir bilgi raporu alamadın.' });
+      filteredReports.push({ i: '💻', t: 'Bu gece HACKLENDİN! Bilgi akışın tamamen engellendi.' });
       rep.set(targetId, filteredReports);
-      this.log(`💻 Hacker ${this.pn(hackerId)} → ${t.name} (raporlar silindi)`);
+      // Diğer herkese sabah duyurusu
+      this.players.forEach((_, pid) => {
+        if (pid !== targetId) rep.get(pid)?.push({ i: '💻', t: `${t.name} bu gece hacklendi!` });
+      });
+      this.log(`💻 Hacker ${this.pn(hackerId)} → ${t.name} (raporlar silindi, herkese duyuruldu)`);
     });
 
     // ── VEBA SAYIM ──
@@ -1471,6 +1503,19 @@ class GameEngine {
     }
 
     this.players.forEach(p => { p.isImmortal = false; });
+
+    // Tur geçmişini kaydet
+    const roundEntry = {
+      round: this.round,
+      deaths: [...this.deadThisNight].map(did => {
+        const dp = this.players.get(did);
+        return { id: did, name: dp?.name || '?' };
+      }),
+      playerReports: {}
+    };
+    rep.forEach((reports, pid) => { roundEntry.playerReports[pid] = [...reports]; });
+    this.roundHistory.push(roundEntry);
+
     this.nightReports = rep;
     // Sabotaj kontrolü
     this._checkSabotageActivation();
@@ -2191,7 +2236,9 @@ class GameEngine {
       // Suikastçı: bu tur kullanıldı mı?
       suikastUsedThisRound: this.suikastUsedThisRound,
       // Sabotaj: gündüz ölenler (timeout)
-      sabotageDayDeaths: [...this.sabotageDeaths].map(pid => ({ id: pid, name: this.pn(pid) }))
+      sabotageDayDeaths: [...this.sabotageDeaths].map(pid => ({ id: pid, name: this.pn(pid) })),
+      // Geçmiş turların ölümleri (public)
+      roundHistory: this.roundHistory.map(r => ({ round: r.round, deaths: r.deaths }))
     };
   }
 
@@ -2321,8 +2368,17 @@ class GameEngine {
       gaziUsed: this.gaziUsed.has(pid), savciUsed: this.savciUsed.has(pid),
       serifUsed: this.serifUsed.has(pid),
       doktorSelfUsed: this.doktorSelfUsed.has(pid),
+      // Hacker: kalan kullanım hakkı ve son hedef
+      hackerUsesLeft: p.role === 'hacker' ? (this.hackerUsesLeft.has(pid) ? this.hackerUsesLeft.get(pid) : 2) : null,
+      hackerLastTarget: p.role === 'hacker' ? (this.hackerLastTarget.get(pid) || null) : null,
       reports: this.nightReports.get(pid) || [],
       history: cleanHistory,
+      // Kişisel tur geçmişi (her gecenin kendi raporu)
+      myRoundHistory: this.roundHistory.map(r => ({
+        round: r.round,
+        deaths: r.deaths,
+        reports: r.playerReports[pid] || []
+      })),
       canKill: p.actualTeam === TEAMS.HAIN || p.role === 'seri_katil',
       canAbility: ro?.hasNightAction,
       hainKillMode: this.hainKillMode,
