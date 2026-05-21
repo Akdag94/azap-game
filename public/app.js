@@ -4263,6 +4263,8 @@ const VOICE_VOLUMES = {}; // peerId -> 0..1 ses seviyesi
 // localStorage'dan tercihi oku
 try {
   VOICE.enabled = localStorage.getItem('azap_voice_enabled') === '1';
+  const savedSens = parseInt(localStorage.getItem('azap_mic_sens'));
+  if (savedSens >= 1 && savedSens <= 10) VOICE._speakThr = 0.005 + (10 - savedSens) * 0.0083;
 } catch {}
 
 function _voiceLog(...a){ try{ console.log('[voice]', ...a); }catch{} }
@@ -4298,10 +4300,9 @@ async function startVoice(){
     });
     VOICE.active = true;
     VOICE.micMuted = false;
-    // canSpeak false ise track'ı baştan kapat
-    const shouldSend = VOICE.canSpeak && !VOICE.micMuted;
-    VOICE.localStream.getAudioTracks().forEach(t => t.enabled = shouldSend);
-    _voiceLog('lokal mic alındı, canSpeak:', VOICE.canSpeak, 'track enabled:', shouldSend);
+    // canSpeak ve micMuted durumuna göre track'ı ayarla
+    _enforceMicState();
+    _voiceLog('lokal mic alındı, canSpeak:', VOICE.canSpeak, 'micMuted:', VOICE.micMuted);
     _setupVAD();
     _updateMicButton();
     _updateDeafenButton();
@@ -4362,7 +4363,7 @@ function _setupVAD(){
         sum += v * v;
       }
       const rms = Math.sqrt(sum / buf.length);
-      const SPEAK_THR = 0.018;
+      const SPEAK_THR = VOICE._speakThr || 0.018;
       const rawSpeaking = rms > SPEAK_THR && !VOICE.micMuted && VOICE.canSpeak;
       const now = Date.now();
       // Grace period: konuşma durunca hemen söndürme (kelimeler arası sessizlik)
@@ -4387,13 +4388,28 @@ function toggleMic(){
   if (!VOICE.active) return;
   if (!VOICE.canSpeak) { toast('Şu an konuşamazsın (rol etkisi)', 1); return; }
   VOICE.micMuted = !VOICE.micMuted;
-  VOICE.localStream?.getAudioTracks().forEach(t => t.enabled = !VOICE.micMuted);
+  _enforceMicState();
   _updateMicButton();
   if (VOICE.micMuted) {
     VOICE.speakingIds.delete(me);
     _renderSpeakerList();
   }
   _applyVoiceClassesToCards();
+  _voiceLog('toggleMic → micMuted:', VOICE.micMuted);
+}
+
+function _enforceMicState(){
+  const shouldSend = VOICE.canSpeak && !VOICE.micMuted;
+  // Local track disable
+  VOICE.localStream?.getAudioTracks().forEach(t => { t.enabled = shouldSend; });
+  // Tüm peer connection sender'larında da kapat
+  VOICE.pcs.forEach(pc => {
+    pc.getSenders().forEach(sender => {
+      if (sender.track && sender.track.kind === 'audio') {
+        sender.track.enabled = shouldSend;
+      }
+    });
+  });
 }
 
 function toggleDeafen(){
@@ -4484,8 +4500,7 @@ io2.on('voice:peers', ({ peers, canSpeak, turnServers }) => {
   _updateMicButton();
   // canSpeak değiştiğinde audio track'ı aç/kapat
   if (VOICE.localStream) {
-    const shouldSend = VOICE.canSpeak && !VOICE.micMuted;
-    VOICE.localStream.getAudioTracks().forEach(t => t.enabled = shouldSend);
+    _enforceMicState();
     if (!VOICE.canSpeak && prevCanSpeak) {
       VOICE.speakingIds.delete(me);
       _applyVoiceClassesToCards();
@@ -4588,22 +4603,11 @@ function _applyVoiceClassesToCards(){
     } else if (micEl) {
       micEl.remove();
     }
-    // Ses seviyesi slider — diğer oyuncuların kartına (voice aktifse)
-    if (pid !== me && VOICE.active) {
-      let volWrap = el.querySelector('.pi-vol');
-      if (!volWrap) {
-        // localStorage'dan kayıtlı seviye oku
-        let saved = 1;
-        try { saved = parseFloat(localStorage.getItem('azap_vol_' + pid)) || 1; } catch {}
-        VOICE_VOLUMES[pid] = saved;
-        const audio = VOICE.audioEls.get(pid);
-        if (audio) audio.volume = saved;
-        volWrap = document.createElement('div');
-        volWrap.className = 'pi-vol';
-        volWrap.innerHTML = `<span class="pi-vol-icon">🔊</span><input type="range" min="0" max="100" value="${Math.round(saved*100)}" class="pi-vol-slider" oninput="setPlayerVolume('${pid}',this.value/100);this.previousElementSibling.textContent=this.value==0?'🔇':this.value<50?'🔉':'🔊'">`;
-        volWrap.addEventListener('click', e => e.stopPropagation());
-        el.appendChild(volWrap);
-      }
+    // Ses seviyesi: localStorage'dan yükle (ayarlar panelinden kontrol ediliyor)
+    if (pid !== me && VOICE.active && !(pid in VOICE_VOLUMES)) {
+      try { const sv = parseFloat(localStorage.getItem('azap_vol_' + pid)); if (sv >= 0) VOICE_VOLUMES[pid] = sv; } catch {}
+      const audio = VOICE.audioEls.get(pid);
+      if (audio) audio.volume = VOICE_VOLUMES[pid] ?? 1;
     }
   });
 }
@@ -4627,10 +4631,70 @@ function _renderSpeakerList(){
   status.innerHTML = '';
 }
 
+// ── Ayarlar Paneli ──
+function toggleVoiceSettings(){
+  const modal = Q('MDL_VSETTINGS');
+  if (!modal) return;
+  // Oyuncu listesini doldur
+  const container = Q('VSETTINGS_PLAYERS');
+  if (container && gs?.players) {
+    container.innerHTML = '';
+    gs.players.forEach(p => {
+      if (p.id === me) return; // kendimizi gösterme
+      const saved = VOICE_VOLUMES[p.id] ?? 1;
+      const pct = Math.round(saved * 100);
+      const icon = pct === 0 ? '🔇' : pct < 50 ? '🔉' : '🔊';
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 6px;background:rgba(255,255,255,.03);border-radius:6px';
+      div.innerHTML = `<span style="font-size:.78rem;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span><span class="vs-vol-icon" style="font-size:.7rem">${icon}</span><input type="range" min="0" max="100" value="${pct}" style="flex:1;height:4px" oninput="setPlayerVolume('${p.id}',this.value/100);this.previousElementSibling.textContent=this.value==0?'🔇':this.value<50?'🔉':'🔊'"><span style="font-size:.65rem;color:var(--dim);min-width:25px">${pct}%</span>`;
+      // Update percentage on input
+      div.querySelector('input').addEventListener('input', function(){ this.nextElementSibling.textContent = this.value + '%'; });
+      container.appendChild(div);
+    });
+    if (!container.children.length) {
+      container.innerHTML = '<div style="font-size:.72rem;color:var(--dim);text-align:center;padding:8px">Henüz başka oyuncu yok</div>';
+    }
+  }
+  // Mikrofon hassasiyet slider'ı güncelle
+  const sensSlider = Q('VSETTINGS_MIC_SENS');
+  if (sensSlider) {
+    const current = Math.round((0.018 / (VOICE._speakThr || 0.018)) * 5);
+    sensSlider.value = Math.max(1, Math.min(10, current));
+    Q('VSETTINGS_MIC_SENS_VAL').textContent = sensSlider.value;
+  }
+  // Voice toggle buton metni
+  const vToggle = Q('VSETTINGS_VOICE_TOGGLE');
+  if (vToggle) vToggle.textContent = VOICE.enabled ? '🎙️ Sesli Sohbeti Kapat' : '🎙️ Sesli Sohbeti Aç';
+  // Admin bölümü
+  const adminDiv = Q('VSETTINGS_ADMIN');
+  if (adminDiv) {
+    adminDiv.style.display = user?.isAdmin ? 'block' : 'none';
+    if (user?.isAdmin) {
+      const btns = Q('VSETTINGS_ADMIN_BTNS');
+      btns.innerHTML = `
+        <button class="b" onclick="io2.emit('admin:forceEnd');closeModal('MDL_VSETTINGS')" style="font-size:.75rem;background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.4)">🛑 Oyunu Bitir</button>
+        <button class="b" onclick="io2.emit('admin:kick-all');closeModal('MDL_VSETTINGS')" style="font-size:.75rem;background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.4)">🚫 Herkesi At</button>
+        <button class="b" onclick="io2.emit('admin:resetRoom');closeModal('MDL_VSETTINGS')" style="font-size:.75rem;background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.4)">♻️ Odayı Sıfırla</button>
+      `;
+    }
+  }
+  openModal('MDL_VSETTINGS');
+}
+
+function setMicSensitivity(val){
+  val = parseInt(val) || 5;
+  Q('VSETTINGS_MIC_SENS_VAL').textContent = val;
+  // 1=çok hassas (0.005), 10=az hassas (0.08)
+  VOICE._speakThr = 0.005 + (10 - val) * 0.0083;
+  try { localStorage.setItem('azap_mic_sens', val); } catch {}
+}
+
 // HTML inline handler'lar için global expose
 window.toggleVoiceEnabled = toggleVoiceEnabled;
 window.toggleMic = toggleMic;
 window.toggleDeafen = toggleDeafen;
+window.toggleVoiceSettings = toggleVoiceSettings;
+window.setMicSensitivity = setMicSensitivity;
 window.VOICE = VOICE;
 window.voiceDebug = function(){
   const cards = document.querySelectorAll('.pi[data-pid]');

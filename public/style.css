@@ -108,13 +108,10 @@ body.modern-ui .pi.speaking .pi-name span{color:#4ade80!important}
 .pi-mic-off{position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(160,40,20,.85);display:flex;align-items:center;justify-content:center;z-index:2;border:1px solid #fff;font-size:.65rem;color:#fff}
 .pi-mic-off::after{content:'';position:absolute;width:1.5px;height:55%;background:#fff;transform:rotate(-45deg);border-radius:1px;pointer-events:none}
 .pi-mic{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#dc2626;border:1.5px solid var(--bg);font-size:.55rem;display:flex;align-items:center;justify-content:center;color:#fff}
-/* Oyuncu ses seviyesi slider */
-.pi-vol{display:flex;align-items:center;gap:4px;position:absolute;bottom:2px;left:4px;right:4px;opacity:0;transition:opacity .2s ease;pointer-events:none;z-index:3}
-.pi:hover .pi-vol,.pi.speaking .pi-vol{opacity:1;pointer-events:auto}
-.pi-vol-icon{font-size:.6rem;flex-shrink:0}
-.pi-vol-slider{flex:1;height:3px;-webkit-appearance:none;appearance:none;background:rgba(255,255,255,.15);border-radius:2px;outline:none;cursor:pointer}
-.pi-vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#c9a96e;cursor:pointer}
-.pi-vol-slider::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#c9a96e;cursor:pointer;border:none}
+/* Ayarlar paneli slider stil */
+#MDL_VSETTINGS input[type=range]{-webkit-appearance:none;appearance:none;background:rgba(255,255,255,.12);border-radius:2px;outline:none;cursor:pointer}
+#MDL_VSETTINGS input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#c9a96e;cursor:pointer}
+#MDL_VSETTINGS input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#c9a96e;cursor:pointer;border:none}
 /* Sürüklenebilir ses paneli */
 #VOICE_PANEL{cursor:grab;user-select:none}
 #VOICE_PANEL:active{cursor:grabbing}
