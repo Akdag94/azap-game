@@ -2152,6 +2152,8 @@ function renderLobby(){
     }
   }
   Q('BS').disabled=gs.players.length<4;
+  // Voice speaking class'larını hemen uygula (flash önleme)
+  if(typeof _applyVoiceClassesToCards==='function') _applyVoiceClassesToCards();
   // Altın Havuzu paneli sadece login olmuş ve oyuncu olarak katılmış kişiye görünür
   const bp=Q('BET_PANEL');
   if(bp){
@@ -2536,6 +2538,8 @@ function renderDay(){
     li.innerHTML=`${cosmeticPlayerAvatarHTML(p,'sm',isMe)}<span class="pi-name">${cosmeticPlayerNameHTML(p,isMe,`${meTag}${isT?' 🧛':''}${ctIcon}`,nameStyle)}${p.isPresident?'<span class="crown">👑</span>':''}</span>${!p.isAlive?'<span style="font-size:.85rem">💀</span>':''}`;
     Q('DP').appendChild(li);
   });
+  // Voice speaking class'larını hemen uygula (flash önleme)
+  if(typeof _applyVoiceClassesToCards==='function') _applyVoiceClassesToCards();
   // Suikastçı floating butonu güncelle (gündüzde görünür)
   updateSuikastFloatingBtn();updateRoleInfoBtn();
 }
@@ -3653,6 +3657,7 @@ function renderSpec(data){
       ${p.isSilenced?'<span style="font-size:.72rem">🤐</span>':''}</div>`).join('')+'</div>';
   Q('SLG').innerHTML=data.gameLog.map(l=>`<div class="sli"><span class="fm" style="color:var(--hi)">[${l.round}]</span> ${l.msg}</div>`).join('');
   Q('SLG').scrollTop=Q('SLG').scrollHeight;
+  if(typeof _applyVoiceClassesToCards==='function') _applyVoiceClassesToCards();
 }
 
 // ── SÜRÜKLENEBİLİR BUTONLAR ──
