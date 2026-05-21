@@ -221,6 +221,19 @@
 <div id="HISTORY_CONTENT" style="flex:1;overflow-y:auto;padding:0 12px 12px"></div>
 </div></div>
 
+<!-- Giphy GIF Seçim Modal -->
+<div class="mdl-bg" id="MDL_GIPHY"><div class="mdl" style="max-width:560px">
+<div class="mdl-h"><h2>🔍 Giphy'den GIF Seç</h2><button class="mdl-cl" onclick="closeModal('MDL_GIPHY')">✕</button></div>
+<div style="display:flex;gap:6px;margin-bottom:8px">
+  <input class="inp" id="GIPHY_Q" placeholder="Ara: kedi, dans, lol..." style="flex:1" onkeypress="if(event.key==='Enter')searchGiphy()">
+  <button class="b bs" onclick="searchGiphy()" style="background:var(--hi);color:#000;font-weight:600">Ara</button>
+</div>
+<div style="font-size:.7rem;color:var(--dim);margin-bottom:8px">⚠️ GIF'ler Giphy CDN'inden gelir, sunucu diski kullanılmaz. Boş arama yaparsan trend GIF'ler gösterilir.</div>
+<div id="GIPHY_GRID" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;max-height:50vh;overflow-y:auto;padding:4px">
+  <div style="grid-column:1/-1;text-align:center;color:var(--dim);font-size:.78rem;padding:20px">Aramak için yukarıya yaz veya boş ara → trend GIF'ler.</div>
+</div>
+</div></div>
+
 <!-- Avatar Kırpma Modal -->
 <div class="mdl-bg" id="MDL_CROP"><div class="mdl" style="max-width:340px">
 <div class="mdl-h"><h2>✂️ Fotoğrafı Ayarla</h2><button class="mdl-cl" onclick="cancelCrop()">✕</button></div>
@@ -620,6 +633,18 @@ Hoş geldin, <strong id="WN"></strong>
   </div>
   <button class="b bs mt8" style="width:100%;border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem;display:none" id="BET_CANCEL_BTN" onclick="cancelBet()">Altını Geri Çek</button>
   <div id="BET_LIST" style="margin-top:8px;font-size:.72rem;color:var(--dim)"></div>
+</div>
+
+<!-- ADMIN BOT PANELİ (sadece admin + lider'e görünür) -->
+<div class="sbox" id="BOT_PANEL" style="display:none;background:rgba(187,143,206,.06);border:1px solid rgba(187,143,206,.25)">
+<div class="st" style="color:#bb8fce">🤖 Admin · Bot Yönetimi</div>
+<div style="font-size:.72rem;color:var(--dim);margin-bottom:8px">Test amaçlı yapay zeka botları ekle. Liderin oyundan tamamen çıkması ile birlikte botlar otomatik atılır ve oda kapanır.</div>
+<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+  <input class="inp" id="BOT_COUNT" type="number" min="1" max="20" value="1" style="width:70px;padding:6px 8px;font-size:.85rem">
+  <button class="b bs" style="flex:1;background:#bb8fce;color:#000;border:none;font-weight:600;min-width:120px" onclick="addBots()">🤖 Bot Ekle</button>
+  <button class="b bs" style="border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem" onclick="removeAllBots()" id="BOT_REM">Tümünü At</button>
+</div>
+<div id="BOT_INFO" style="margin-top:6px;font-size:.72rem;color:#bb8fce"></div>
 </div>
 
 <div class="sbox" id="SP2" style="display:none">

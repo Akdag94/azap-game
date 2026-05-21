@@ -33,8 +33,10 @@ process.on('SIGINT', () => { if (_cache) try { fs.writeFileSync(DB, JSON.stringi
 process.on('SIGTERM', () => { if (_cache) try { fs.writeFileSync(DB, JSON.stringify(_cache, null, 2)); } catch {} process.exit(); });
 
 // Avatar DB değeri → URL dönüştürücü (cache-busting ile)
+// External URL ise (Giphy CDN gibi) olduğu gibi döner
 function avatarUrl(val) {
   if (!val) return null;
+  if (typeof val === 'string' && /^https?:\/\//i.test(val)) return val;
   return '/avatars/' + val + '?v=' + Date.now();
 }
 
@@ -155,24 +157,64 @@ module.exports = {
   setAvatar(username, dataUrl) {
     const db = read(), key = username?.toLowerCase()?.trim();
     if (!db[key]) return { success: false };
-    if (dataUrl && dataUrl.length > 280000) return { success: false, error: 'Fotoğraf çok büyük (max ~200KB).' };
+    // GIF için 2MB, statik için 280KB sınırı
+    const isGif = typeof dataUrl === 'string' && dataUrl.startsWith('data:image/gif');
+    const maxSize = isGif ? 2_100_000 : 280_000;
+    if (dataUrl && dataUrl.length > maxSize) {
+      return { success: false, error: isGif ? 'GIF çok büyük (max ~1.5MB).' : 'Fotoğraf çok büyük (max ~200KB).' };
+    }
     if (dataUrl) {
       // dataURL → dosyaya yaz
       const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
       if (!match) return { success: false, error: 'Geçersiz görsel formatı.' };
-      const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+      const allowed = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+      if (!allowed.includes(match[1].toLowerCase())) return { success: false, error: 'Sadece JPG/PNG/GIF/WEBP destekleniyor.' };
+      const ext = match[1] === 'jpeg' ? 'jpg' : match[1].toLowerCase();
       const buf = Buffer.from(match[2], 'base64');
+      // Önceki avatar harici URL ise dosya silmeye gerek yok
       const fname = key + '.' + ext;
+      // Eski farklı uzantılı dosyaları temizle
+      ['jpg','jpeg','png','gif','webp'].forEach(e => {
+        if (e !== ext) {
+          const old = path.join(AVATAR_DIR, key + '.' + e);
+          if (fs.existsSync(old)) { try { fs.unlinkSync(old); } catch {} }
+        }
+      });
       fs.writeFileSync(path.join(AVATAR_DIR, fname), buf);
       // DB'de sadece dosya adını sakla
       db[key].avatar = fname;
     } else {
       // Avatar silme
-      if (db[key].avatar) {
-        try { fs.unlinkSync(path.join(AVATAR_DIR, db[key].avatar)); } catch {}
+      const cur = db[key].avatar;
+      if (cur && !/^https?:\/\//i.test(cur)) {
+        try { fs.unlinkSync(path.join(AVATAR_DIR, cur)); } catch {}
       }
       db[key].avatar = null;
     }
+    write(db);
+    return { success: true, avatar: avatarUrl(db[key].avatar) };
+  },
+  // Giphy / harici GIF URL'i avatar olarak ayarla (lokal disk kullanmaz)
+  setAvatarUrl(username, url) {
+    const db = read(), key = username?.toLowerCase()?.trim();
+    if (!db[key]) return { success: false };
+    if (typeof url !== 'string' || !/^https:\/\//i.test(url)) return { success: false, error: 'Geçersiz URL.' };
+    // Güvenlik: sadece güvenilir Giphy / Tenor CDN domainlerine izin ver
+    const allowedHosts = [
+      'media.giphy.com', 'media0.giphy.com', 'media1.giphy.com', 'media2.giphy.com', 'media3.giphy.com', 'media4.giphy.com',
+      'i.giphy.com', 'giphy.com',
+      'media.tenor.com', 'c.tenor.com', 'tenor.com'
+    ];
+    let host = '';
+    try { host = new URL(url).host.toLowerCase(); } catch { return { success: false, error: 'Geçersiz URL.' }; }
+    if (!allowedHosts.includes(host)) return { success: false, error: 'Sadece Giphy/Tenor CDN URL\'leri kabul edilir.' };
+    if (url.length > 500) return { success: false, error: 'URL çok uzun.' };
+    // Önceki lokal dosya varsa sil (yer açmak için)
+    const cur = db[key].avatar;
+    if (cur && !/^https?:\/\//i.test(cur)) {
+      try { fs.unlinkSync(path.join(AVATAR_DIR, cur)); } catch {}
+    }
+    db[key].avatar = url;
     write(db);
     return { success: true, avatar: avatarUrl(db[key].avatar) };
   },

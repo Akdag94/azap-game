@@ -157,6 +157,42 @@ app.get('/api/shop/cosmetics', apiLimiter, (req, res) => {
   res.json({ items: COSMETIC_CATALOG });
 });
 
+// ── GIPHY PROXY (avatar olarak GIF seçimi için) ──
+// API key .env GIPHY_API_KEY üzerinden ayarlanır; yoksa Giphy public dev key fallback
+const GIPHY_API_KEY = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
+app.get('/api/giphy/search', apiLimiter, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim().slice(0, 64);
+    const limit = Math.min(parseInt(req.query.limit) || 24, 50);
+    const offset = Math.min(parseInt(req.query.offset) || 0, 1000);
+    if (!q) {
+      // Sorgu yoksa trending döndür
+      const url = `https://api.giphy.com/v1/gifs/trending?api_key=${encodeURIComponent(GIPHY_API_KEY)}&limit=${limit}&offset=${offset}&rating=pg-13`;
+      const r = await fetch(url);
+      if (!r.ok) return res.status(502).json({ ok: false, error: 'Giphy hatası' });
+      const data = await r.json();
+      return res.json({ ok: true, gifs: (data.data || []).map(simplifyGif) });
+    }
+    const url = `https://api.giphy.com/v1/gifs/search?api_key=${encodeURIComponent(GIPHY_API_KEY)}&q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}&rating=pg-13&lang=tr`;
+    const r = await fetch(url);
+    if (!r.ok) return res.status(502).json({ ok: false, error: 'Giphy hatası' });
+    const data = await r.json();
+    res.json({ ok: true, gifs: (data.data || []).map(simplifyGif) });
+  } catch (err) {
+    console.error('[Giphy] Hata:', err.message);
+    res.status(500).json({ ok: false, error: 'Sunucu hatası' });
+  }
+});
+function simplifyGif(g) {
+  return {
+    id: g.id,
+    title: g.title,
+    // Profil avatar için küçük sürüm yeterli (200w)
+    url: g.images?.fixed_width_small?.url || g.images?.fixed_width?.url || g.images?.original?.url,
+    preview: g.images?.fixed_width_small_still?.url || g.images?.fixed_width_still?.url
+  };
+}
+
 // ── ÖDEME SİSTEMİ (Provider-agnostic, SOLID/DIP) ──
 // setupPayment() çağrısı authed Map tanımından sonra yapılır (aşağıda)
 
@@ -985,6 +1021,182 @@ setInterval(() => {
 
 
 function genCode() { let c; do { c = String(crypto.randomInt(1000, 10000)); } while (rooms.has(c)); return c; }
+
+// ── BOT SİSTEMİ (test amaçlı, sadece adminler ekleyebilir) ──
+const BOT_NAMES = ['Ali','Veli','Ayşe','Fatma','Mehmet','Zeynep','Can','Selin','Mert','Ece','Burak','Deniz','Cem','Elif','Onur','Sude','Kerem','Ela','Tolga','Naz'];
+let _botCounter = 0;
+function genBotId() { return `BOT_${++_botCounter}_${crypto.randomInt(1000, 9999)}`; }
+function pickBotName(g) {
+  const used = new Set([...g.players.values()].map(p => p.name));
+  const avail = BOT_NAMES.filter(n => !used.has(n));
+  if (avail.length > 0) return avail[crypto.randomInt(0, avail.length)];
+  return `Bot${_botCounter}`;
+}
+function pickRandom(arr) { return arr.length ? arr[crypto.randomInt(0, arr.length)] : null; }
+
+// Bir botun verilen fazda otomatik aksiyonunu uygular
+function runBotForPhase(rc, botId) {
+  const g = rooms.get(rc); if (!g) return;
+  const p = g.players.get(botId); if (!p || !g.isBot(botId)) return;
+
+  if (g.phase === PHASES.ROLE_SELECTION) {
+    if (g.roleSelectionOrder[g.roleSelectionIndex] === botId) {
+      g.submitRoleChoice(botId, 'random');
+    }
+  } else if (g.phase === PHASES.PRESIDENT_VOTE) {
+    if (!p.isAlive) return;
+    const candidates = g.alive().filter(x => x.id !== botId);
+    const target = pickRandom(candidates);
+    if (target) g.submitPresidentVote(botId, target.id);
+  } else if (g.phase === PHASES.NIGHT) {
+    if (!p.isAlive) return;
+    botSubmitNightAction(g, botId);
+  } else if (g.phase === PHASES.VOTING) {
+    if (!p.isAlive || g.frozen?.has(botId)) return;
+    // %20 ihtimalle pas geç, yoksa rastgele birine oy ver
+    if (crypto.randomInt(0, 100) < 20) { g.submitVote(botId, 'skip'); return; }
+    const candidates = g.alive().filter(x => x.id !== botId);
+    const target = pickRandom(candidates);
+    if (target) g.submitVote(botId, target.id);
+    else g.submitVote(botId, 'skip');
+  } else if (g.phase === 'mvp_vote') {
+    const candidates = [...g.players.values()].filter(x => x.id !== botId);
+    const target = pickRandom(candidates);
+    if (target) g.submitMvpVote(botId, target.id);
+  }
+}
+
+function botSubmitNightAction(g, botId) {
+  const p = g.players.get(botId); if (!p) return;
+  const role = p.role;
+  const aliveOthers = g.alive().filter(x => x.id !== botId);
+  const aliveAll = g.alive();
+  const passive = ['muhtar','dodo','cellat','yamyam','kurban','koruyucu','engizitor','olumsuz'];
+  if (passive.includes(role)) return;
+
+  // Hain takım: rastgele kill ya da rol yeteneği
+  if (p.actualTeam === TEAMS.HAIN) {
+    if (role === 'bombaci') {
+      // %50 bomba koy, %50 patlat (bombası varsa)
+      const myBombs = [...(g.bombs?.keys?.() || [])].filter(bid => g.bombs.get(bid)?.ownerId === botId);
+      if (myBombs.length > 0 && crypto.randomInt(0, 2) === 0) {
+        g.submitAction(botId, { action: 'detonate' });
+      } else {
+        const target = pickRandom(aliveOthers);
+        if (target) g.submitAction(botId, { action: 'place', targetId: target.id });
+      }
+      return;
+    }
+    if (role === 'suikastci') {
+      // Gece sadece kill oyu (suikast gündüz)
+      const target = pickRandom(aliveOthers);
+      if (target) g.submitAction(botId, { action: 'kill', killTargetId: target.id });
+      return;
+    }
+    // Diğer hainler: %60 kill, %40 ability
+    const useKill = crypto.randomInt(0, 100) < 60;
+    const target = pickRandom(aliveOthers);
+    if (!target) return;
+    if (useKill) g.submitAction(botId, { action: 'kill', killTargetId: target.id });
+    else g.submitAction(botId, { action: 'ability', targetId: target.id });
+    return;
+  }
+
+  // Seri katil
+  if (role === 'seri_katil') {
+    const target = pickRandom(aliveOthers);
+    if (target) g.submitAction(botId, { action: 'kill', killTargetId: target.id });
+    return;
+  }
+
+  // Masum / tarafsız roller
+  if (role === 'dedikoducu') {
+    // İki hedef
+    if (aliveOthers.length >= 2) {
+      const a = pickRandom(aliveOthers);
+      const b = pickRandom(aliveOthers.filter(x => x.id !== a.id));
+      if (a && b) g.submitAction(botId, { role, targetId: a.id, targetId2: b.id });
+    }
+    return;
+  }
+  if (role === 'gazi') {
+    // Tek kullanım: %30 ihtimal aktive et
+    if (!g.gaziUsed?.has(botId) && crypto.randomInt(0, 100) < 30) {
+      g.submitAction(botId, { role, targetId: botId });
+    }
+    return;
+  }
+  if (role === 'gardiyan') {
+    if (!g.gardiyanUsed?.has(botId) && crypto.randomInt(0, 100) < 20) {
+      g.submitAction(botId, { role, targetId: botId });
+    }
+    return;
+  }
+  if (role === 'pusucu') {
+    g.submitAction(botId, { role, targetId: botId });
+    return;
+  }
+  if (role === 'serif') {
+    if (g.serifUsed?.has(botId)) return;
+    // %25 ihtimal vur
+    if (crypto.randomInt(0, 100) < 25) {
+      const target = pickRandom(aliveOthers);
+      if (target) g.submitAction(botId, { role, targetId: target.id });
+    }
+    return;
+  }
+  if (role === 'savci' && g.savciUsed?.has(botId)) return;
+  if (role === 'demirci') {
+    // Kendine yapamaz
+    const target = pickRandom(aliveOthers);
+    if (target) g.submitAction(botId, { role, targetId: target.id });
+    return;
+  }
+  if (role === 'infazci') {
+    const target = pickRandom(aliveOthers);
+    if (target) g.submitAction(botId, { role, targetId: target.id, execute: false });
+    return;
+  }
+  // Genel: tek hedef seç
+  const target = pickRandom(aliveOthers);
+  if (target) g.submitAction(botId, { role, targetId: target.id });
+}
+
+// Belirli faza geçildiğinde tüm botları sıraya alıp aksiyonlarını uygular
+function runAllBots(rc) {
+  const g = rooms.get(rc); if (!g) return;
+  if (g.bots.size === 0) return;
+  // Rastgele 0.5-3sn gecikme ile her bot aksiyon yapar (gerçekçilik)
+  [...g.bots].forEach(botId => {
+    const delay = 500 + crypto.randomInt(0, 2500);
+    setTimeout(() => {
+      const g2 = rooms.get(rc); if (!g2) return;
+      if (!g2.players.has(botId)) return;
+      runBotForPhase(rc, botId);
+      // Faz-spesifik post-emit
+      if (g2.phase === PHASES.VOTING) {
+        emitVoteTally(rc);
+        maybeResolveVoteIfEveryoneOnlineVoted(rc, g2);
+      } else if (g2.phase === PHASES.PRESIDENT_VOTE) {
+        io.to(rc).emit('presidentVoteTally', g2.getPresidentVoteTally());
+        const aliveCount = g2.alive().length;
+        if (g2.presidentVotes.size >= aliveCount) {
+          clearTimer(rc);
+          g2.resolvePresidentVote(); emit(rc);
+          setTimeout(() => toNight(rc), 2000);
+        }
+      } else if (g2.phase === 'mvp_vote') {
+        io.to(rc).emit('mvpTally', g2.getMvpTally());
+        if (g2.mvpVotes.size >= g2.players.size) {
+          clearTimer(rc);
+          resolveMvp(rc);
+        }
+      } else if (g2.phase === PHASES.ROLE_SELECTION) {
+        emit(rc);
+      }
+    }, delay);
+  });
+}
 function startTimer(rc, dur, cb) {
   clearTimer(rc);
   const end = Date.now() + dur * 1000;
@@ -1060,6 +1272,7 @@ function afterStart(rc) {
     // Her oyuncuya max 25 saniye süre — otomatik geçişler
     startTimer(rc, g.config.ROLE_SELECTION_DURATION, () => autoPickIfNeeded(rc));
     emit(rc);
+    runAllBots(rc);
   } else if (g.phase === PHASES.ROLE_REVEAL) {
     emit(rc);
     startTimer(rc, g.config.ROLE_REVEAL_DURATION, () => toPresidentVote(rc));
@@ -1080,19 +1293,21 @@ function autoPickIfNeeded(rc) {
   } else {
     // Sıradakine geç
     startTimer(rc, g.config.ROLE_SELECTION_DURATION, () => autoPickIfNeeded(rc));
+    runAllBots(rc);
   }
 }
 
 function toPresidentVote(rc) {
   const g = rooms.get(rc); if (!g) return;
   g.startPresidentVote(); emit(rc);
+  runAllBots(rc);
   startTimer(rc, g.config.PRESIDENT_VOTE_DURATION, () => {
     g.resolvePresidentVote(); emit(rc);
     setTimeout(() => toNight(rc), 2000);
   });
 }
 
-function toNight(rc) { const g = rooms.get(rc); if (!g) return; g.startNight(); emit(rc); startTimer(rc, g.config.NIGHT_DURATION, () => resolveNight(rc)); }
+function toNight(rc) { const g = rooms.get(rc); if (!g) return; g.startNight(); emit(rc); startTimer(rc, g.config.NIGHT_DURATION, () => resolveNight(rc)); runAllBots(rc); }
 function resolveNight(rc) {
   const g = rooms.get(rc); if (!g) return;
   const reps = g.resolveNight(); emit(rc);
@@ -1177,6 +1392,7 @@ function toVote(rc) {
   g.startVoting();
   emit(rc);
   startTimer(rc, g.config.VOTING_DURATION, () => resolveVote(rc));
+  runAllBots(rc);
 }
 function resolveVote(rc) {
   const g = rooms.get(rc); if (!g) return;
@@ -1231,6 +1447,7 @@ function toNextNightAfterVote(rc) {
   g.nextRound();
   emit(rc);
   startTimer(rc, g.config.NIGHT_DURATION, () => resolveNight(rc));
+  runAllBots(rc);
 }
 function endGame(rc, wc, res) {
   const g = rooms.get(rc); if (!g) return;
@@ -1349,6 +1566,7 @@ function startMvpVote(rc) {
   g.startMvpVote();
   emit(rc);
   startTimer(rc, g.config.MVP_VOTE_DURATION, () => resolveMvp(rc));
+  runAllBots(rc);
 }
 
 function resolveMvp(rc) {
@@ -1617,6 +1835,25 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Giphy / Tenor URL'i ile avatar ayarla (lokal disk kullanmaz)
+  socket.on('auth:setAvatarUrl', ({ url }, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ success: false, error: 'Giriş yap!' });
+    const r = Accounts.setAvatarUrl(u, url);
+    cb?.(r);
+    if (!r.success) return;
+    const rc = prooms.get(socket.id);
+    if (rc) {
+      const g = rooms.get(rc);
+      if (g) {
+        const p = g.players.get(socket.id);
+        if (p) { p.avatar = r.avatar; emit(rc); }
+        const s = g.spectators.get(socket.id);
+        if (s) { s.avatar = r.avatar; emit(rc); }
+      }
+    }
+  });
+
   // Helper: oyun içi isim sanitize (harf/rakam/_/-/boşluk, max 12)
   function sanitizePlayerName(name) {
     if (typeof name !== 'string') return null;
@@ -1741,6 +1978,38 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ── BOT EKLEME (sadece admin + lider) ──
+  socket.on('bot:add', ({ count } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u || !Accounts.isAdmin(u)) return cb?.({ ok: false, err: 'Admin yetkin yok!' });
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
+    if (g.leaderId !== socket.id) return cb?.({ ok: false, err: 'Sadece oda lideri ekleyebilir!' });
+    if (g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME) return cb?.({ ok: false, err: 'Lobide değil!' });
+    const n = Math.max(1, Math.min(20, parseInt(count) || 1));
+    let added = 0;
+    for (let i = 0; i < n; i++) {
+      if (g.players.size >= g.config.MAX_PLAYERS) break;
+      const botId = genBotId();
+      const botName = pickBotName(g);
+      if (g.addBot(botId, botName)) added++;
+    }
+    emit(rc);
+    cb?.({ ok: true, added, total: g.bots.size });
+  });
+
+  socket.on('bot:removeAll', (_, cb) => {
+    const u = authed.get(socket.id);
+    if (!u || !Accounts.isAdmin(u)) return cb?.({ ok: false, err: 'Admin yetkin yok!' });
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
+    if (g.leaderId !== socket.id) return cb?.({ ok: false, err: 'Sadece oda lideri kaldırabilir!' });
+    if (g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME) return cb?.({ ok: false, err: 'Lobide değil!' });
+    g.removeAllBots();
+    emit(rc);
+    cb?.({ ok: true });
+  });
+
   socket.on('room:kick', ({ targetId }, cb) => {
     const rc = prooms.get(socket.id), g = rooms.get(rc);
     if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
@@ -1790,15 +2059,43 @@ io.on('connection', (socket) => {
               total: [...(g.bets?.values() || [])].reduce((a, b) => a + b, 0)
             });
           }
+          const wasLeader = g.leaderId === socket.id;
           g.removePlayer(socket.id); g.removeSpectator(socket.id);
+          // Lider çıktıysa ve botlar varsa: botları at + odayı kapat
+          if (wasLeader && g.bots.size > 0) {
+            const realPlayers = [...g.players.values()].filter(p => !g.isBot(p.id));
+            if (realPlayers.length === 0) {
+              // Sadece botlar kaldı — odayı tamamen kapat
+              g.removeAllBots();
+              rooms.delete(rc); clearTimer(rc);
+              prooms.delete(socket.id);
+              return;
+            }
+          }
           if (g.players.size === 0 && g.spectators.size === 0) { rooms.delete(rc); clearTimer(rc); }
           else {
             if (g.leaderId === socket.id && g.players.size > 0) {
-              g.leaderId = [...g.players.keys()][0];
+              // Yeni lider: ilk insan oyuncu (bot olmayan)
+              const newLeader = [...g.players.values()].find(p => !g.isBot(p.id));
+              g.leaderId = newLeader ? newLeader.id : [...g.players.keys()][0];
             }
             emit(rc);
           }
         } else {
+          // Aktif oyunda lider kasıtlı çıkarsa ve odada başka insan yoksa: odayı kapat
+          const wasLeader = g.leaderId === socket.id;
+          if (wasLeader && g.bots.size > 0) {
+            const realPlayers = [...g.players.values()].filter(p => !g.isBot(p.id) && p.id !== socket.id && !p.isDisconnected);
+            const realSpectators = g.spectators.size;
+            if (realPlayers.length === 0 && realSpectators === 0) {
+              console.log(`[room:leave] Lider ${socket.id} aktif oyundan çıktı, sadece botlar kaldı — oda ${rc} kapatılıyor`);
+              g.removeAllBots();
+              g.removePlayer(socket.id);
+              rooms.delete(rc); clearTimer(rc);
+              prooms.delete(socket.id);
+              return;
+            }
+          }
           // Aktif oyunda oyuncuyu silme, sadece bağlantıyı izole et
           g.players.get(socket.id).isDisconnected = true;
           emit(rc); // Oyuncu offline olarak görünecek
@@ -2468,10 +2765,23 @@ io.on('connection', (socket) => {
                   total: [...(g2.bets?.values() || [])].reduce((a, b) => a + b, 0)
                 });
               }
+              const wasLeader2 = g2.leaderId === _sid;
               g2.removePlayer(_sid); g2.removeSpectator(_sid);
+              // Lider tamamen çıktıysa ve sadece botlar kaldıysa: odayı kapat
+              if (wasLeader2 && g2.bots.size > 0) {
+                const realPlayers = [...g2.players.values()].filter(p => !g2.isBot(p.id));
+                if (realPlayers.length === 0) {
+                  g2.removeAllBots();
+                  rooms.delete(_rc); clearTimer(_rc);
+                  return;
+                }
+              }
               if (g2.players.size === 0 && g2.spectators.size === 0) { rooms.delete(_rc); clearTimer(_rc); }
               else {
-                if (g2.leaderId === _sid && g2.players.size > 0) g2.leaderId = [...g2.players.keys()][0];
+                if (g2.leaderId === _sid && g2.players.size > 0) {
+                  const newLeader = [...g2.players.values()].find(p => !g2.isBot(p.id));
+                  g2.leaderId = newLeader ? newLeader.id : [...g2.players.keys()][0];
+                }
                 emit(_rc);
               }
             }, 15 * 1000));
@@ -2485,6 +2795,19 @@ io.on('connection', (socket) => {
           // Aktif oyunda oyuncuyu silme, sadece bağlantıyı izole et
           const p = g.players.get(socket.id);
           if (p) {
+            // Lider disconnect + odada başka insan/spec yoksa: odayı hemen kapat (botları da)
+            if (g.leaderId === socket.id && g.bots.size > 0) {
+              const realPlayers = [...g.players.values()].filter(pp => !g.isBot(pp.id) && pp.id !== socket.id && !pp.isDisconnected);
+              if (realPlayers.length === 0 && g.spectators.size === 0) {
+                console.log(`[disconnect] Lider ${socket.id} aktif oyundan disconnect oldu, sadece botlar kaldı — oda ${rc} kapatılıyor`);
+                g.removeAllBots();
+                g.removePlayer(socket.id);
+                rooms.delete(rc); clearTimer(rc);
+                prooms.delete(socket.id);
+                authed.delete(socket.id);
+                return;
+              }
+            }
             p.isDisconnected = true;
             emit(rc);
             // 3 dakika sonra hâlâ offline ise oyundan çıkar (oyunun devam edebilmesi için)
@@ -2525,7 +2848,15 @@ setInterval(() => {
     if (!isActive) continue;
     const alive = [...g.players.values()].filter(p => p.isAlive);
     if (alive.length === 0) continue;
-    const allOffline = alive.every(p => p.isDisconnected);
+    // Botları sayma: gercek insan oyuncu yoksa veya hepsi offline ise odayı sil
+    const realAlive = alive.filter(p => !g.isBot(p.id));
+    if (realAlive.length === 0 && g.bots.size > 0 && g.spectators.size === 0) {
+      console.log(`[deadRoom] Oda ${rc}: sadece botlar kaldı — oda siliniyor`);
+      g.removeAllBots();
+      rooms.delete(rc); clearTimer(rc);
+      continue;
+    }
+    const allOffline = realAlive.length > 0 && realAlive.every(p => p.isDisconnected);
     if (allOffline && g.spectators.size === 0) {
       console.log(`[deadRoom] Oda ${rc}: tüm oyuncular offline — oda siliniyor`);
       rooms.delete(rc); clearTimer(rc);

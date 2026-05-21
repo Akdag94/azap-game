@@ -444,7 +444,11 @@ body.day::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(184,1
 .guide-card ul,.guide-card ol{padding-left:18px;margin:6px 0}
 .guide-card li{margin-bottom:5px}
 .guide-link{color:var(--hi);text-decoration:none;border-bottom:1px solid rgba(201,169,110,.35)}
-.guide-role-full{margin-top:5px;color:var(--dim);font-size:.78rem;line-height:1.5}
+.guide-role-full{margin-top:5px;color:var(--dim);font-size:.78rem;line-height:1.5;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .3s ease,margin .3s ease;margin-top:0}
+.guide-role-full.open{max-height:600px;opacity:1;margin-top:8px}
+.role-guide-item[onclick]{cursor:pointer}
+.role-guide-item[onclick] .role-guide-h::after{content:'▸';margin-left:auto;color:var(--dim);transition:transform .2s}
+.role-guide-item[onclick] .guide-role-full.open~.role-guide-h::after,.role-guide-item[onclick]:has(.guide-role-full.open) .role-guide-h::after{transform:rotate(90deg);content:'▾'}
 .guide-note{padding:9px;border-radius:7px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.22);color:#d9a19a;font-size:.8rem;line-height:1.5;margin-top:7px}
 
 /* Game over */
@@ -720,4 +724,4 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 .cw-opt{padding:14px;background:var(--bg3);border:1px solid var(--brd);border-radius:6px;cursor:pointer;font-weight:700;font-size:.95rem;transition:all .15s;font-family:Arial,sans-serif}
 .cw-opt:hover{border-color:var(--acc);transform:scale(1.04)}
 .cw-timer{text-align:center;font-size:1.2rem;color:var(--hain);font-weight:700;margin:8px 0}
-.cw-score{text-align:center;font-size:.9rem;color:var(--hi);margin:6px 0}
+.cw-score{text-align:center;font-size:.9rem;color:var(--hi);margin:6px 0}

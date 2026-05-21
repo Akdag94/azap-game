@@ -2,7 +2,7 @@
 (function initDebugConsole(){
   const MAX_LINES = 200;
   let _dbgOn = false, _lines = [];
-  let _frames = 0, _lastFps = Date.now();
+  let _frames = 0, _lastFps = Date.now(), _lastFpsWarn = 0;
 
   // FPS sayacı
   function fpsLoop(){
@@ -13,7 +13,7 @@
       _frames = 0; _lastFps = now;
       const el = document.getElementById('DBG_FPS');
       if(el) el.textContent = 'FPS: ' + fps;
-      if(fps < 15) dbgLog('⚠️ DÜŞÜK FPS: ' + fps, '#f55');
+      if(fps < 10 && now - _lastFpsWarn > 10000){ _lastFpsWarn=now; dbgLog('⚠️ DÜŞÜK FPS: ' + fps, '#f55'); }
     }
     requestAnimationFrame(fpsLoop);
   }
@@ -143,10 +143,10 @@ const esc = (s) => {
 const RDEF={
   DOKTOR:{e:'🩺',n:'Doktor',t:'masum',
     d:'Her gece birini saldırıdan korur. Koruyup korumadığını bilemez. Kendini oyun boyunca en fazla 1 kez seçebilir.',
-    full:'<b>Ne yapar?</b> Her gece bir oyuncu seçersin. O oyuncunun üzerine o gecelik tıbbi kalkan kurarsın — hain saldırısı, Seri Katil veya Şerif kurşunu o geceyi atlayamaz.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında hedef listesinden bir oyuncu seç, "Yetenek Kullan" butonuna bas. Her gece aynı kişiyi de seçebilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Kendini sadece 1 kez koruyabilirsin (tüm oyun boyunca). İkinci kez seçersen "Zaten korumaya aldıydın" uyarısı gelir ve hak harcanır.</li><li>Koruma gerçekleşip gerçekleşmediğini bilemezsin — kimseden bilgi alamazsın.</li><li>Hedefin Çilingir tarafından evine kilitlenmişse yeteneğin çakışır ve koruma yine de uygulanır.</li><li>Seri Katil ve Hain saldırısını durdurabilirsin; ancak Bomba patlamasını durduramaz (alan hasarı).</li><li>Deli Doktor: raporları rastgele/sahte gelir; kimi koruduğunu bilemezsin.</li></ul><b>Strateji:</b> Şüphelenilen hain hedef alınacak masum arkadaşını, ya da çok değerli bilgi sahibi birini koru. İkinci geceden itibaren kendini de bir kez koruma altına alabilirsin.'},
+    full:'<b>Ne yapar?</b> Her gece bir oyuncu seçersin. O oyuncunun üzerine o gecelik tıbbi kalkan kurarsın — hain saldırısı, Seri Katil veya Şerif kurşunu o geceyi atlayamaz.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında hedef listesinden bir oyuncu seç, "Yetenek Kullan" butonuna bas. Her gece aynı kişiyi de seçebilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Kendini sadece 1 kez koruyabilirsin (tüm oyun boyunca). İkinci kez seçersen "Zaten korumaya aldıydın" uyarısı gelir ve hak harcanır.</li><li>Koruma gerçekleşip gerçekleşmediğini bilemezsin — kimseden bilgi alamazsın.</li><li>Hedefin Çilingir tarafından evine kilitlenmişse Doktor koruyamaz; ancak Çilingir zaten o kişiyi korur.</li><li>Seri Katil, Hain saldırısı ve Bomba patlaması dahil tüm gece saldırılarını durdurabilirsin.</li><li>Deli Doktor: raporları rastgele/sahte gelir; kimi koruduğunu bilemezsin.</li></ul><b>Strateji:</b> Şüphelenilen hain hedef alınacak masum arkadaşını, ya da çok değerli bilgi sahibi birini koru. İkinci geceden itibaren kendini de bir kez koruma altına alabilirsin.'},
   POLIS:{e:'🔦',n:'Polis',t:'masum',
-    d:'Her gece bir kişinin yeteneğini tamamen engeller. Engellediğini bilemez.',
-    full:'<b>Ne yapar?</b> Her gece bir oyuncu seçersin; o kişi o gecelik herhangi bir gece aksiyonu yapamaz. Hain ise öldüremez, masum ise bilgi toplayamaz, koruma koyamaz.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında listeden hedef seç, onayla. Engellenen kişi ekranda "Bu gece engellendi" uyarısını görebilir (polis adı görünmez).<br><br><b>Önemli kurallar:</b><ul><li>Tutup tutmadığını bilemezsin — raporunda sonuç görmezsin.</li><li>Seri Katil\'i engelleyemezsin; onun yeteneği Polis dahil hiçbir şey tarafından durdurulamaz.</li><li>Hem hain öldürme hem yetenek engellenmek için güçlü çift işlev.</li><li>Çilingir ile farkı: Polis hedefi dışarıya açık bırakır (başkası saldırabilir), Çilingir hem engeller hem korur.</li><li>Deli Polis: engeli bazen yanlış kişiye uygular veya uygulamamış gibi gösterir.</li></ul><b>Strateji:</b> Hain olduğundan şüphelendiğin birini engelle — en kötü senaryoda bir öldürme önlersin. Savcı/Psikolog gibi önemli bilgi rollerini de saldırıya karşı değil aksiyona karşı koruyabilirsin.'},
+    d:'Her gece bir kişinin yeteneğini tamamen engeller. Engellediğini öğrenebilir.',
+    full:'<b>Ne yapar?</b> Her gece bir oyuncu seçersin; o kişi o gecelik herhangi bir gece aksiyonu yapamaz. Hain ise öldüremez, masum ise bilgi toplayamaz, koruma koyamaz.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında listeden hedef seç, onayla. Engellenen kişi ekranda "Bu gece engellendi" uyarısını görebilir (polis adı görünmez).<br><br><b>Önemli kurallar:</b><ul><li>Engelleme başarılı olursa sabah raporunda sonucu görebilirsin.</li><li>Seri Katil\'i engelleyemezsin; Seri Katil hedef alınsa bile aksiyon yapmış gibi görünmez — sanki hiçbir şey yapmamış gibi çıkar.</li><li>Hem hain öldürme hem yetenek engellenmek için güçlü çift işlev.</li><li>Çilingir ile farkı: Polis hedefi dışarıya açık bırakır (başkası saldırabilir), Çilingir hem engeller hem korur.</li><li>Deli Polis: kimseyi gerçekten engelleyemez, ancak hedefine gittiği görülebilir.</li></ul><b>Strateji:</b> Hain olduğundan şüphelendiğin birini engelle — en kötü senaryoda bir öldürme önlersin. Savcı/Psikolog gibi önemli bilgi rollerini de saldırıya karşı değil aksiyona karşı koruyabilirsin.'},
   SAVCI:{e:'⚖️',n:'Savcı',t:'masum',
     d:'Oyun boyunca 1 kez bir kişinin rolünü ve takımını kesin olarak öğrenir.',
     full:'<b>Ne yapar?</b> Oyun boyunca tek bir kez, bir oyuncunun tam rolünü ve takımını (Masum/Hain/Tarafsız) görebilirsin. Hile yok, tam doğru bilgi.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranından hedef seç ve onayla. Sabah raporunda "X: Rol adı (takım)" şeklinde sonuç gelir. Hak kullanılmışsa bir daha kullanamazsın.<br><br><b>Önemli kurallar:</b><ul><li>Sadece 1 kullanım hakkı var — harcandıktan sonra gece aksiyonun olmaz.</li><li>Deli Savcı: sorgu sonucu tamamen sahte bir rol ve rastgele takım gösterir; ama hak harcanır.</li><li>Hacker seni o gece hacklerse sonucu göremezsin.</li></ul><b>Strateji:</b> Hakkını boşa harcama. Köyün şüphelendiği ama emin olamadığı bir kişiyi sorgula. Sonucu gündüz doğrudan açıklamak yerine şüpheyi yönlendirerek kullanabilirsin — ta ki hayatının tehlikede olduğunu hissedene kadar.'},
@@ -167,22 +167,22 @@ const RDEF={
     full:'<b>Ne yapar?</b> Her gece iki farklı oyuncu seçersin. Sistem sana bu iki kişinin aynı takımda mı farklı takımda mı olduğunu söyler.<br><br><b>Nasıl kullanılır?</b> Gece ekranında iki kişi seç (sırayla), onayla. Sabah raporunda: "X ve Y aynı takımda" veya "X ve Y farklı takımda" sonucu gelir.<br><br><b>Önemli kurallar:</b><ul><li>Tarafsızlar (Seri Katil, Veba, Cellat vb.) kendi başına ayrı bir takım sayılır — ne masumla ne hainle aynı takımda görünürler.</li><li>Seçtiğin kişilerden biri Polis veya Çilingir tarafından o gece engellenmiş/kilitlenmişse yeteneğin başarısız olabilir.</li><li>Hacker seni o gece hacklerse sonucu göremezsin.</li><li>Deli Dedikoducu: sonuç rastgele/sahte gelir.</li></ul><b>Strateji:</b> Birden fazla gecelik sonuçları birleştirerek bir zincir oluştur (A=B takım, B≠C takım → A≠C). Kesin hain olduğunu bildiğin biriyle karşılaştır.'},
   AJAN:{e:'🕵️',n:'Ajan',t:'masum',
     d:'Her gece birinin rolünü 3 seçenek arasından görür (biri kesinlikle doğru). Hacker saldırısında bilgi göremez.',
-    full:'<b>Ne yapar?</b> Her gece bir kişiyi incelersin. O kişinin gerçek rolü dahil 3 seçenek alırsın — biri kesinlikle doğru, iki tanesi aldatmacadır. Hangi rol olduğunu sen bulmak zorundasın.<br><br><b>Nasıl kullanılır?</b> Hedef seç, onayla. Sabah raporunda 3 olası rol gösterilir; doğru olanı seçmek sana kalır. Takımlar doğru etiketlidir (Masum/Hain/Tarafsız).<br><br><b>Önemli kurallar:</b><ul><li>Oyunda tarafsız rol yoksa seçenekler sadece masum/hain rollerinden gelir.</li><li>Hacker seni o gece hacklerse sonucu göremezsin.</li><li>Deli Ajan: 3 seçeneğin hepsi yanlış olabilir, tamamen rastgele.</li></ul><b>Strateji:</b> Savcı gibi kesin bilgi vermez ama her gece kullanılabilir. Elimine çalışarak (tarafsız yok, o seçenek çıkmamalıydı gibi) doğruya yaklaş.'},
+    full:'<b>Ne yapar?</b> Her gece bir kişiyi incelersin. O kişinin gerçek rolü dahil 3 seçenek alırsın — biri kesinlikle doğru, iki tanesi aldatmacadır. Hangi rol olduğunu sen bulmak zorundasın.<br><br><b>Nasıl kullanılır?</b> Hedef seç, onayla. Sabah raporunda 3 olası rol gösterilir; doğru olanı seçmek sana kalır. Takımlar doğru etiketlidir (Masum/Hain/Tarafsız).<br><br><b>Önemli kurallar:</b><ul><li>Oyunda tarafsız rol yoksa seçenekler sadece masum/hain rollerinden gelir.</li><li>Hacker seni o gece hacklerse sonucu göremezsin.</li><li>Aynı kişiye tekrar gidersen aynı 3 seçeneği alırsın. Ancak ilk baktığında hipnotize edilmişse sahte sonuç gelir; ertesi gece tekrar bakarsan gerçek seçenekleri görürsün.</li><li>Deli Ajan: 3 seçeneğin hepsi yanlış olabilir, tamamen rastgele.</li></ul><b>Strateji:</b> Savcı gibi kesin bilgi vermez ama her gece kullanılabilir. Elimine çalışarak (tarafsız yok, o seçenek çıkmamalıydı gibi) doğruya yaklaş.'},
   SERIF:{e:'🤠',n:'Şerif',t:'masum',
-    d:'Oyun boyunca 1 kez birini vurabilir. Masum vurursan ertesi gece kendin ölürsün.',
-    full:'<b>Ne yapar?</b> Oyun boyunca 1 kez, istediğin bir oyuncuyu geceleyin vurabilirsin. Yeteneği kullanman zorunda değilsin; hakkı saklayabilirsin.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında "Vur" butonuna bas, hedef seç, onayla. Bir kez kullandıktan sonra hak kaybolur.<br><br><b>Önemli kurallar:</b><ul><li>Hain veya Tarafsız vurursan: hedef ölür, sen kurtulursun — köy için büyük galibiyet.</li><li>Masum vurursan: hedef ölür VE sen ertesi gece otomatik olarak intihar edersin. Çok riskli!</li><li>Hedef Doktor/Gazi/Çilingir tarafından korunuyorsa kurşun işlemez, hak harcanır.</li><li>Kurban\'ı vurursan vasiyet bırakır ve senin adın herkese duyurulur.</li></ul><b>Strateji:</b> Erken vurma. Savcı teyidi, birden fazla gecelik gözlem veya oyun sonu baskısı olmadan namluyu ateşleme.'},
+    d:'Oyun boyunca 1 kez birini vurabilir. Masum vurursan ikisi de anında ölür.',
+    full:'<b>Ne yapar?</b> Oyun boyunca 1 kez, istediğin bir oyuncuyu geceleyin vurabilirsin. Yeteneği kullanman zorunda değilsin; hakkı saklayabilirsin.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında "Vur" butonuna bas, hedef seç, onayla. Bir kez kullandıktan sonra hak kaybolur.<br><br><b>Önemli kurallar:</b><ul><li>Hain veya Tarafsız vurursan: hedef ölür, sen kurtulursun — köy için büyük galibiyet.</li><li>Masum vurursan: hedef ölür VE sen de anında ölürsün. Çok riskli!</li><li>Hedef Doktor/Gazi/Çilingir tarafından korunuyorsa kurşun işlemez, hak harcanır.</li><li>Kurban\'ı vurursan vasiyet bırakır ve senin adın herkese duyurulur.</li></ul><b>Strateji:</b> Erken vurma. Savcı teyidi, birden fazla gecelik gözlem veya oyun sonu baskısı olmadan namluyu ateşleme.'},
   KURBAN:{e:'🩸',n:'Kurban',t:'masum',
     d:'Gece aksiyonu yok. Öldürülürse katilinin adını tüm oyuncularla paylaşır. Hacker hedefindeyse vasiyet engellenir.',
-    full:'<b>Ne yapar?</b> Tamamen pasif bir roldür — gece hiçbir şey seçmen gerekmez. Ama öldürülürsen vasiyet bırakırsın: katilinin adı tüm oyuncuların sabah raporuna düşer.<br><br><b>Nasıl kullanılır?</b> Hiçbir gece aksiyonu yoktur. Sadece oyuna devam et. Ölürsen vasiyet otomatik devreye girer.<br><br><b>Önemli kurallar:</b><ul><li>Çoklu kill modunda (her hain ayrı öldürür): seni öldüren hainin adı açıklanır.</li><li>Tek kill modunda: oy veren hainlerden biri rastgele seçilip duyurulur.</li><li>Seri Katil seni öldürürse isim yerine sadece "Bir Seri Katil tarafından öldürüldün" duyurulur — SK kimliğini gizler.</li><li>Deli Kurban: sahte bir isim duyurur.</li><li>Hacker seni hedef almışsa vasiyet iptal olur; herkese "bilgi erişimi engellendi" mesajı gider.</li></ul><b>Strateji:</b> Rolünü erken açıkla. Hainler seni öldürmekten kaçınacak, sana olası hain saldırısında koruma gibi davranacaksın. Ama bu aynı zamanda seni Suikastçı için kolay hedef yapar — dikkatli ol.'},
+    full:'<b>Ne yapar?</b> Tamamen pasif bir roldür — gece hiçbir şey seçmen gerekmez. Ama öldürülürsen vasiyet bırakırsın: katilinin adı tüm oyuncuların sabah raporuna düşer.<br><br><b>Nasıl kullanılır?</b> Hiçbir gece aksiyonu yoktur. Sadece oyuna devam et. Ölürsen vasiyet otomatik devreye girer.<br><br><b>Önemli kurallar:</b><ul><li>Çoklu kill modunda (her hain ayrı öldürür): seni öldüren hainin adı açıklanır.</li><li>Tek kill modunda: oy veren hainlerden biri rastgele seçilip duyurulur.</li><li>Seri Katil seni öldürürse isim yerine sadece "Bir Seri Katil tarafından öldürüldün" duyurulur — SK kimliğini gizler.</li><li>Deli Kurban: sahte bir isim duyurur.</li><li>Hacker seni hedef almışsa vasiyet iptal olur; herkese "bilgi erişimi engellendi" mesajı gider.</li><li>Suikastçı tarafından gündüz rolün tahmin edilerek öldürülürsen vasiyet çalışmaz — kimsenin ismini veremezsin.</li></ul><b>Strateji:</b> Rolünü erken açıkla. Hainler seni öldürmekten kaçınacak, sana olası hain saldırısında koruma gibi davranacaksın. Ama bu aynı zamanda seni Suikastçı için kolay hedef yapar — dikkatli ol.'},
   CILINGIR:{e:'🔑',n:'Çilingir',t:'masum',
-    d:'Her gece birini evine kilitler: o kişi hem korunur hem yetenek kullanamaz. Kilitlediğini bilemez.',
-    full:'<b>Ne yapar?</b> Her gece bir kişiyi evine kilitlersin. O kişi: (1) O gece hiçbir yetenek kullanamaz; (2) Saldırılardan korunur. Polis + Doktor birleşimi gibi düşün.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. Sabah kilitlediğini veya kilitleme başarısızlığını bilemezsin.<br><br><b>Önemli kurallar:</b><ul><li>Kilitlenen kişi evde kilitli olduğunu fark etmez; ne engellendiğini ne korunduğunu bilmez.</li><li>Hain kilitleniyor, o gece öldüremez — ama saldırıdan da korunur.</li><li>Seri Katil\'i kilitleyemezsin; onun yeteneği Çilingir dahil hiçbir şeyle durdurulamaz.</li><li>Hacker seni o gece hacklerse kilitleme gerçekleşir ama bunu bilemezsin.</li></ul><b>Strateji:</b> Güvende tutmak istediğin bir masum (örn. Savcı, Doktor) üzerine hem koruma hem engelleme işlemi uygularsın. Hain olduğunu düşündüğün birini de kilitleyebilirsin — öldüremesin diye.'},
+    d:'Her gece birini evine kilitler: o kişi hem korunur hem yetenek kullanamaz. Kilitlediğini bilir.',
+    full:'<b>Ne yapar?</b> Her gece bir kişiyi evine kilitlersin. O kişi: (1) O gece hiçbir yetenek kullanamaz; (2) Saldırılardan korunur. Polis + Doktor birleşimi gibi düşün.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. Sabah kilitlediğini raporunda görebilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Kilitlenen kişi evde kilitli olduğunu fark eder ve ekranında "Bu gece kilitlendin" uyarısı görür.</li><li>Hain kilitleniyor, o gece öldüremez — ama saldırıdan da korunur.</li><li>Seri Katil\'i kilitleyemezsin; onun yeteneği Çilingir dahil hiçbir şeyle durdurulamaz.</li><li>Hacker seni o gece hacklerse kilitleme gerçekleşir ama bunu bilemezsin.</li></ul><b>Strateji:</b> Güvende tutmak istediğin bir masum (örn. Savcı, Doktor) üzerine hem koruma hem engelleme işlemi uygularsın. Hain olduğunu düşündüğün birini de kilitleyebilirsin — öldüremesin diye.'},
   TAKIPCI:{e:'👣',n:'Takipçi',t:'masum',
     d:'Her gece birini takip eder, kime aksiyon yaptığını öğrenir. Hacker saldırısında bilgi göremez.',
     full:'<b>Ne yapar?</b> Her gece bir kişiyi gizlice takip edersin. O kişi o gece kime gece aksiyonu yaptıysa bunu öğrenirsin — ne yaptığını değil, KİME yaptığını.<br><br><b>Nasıl kullanılır?</b> Hedef seç, onayla. Sabah raporunda: "X, Y\'ye aksiyon yaptı" veya "X bu gece hiçbir şey yapmadı" bilgisi gelir.<br><br><b>Önemli kurallar:</b><ul><li>Seri Katil iz bırakmaz — hep "yapmadı" görünür.</li><li>Pasif roller (Muhtar, Kurban vb.) gece aksiyon yapmaz, hep "yapmadı" çıkar.</li><li>Hainler öldürme için takım içi karar verdikten sonra birinin üzerine "gidiyor" sayılır — bu kişi görünür.</li><li>Hacker seni o gece hacklerse bilgiyi göremezsin.</li><li>Deli Takipçi: sahte kişi veya sahte aksiyon gösterir.</li></ul><b>Strateji:</b> Şüphelendiğin kişiyi değil, korumak istediğin masum üzerindeki tehdidi takip et. "X, Doktor\'u ziyaret etti" gibi çakışmalar hainleri ele geçirir.'},
   SUIKASTCI:{e:'🗡️',n:'Suikastçı',t:'hain',
     d:'Gündüz bir kişinin rolünü tahmin eder. Doğruysa ölür, yanlışsa sen ölürsün. Her tur 1 deneme hakkı.',
-    full:'<b>Ne yapar?</b> Hain takımının gizli keskin nişancısısın. Gündüz bir kişiyi hedef seçer, rolünü tahmin edersin. Doğruysa hedef ANINDA ölür. Yanlışsa SEN ANINDA ölürsün.<br><br><b>Nasıl kullanılır?</b> Tartışma veya oylama fazında, özel butondan hedef + rol seçip onayla. Her tur 1 deneme hakkın var; kullanmazsan o tur geçer.<br><br><b>Önemli kurallar:</b><ul><li>Gece sadece hain sohbetine katılırsın — öldürme yapamazsın, o işi diğer hainler yapar.</li><li>Her tur 1 hak — atlar, biriktirirsin ama sonraki tura devredilmez.</li><li>Doğru tahmin: hedef Doktor bile olsa, Koruyucu ile bile olsa anında ölür (bu bir saldırı değil, anında infaz).</li><li>Yanlış tahmin: sen anında ölürsün; hain takımı için çok büyük kayıp.</li></ul><b>Strateji:</b> Hain olduğunu kesin bildiğin veya hain sohbetinden onayladığın kişiyi değil, öldürmek istediğin masum birini hedef al. Tahmin yapmadan önce diğer hainlerin bilgisini kullan.'},
+    full:'<b>Ne yapar?</b> Hain takımının gizli keskin nişancısısın. Gündüz bir kişiyi hedef seçer, rolünü tahmin edersin. Doğruysa hedef ANINDA ölür. Yanlışsa SEN ANINDA ölürsün.<br><br><b>Nasıl kullanılır?</b> Tartışma veya oylama fazında, özel butondan hedef + rol seçip onayla. Her tur 1 deneme hakkın var; kullanmazsan o tur geçer.<br><br><b>Önemli kurallar:</b><ul><li>Gece hain sohbetine katılırsın ve hain öldürme oylamasına da dahil olabilirsin.</li><li>Her tur 1 hak — atlar, biriktirirsin ama sonraki tura devredilmez.</li><li>Doğru tahmin: hedef Doktor bile olsa, Koruyucu ile bile olsa anında ölür (bu bir saldırı değil, anında infaz).</li><li>Yanlış tahmin: sen anında ölürsün; hain takımı için çok büyük kayıp.</li></ul><b>Strateji:</b> Hain olduğunu kesin bildiğin veya hain sohbetinden onayladığın kişiyi değil, öldürmek istediğin masum birini hedef al. Tahmin yapmadan önce diğer hainlerin bilgisini kullan.'},
   HIPNOTIZMACI:{e:'🌀',n:'Hipnotizmacı',t:'hain',
     d:'Her gece birini geçici olarak delirtir. O gece aksiyonları sahte sonuç verir.',
     full:'<b>Ne yapar?</b> Hain takımının bilgi bozucusu. Seçtiğin kişi o gecelik deli sayılır; gece raporları sahte/rastgele gelir ve bilgi raporları güvenilmez hale gelir.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. Sabah o kişinin raporu sahte veriyle dolar — üstelik bunu farketmez.<br><br><b>Önemli kurallar:</b><ul><li>Geçici delilik sadece o gece geçerlidir; ertesi gece hedef normale döner.</li><li>Psikolog hedefini o gece analiz ederse "deli" sonucu çıkar — bu kişiyi Deli olarak işaretlemesine neden olur.</li><li>Hedef Çilingir tarafından kilitlenmişse Hipnotizmacı etkisi işlemez.</li></ul><b>Strateji:</b> Savcı\'yı veya Doktor\'u delirt. Yanlış rapor almaları onların stratejisini bozar ve köyde yanlış bilgi yayılır.'},
@@ -202,14 +202,14 @@ const RDEF={
     d:'Oyun başında sistem rastgele bir masum atar. O kişiyi oylamayla astırtırsan kazanırsın.',
     full:'<b>Ne yapar?</b> Sistem sana gizlice bir "hedef" oyuncu atar (her zaman masum biri). O kişinin gündüz oylamasında asılmasını sağlamak senin tek hedefin.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu yoktur. Gündüz tartışmalarda hedefinin üzerine şüphe yığ, ona karşı oy ver, başkalarını da ikna et. Rol ekranında hedef adını görebilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Hedef gece öldürülürse (hain/SK tarafından) kazanma şansın biter.</li><li>Hedef, başka bir kişi yüzünden değil, sen yüzünden asılmalı — pratikte aynı etki yaratır.</li><li>Hedefi çok açık hedeflemek seni ele verebilir.</li></ul><b>Strateji:</b> Hem masumlarla hem hainlerle geçici ittifak kurabilirsin — "bunu asalım" noktasında ortak zemin bulunabilir. Hedefini doğrudan suçlamak yerine dolaylı şüphe yönet.'},
   YAMYAM:{e:'🍖',n:'Yamyam',t:'tarafsız',
-    d:'Gece ölen her oyuncunun rolünü otomatik olarak öğrenir (pasif). Masumlarla kazanır.',
-    full:'<b>Ne yapar?</b> Tamamen pasif bilgi toplayıcı. Gece kim ölürse ölsün, ölenin rolünü otomatik öğrenir ve kişisel listene eklenir.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu yoktur. Bilgiler her sabah özel raporuna yansır.<br><br><b>Önemli kurallar:</b><ul><li>Sadece gece ölenleri öğrenirsin; gündüz asılanları ÖĞRENEMEZSIN.</li><li>Öğrendiğin rolleri kullanamaz, yeteneğini "kopyalayamazsın" — sadece bilirsin.</li><li>Masumlar kazanırsa sen de kazanırsın; hainler veya SK kazanırsa kaybedersin.</li></ul><b>Strateji:</b> Bilgi biriktirir, tartışmada kullanırsın. "X dün gece öldü; rolü Y\'ydi" tarzında köyü yönlendir. Gece ölüm sayısı arttıkça senin bilgi avantajın da büyür.'},
+    d:'Gece ölen her oyuncunun rolünü otomatik olarak öğrenir (pasif). Hayatta kalarak sona kalanlarla kazanır.',
+    full:'<b>Ne yapar?</b> Tamamen pasif bilgi toplayıcı. Gece kim ölürse ölsün, ölenin rolünü otomatik öğrenir ve kişisel listene eklenir.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu yoktur. Bilgiler her sabah özel raporuna yansır.<br><br><b>Önemli kurallar:</b><ul><li>Sadece gece ölenleri öğrenirsin; gündüz asılanları ÖĞRENEMEZSIN.</li><li>Öğrendiğin rolleri kullanamaz, yeteneğini "kopyalayamazsın" — sadece bilirsin.</li><li>Oyun sonunda hayatta kaldıysan kazanırsın (masumlarla veya hainlerle sona kal). Ölürsen (gece veya gündüz) direkt kaybedersin.</li></ul><b>Strateji:</b> Bilgi biriktirir, tartışmada kullanırsın. "X dün gece öldü; rolü Y\'ydi" tarzında köyü yönlendir. Gece ölüm sayısı arttıkça senin bilgi avantajın da büyür.'},
   KORUYUCU:{e:'😇',n:'Koruyucu',t:'tarafsız',
     d:'Sistem rastgele bir oyuncu emanet eder. O kişi oyun sonuna kadar yaşarsa kazanırsın.',
     full:'<b>Ne yapar?</b> Cellat\'ın tam tersi bir tarafsız rol. Sistem sana gizlice bir "emanet" oyuncu atar. O kişi oyun bitene kadar hayatta kaldığı sürece sen kazanırsın.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu yoktur. Rol ekranında emanet ettiğin kişinin adını görürsün. Gündüzleri onu oylamadan kurtarmaya çalış; gece hainlerin hedef almasını engelle (bilgi paylaşarak ya da şüpheyi yönlendirerek).<br><br><b>Önemli kurallar:</b><ul><li>Emanet kişinin takımı seni bağlamaz — o Hain bile olsa görevin onun hayatta kalması.</li><li>Oyun sonunda kazanan kim olursa olsun, emanet kişi hayattaysa sen de kazanırsın.</li><li>Emanet kişi gece veya gündüz ölürse kazanamazsın.</li></ul><b>Strateji:</b> Emanet kişin şüpheli duruma düşünce savunmaya geç. Hainleri başka yöne yönlendirmeye çalış; ama kendi rolünü açıklamak bazen riskli, bazen kurtarıcı olabilir.'},
   DEMIRCI:{e:'⚒️',n:'Demirci',t:'masum',
     d:'Her gece birine kalıcı Çelik Zırh giydirir. Zırh ilk saldırıyı emer ve kırılır. Kendine yapamaz.',
-    full:'<b>Ne yapar?</b> Doktor\'dan farklı olarak kalıcı zırh koyarsın. Zırh hedef üzerinde saldırıya uğrayana kadar kalır — 1 gece değil, istediğin kadar gece.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç (kendine yapamaz), onayla. Hedef zırhı görür ama seni görmez. Bir sonraki tur farklı birine zırh koyabilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Zırh sadece 1 saldırıyı emer, sonra kırılır. Bir kez kurtardıktan sonra hedef tekrar savunmasızdır.</li><li>Zırhın ne zaman kırıldığını bilemezsin; sürekli takip etmek zor.</li><li>Bomba patlamasına karşı zırh işe yaramaz (alan hasarı).</li><li>Doktor\'un şifasından farkı: birden fazla geceyi kapsayan pasif koruma.</li></ul><b>Strateji:</b> Savcı, Doktor gibi değerli masum rollere önce zırh giydir. Hainler onları hedef aldığında zırh devreye girer ve saldırganlar "korunuyordu" mesajı alır.'},
+    full:'<b>Ne yapar?</b> Doktor\'dan farklı olarak kalıcı zırh koyarsın. Zırh hedef üzerinde saldırıya uğrayana kadar kalır — 1 gece değil, istediğin kadar gece.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç (kendine yapamaz), onayla. Hedef zırhı görür ama seni görmez. Bir sonraki tur farklı birine zırh koyabilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Zırh sadece 1 saldırıyı emer, sonra kırılır. Bir kez kurtardıktan sonra hedef tekrar savunmasızdır.</li><li>Aynı kişiye bir daha zırh veremezsin — her oyuncuya sadece 1 kez zırh giydirilebilir.</li><li>Zırhın ne zaman kırıldığını bilemezsin; sürekli takip etmek zor.</li><li>Bomba patlamasına karşı zırh işe yaramaz (alan hasarı).</li><li>Doktor\'un şifasından farkı: birden fazla geceyi kapsayan pasif koruma.</li></ul><b>Strateji:</b> Savcı, Doktor gibi değerli masum rollere önce zırh giydir. Hainler onları hedef aldığında zırh devreye girer ve saldırganlar "korunuyordu" mesajı alır.'},
   BUZCU:{e:'❄️',n:'Buzcu',t:'masum',
     d:'Oyun boyunca 2 kez birini karantinaya alır. Karantinadaki: oylayamaz, oylanamaz, saldırıdan etkilenmez, yetenek kullanamaz.',
     full:'<b>Ne yapar?</b> Seçtiğin oyuncuyu bir sonraki gün boyunca (o gündüz) karantinaya alırsın. Karantinadaki kişi hem tamamen izole edilir hem saldırıdan korunur.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. 2 kullanım hakkın var (kalan sayı ekranda görünür). Karantina ertesi gündüz boyunca sürer.<br><br><b>Önemli kurallar:</b><ul><li>Karantinadaki kişi: oylamaya katılamaz, kendisine oy verilemez, gece saldırısından etkilenmez, yetenek kullanamaz.</li><li>Hain karantinaya alınırsa hem öldüremez hem de saldırıdan korunur (garip ama kural böyle).</li><li>2 hak dolunca gece aksiyonun olmaz.</li></ul><b>Strateji:</b> Güçlü şüphelinin üstünde gündüz baskısı varken onu karantinaya al: ne astırırsın (hak harcanmadan) ne de gece zarar verir. Oyun sonu kritik turda ikinci hakkı kullan.'},
@@ -224,7 +224,7 @@ const RDEF={
     full:'<b>Ne yapar?</b> Oylama beklemeden, tartışma sırasında tek başına bir kişiyi anında infaz edebilirsin. Mahkeme kararı vermene gerek yok — tek yetkisi senin.<br><br><b>Nasıl kullanılır?</b> Tartışma fazında özel "Engizitör İnfazı" butonu belirir. Hedefi seç, onayla — hemen etkisi olur.<br><br><b>Önemli kurallar:</b><ul><li>Hain veya Tarafsız infaz edersen: hedef ölür, sen kurtulursun.</li><li>Masum infaz edersen: hedef ölür VE sen de anında ölürsün. Hatalı kullanımın bedeli büyük.</li><li>Oyun boyunca 1 kez kullanılabilir. Harcandıktan sonra gündüz aksiyonun olmaz.</li></ul><b>Strateji:</b> Rolünü uzun süre gizle. Kesin hain olduğunu bildiğin ama köyün oylama yapamayacağı durumda sürpriz el açarak infaz gerçekleştir.'},
   PUSUCU:{e:'🪤',n:'Pusucu',t:'hain',
     d:'Gece evine pusu kurar. O gece evine gelen biri rastgele ölür. Hain takım arkadaşları da risk altında.',
-    full:'<b>Ne yapar?</b> Hain takımında beklenmedik tuzak. O geceyi seçersen evine gelen herhangi bir oyuncu (hain olsun masum olsun) rastgele ölür.<br><br><b>Nasıl kullanılır?</b> Gece ekranında "Pusu Kur" butonuna bas. Evine kim gelirse gelsin tuzak aktifleşir — seçim şans eseri.<br><br><b>Önemli kurallar:</b><ul><li>Hain kill oylamasına katılırsın; hem kill hem pusu aynı gecede olabilir.</li><li>Hain takım arkadaşın seni "ziyaret" etmeye giderse pusuya düşebilir — dikkat!</li><li>Gazeteci/Takipçi/Polis seni takip ederse ya da hedef alırsa pusuya düşer.</li><li>Pusu birden çok kişi gelirse sadece biri rastgele seçilip ölür.</li></ul><b>Strateji:</b> Polis veya Takipçi'nin seni takip ettiğini düşünüyorsan o gece pusu kur — kendi ziyaretçin tuzağa düşer. Hain arkadaşlara "Bu gece ziyarete gelmeyin" haberini ilet.'},
+    full:'<b>Ne yapar?</b> Hain takımında beklenmedik tuzak. O geceyi seçersen evine gelen herhangi bir oyuncu (hain olsun masum olsun) rastgele ölür.<br><br><b>Nasıl kullanılır?</b> Gece ekranında "Pusu Kur" butonuna bas. Evine kim gelirse gelsin tuzak aktifleşir — seçim şans eseri.<br><br><b>Önemli kurallar:</b><ul><li>Hain kill oylamasına katılırsın; hem kill hem pusu aynı gecede olabilir.</li><li>Hain takım arkadaşın seni "ziyaret" etmeye giderse pusuya düşebilir — dikkat!</li><li>Gazeteci/Takipçi/Polis seni takip ederse ya da hedef alırsa pusuya düşer.</li><li>Pusu birden çok kişi gelirse sadece biri rastgele seçilip ölür.</li></ul><b>Strateji:</b> Polis veya Takipçi rolünün seni takip ettiğini düşünüyorsan o gece pusu kur — kendi ziyaretçin tuzağa düşer. Hain arkadaşlara "Bu gece ziyarete gelmeyin" haberini ilet.'},
   HACKER:{e:'💻',n:'Hacker',t:'hain',
     d:'2 kullanım hakkı. Bilgi rolünü hacklemeyi başarırsa o gece TÜM bilgi rolleri etkilenir; herkes "ağ saldırısı" duyurusu alır.',
     full:'<b>Ne yapar?</b> Hain takımının elektronik savaş uzmanı. Bir bilgi rolünü hedef alırsın. Başarılıysa sadece o kişi değil, o gece aksiyon yapan TÜM bilgi rolleri etkilenir — raporları silinir.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç (bilgi rolü olması gerekir), onayla. 2 kullanım hakkın var ve üst üste aynı kişiyi hedef alamazsın.<br><br><b>Etkilenen roller:</b> Polis, Savcı, Psikolog, Gazeteci, Takipçi, Dedikoducu, Ajan, Çilingir, Doktor, Gazi.<br><br><b>Önemli kurallar:</b><ul><li>Hedef o gece aksiyon yapmamışsa hack etkisiz kalır (ağ boşta).</li><li>Hedef bilgi rolü değilse hack etkisiz kalır (hak harcanır).</li><li>Başarılıysa o gece aksiyon yapan TÜM bilgi rolleri raporlarını göremez; herkese sabah "ağ saldırısı gerçekleşti" duyurusu gider.</li><li>Kurban\'ı hedef aldıysan ve kurban o gece öldürüldüyse vasiyet "bilgi erişimi engellendi" diye iptal edilir.</li><li>Üst üste aynı kişiyi hedef alamazsın.</li><li>2 hak dolduktan sonra gece aksiyonun olmaz.</li></ul><b>Strateji:</b> Savcı veya Doktor gibi kritik rollerin en değerli hamle yapacakları geceyi seç. Ağ saldırısının tüm bilgi akışını kesmesi, masumların o geceyi kör geçirmesi anlamına gelir.'},
@@ -1042,8 +1042,9 @@ function openProfile(){
         profAvatar = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${profAvatar}</div>`;
       }
       avWrap.innerHTML = `${profAvatar.replace('class="av av-lg"','class="av av-lg" id="PROF_AV"')}
-<div style="display:flex;gap:6px;margin-top:8px;justify-content:center">
-  <label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;padding:5px 12px;cursor:pointer;border:1px solid var(--brd);color:var(--hi);background:var(--bg2);border-radius:20px">📷 Yükle<input type="file" id="AV_UPLOAD" accept="image/*" onchange="uploadAvatar()" style="display:none"></label>
+<div style="display:flex;gap:6px;margin-top:8px;justify-content:center;flex-wrap:wrap">
+  <label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;padding:5px 12px;cursor:pointer;border:1px solid var(--brd);color:var(--hi);background:var(--bg2);border-radius:20px">📷 Yükle<input type="file" id="AV_UPLOAD" accept="image/*,image/gif" onchange="uploadAvatar()" style="display:none"></label>
+  <button style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;padding:5px 12px;border:1px solid #bb8fce;color:#bb8fce;background:rgba(187,143,206,.08);border-radius:20px;cursor:pointer" onclick="openGiphy()">🎞️ Giphy</button>
   ${r.avatar ? `<button style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;padding:5px 12px;border:1px solid var(--brd);color:var(--hi);background:var(--bg2);border-radius:20px;cursor:pointer" onclick="adjustAvatar()">✂️ Ayarla</button>` : ''}
 </div>`;
     }
@@ -1089,8 +1090,28 @@ const CROP_SIZE=280;
 
 function uploadAvatar(){
   const f=Q('AV_UPLOAD').files[0];if(!f)return;
+  const isGif = f.type === 'image/gif' || /\.gif$/i.test(f.name||'');
+  // GIF için max 1.5MB - üst sınır
+  if(isGif && f.size > 1_500_000) return toast('GIF çok büyük (max 1.5MB)',1);
   const r=new FileReader();
   r.onload=()=>{
+    if(isGif){
+      // GIF'i kırpmadan doğrudan kaydet (animasyon korunsun)
+      toast('GIF kaydediliyor...');
+      io2.emit('auth:setAvatar',{avatar:r.result},r2=>{
+        if(r2.success){
+          user.avatar=r2.avatar;
+          const av=Q('PROF_AV');
+          if(av){
+            av.style.backgroundImage="url('"+r2.avatar+"')";
+            av.textContent='';
+          }
+          updateUserUI();
+          toast('🎞️ GIF avatar güncellendi!');
+        } else toast(r2.error||'Hata!',1);
+      });
+      return;
+    }
     const img=new Image();
     img.onload=()=>{
       _cropImg=img;
@@ -1111,6 +1132,112 @@ function uploadAvatar(){
   };
   r.onerror=()=>toast('Dosya okunamadı!',1);
   r.readAsDataURL(f);
+}
+
+// ── GIPHY ──
+const GIPHY_PAGE = 50;       // Sayfa başına GIF
+let _giphyOffset = 0;
+let _giphyQuery = '';
+let _giphyLoading = false;
+let _giphyEnded = false;
+
+function openGiphy(){
+  if(!user) return toast('Giriş yap!',1);
+  Q('GIPHY_Q').value='';
+  openModal('MDL_GIPHY');
+  searchGiphy(); // boş arama → trending
+  // Sonsuz scroll dinleyici (1 kez bağla)
+  const grid = Q('GIPHY_GRID');
+  if(grid && !grid._scrollBound){
+    grid._scrollBound = true;
+    grid.addEventListener('scroll', () => {
+      if(_giphyLoading || _giphyEnded) return;
+      // Sona 200px kala bir sonraki sayfayı çek
+      if(grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 200){
+        loadMoreGiphy();
+      }
+    });
+  }
+}
+
+function _giphyItemHtml(g){
+  return `<div class="giphy-item" onclick="selectGiphy('${g.url.replace(/'/g,"\\'")}')" style="cursor:pointer;border:1px solid var(--brd);border-radius:8px;overflow:hidden;aspect-ratio:1;background:#000;display:flex;align-items:center;justify-content:center;transition:transform .15s,border-color .15s" onmouseover="this.style.transform='scale(1.05)';this.style.borderColor='#bb8fce'" onmouseout="this.style.transform='';this.style.borderColor='var(--brd)'">
+      <img src="${g.url}" style="width:100%;height:100%;object-fit:cover" loading="lazy" alt="${(g.title||'').replace(/"/g,'')}">
+    </div>`;
+}
+
+function searchGiphy(){
+  _giphyQuery = Q('GIPHY_Q').value.trim();
+  _giphyOffset = 0;
+  _giphyEnded = false;
+  const grid = Q('GIPHY_GRID');
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--dim);font-size:.78rem;padding:20px">⏳ Aranıyor...</div>';
+  _fetchGiphyPage(true);
+}
+
+function loadMoreGiphy(){
+  _fetchGiphyPage(false);
+}
+
+function _fetchGiphyPage(replace){
+  if(_giphyLoading || _giphyEnded) return;
+  _giphyLoading = true;
+  const url = `/api/giphy/search?q=${encodeURIComponent(_giphyQuery)}&limit=${GIPHY_PAGE}&offset=${_giphyOffset}`;
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      const grid = Q('GIPHY_GRID');
+      if(!grid) return;
+      if(!data.ok){
+        if(replace) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--hain);font-size:.78rem;padding:20px">Hata: Giphy yanıt vermedi.</div>';
+        _giphyEnded = true;
+        return;
+      }
+      const gifs = data.gifs || [];
+      if(replace){
+        if(!gifs.length){
+          grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--dim);font-size:.78rem;padding:20px">Sonuç bulunamadı.</div>';
+          _giphyEnded = true;
+          return;
+        }
+        grid.innerHTML = gifs.map(_giphyItemHtml).join('');
+      } else if(gifs.length){
+        // Yükleme indikatörü varsa sil
+        const ld = grid.querySelector('.giphy-loader'); if(ld) ld.remove();
+        grid.insertAdjacentHTML('beforeend', gifs.map(_giphyItemHtml).join(''));
+      }
+      _giphyOffset += gifs.length;
+      if(gifs.length < GIPHY_PAGE){
+        _giphyEnded = true; // Daha fazla yok
+      } else {
+        // Loader ipucu (next sayfa için boşluk)
+        grid.insertAdjacentHTML('beforeend', '<div class="giphy-loader" style="grid-column:1/-1;text-align:center;color:var(--dim);font-size:.7rem;padding:8px">Daha fazla yükleniyor...</div>');
+      }
+    })
+    .catch(() => {
+      if(replace){
+        Q('GIPHY_GRID').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--hain);font-size:.78rem;padding:20px">Hata: Giphy yanıt vermedi.</div>';
+      }
+      _giphyEnded = true;
+    })
+    .finally(() => { _giphyLoading = false; });
+}
+function selectGiphy(url){
+  if(!url) return;
+  toast('GIF ayarlanıyor...');
+  io2.emit('auth:setAvatarUrl',{ url },r=>{
+    if(r?.success){
+      user.avatar = r.avatar;
+      const av = Q('PROF_AV');
+      if(av){
+        av.style.backgroundImage = "url('"+r.avatar+"')";
+        av.textContent = '';
+      }
+      updateUserUI();
+      closeModal('MDL_GIPHY');
+      toast('🎞️ Giphy GIF avatar olarak ayarlandı!');
+    } else toast(r?.error||'Hata!',1);
+  });
 }
 
 function cropApplyTransform(){
@@ -1290,32 +1417,37 @@ function renderGuide(){
     </div>
     <div class="guide-card">
       <h3>🎭 Detaylı Roller Rehberi</h3>
-      <p>Aşağıda tüm aktif roller takımlarına göre listelenmiştir. Her rol için: ne işe yaradığı, nasıl kullanıldığı, önemli kurallar ve strateji ipuçları yer alır. Rol adının altındaki kısa açıklama günlük özettir; altındaki detaylı metin her şeyi kapsar.</p>
+      <p>Aşağıda tüm roller takımlarına göre listelenmiştir. Bir role tıklayarak detaylı açıklamasını görebilirsin.</p>
+      <div id="GUIDE_ROLE_TABS" style="display:flex;gap:4px;margin-top:10px;flex-wrap:wrap"></div>
     </div>
+    <div id="GUIDE_ROLE_LIST"></div>
   `;
-  teams.forEach(team=>{
-    const items=Object.entries(RDEF).filter(([k,v])=>v.t===team && k!=='DELI' && k!=='VAMPIR' && !guideDemoKeys.has(k));
-    if(items.length===0)return;
-    const sec=document.createElement('div');
-    sec.innerHTML=`<div class="st mt8" style="color:var(--${colorVars[team]||'dim'})">${titles[team]||team}</div>`;
-    items.forEach(([k,v])=>{
-      const d=document.createElement('div');
-      d.className=`role-guide-item team-${team}`;
-      d.innerHTML=`<div class="role-guide-h"><span class="em">${v.e}</span><span class="nm">${v.n}</span><span class="role-guide-tag rtag ${team}">${team.toUpperCase()}</span></div><div class="role-guide-d">${v.d}</div>${v.full?`<div class="guide-role-full">${v.full}</div>`:''}`;
-      sec.appendChild(d);
-    });
-    c.appendChild(sec);
+  // Sekmeler
+  const allTabs=[{id:'all',l:'Tümü'},{id:'masum',l:'🌅 Masum'},{id:'hain',l:'🧛 Hain'},{id:'tarafsız',l:'⚖️ Tarafsız'},{id:'deli',l:'🤡 Deli'}];
+  const tabContainer=Q('GUIDE_ROLE_TABS');
+  tabContainer.innerHTML=allTabs.map(t=>`<button class="guide-rtab${t.id==='all'?' active':''}" data-grt="${t.id}" style="padding:5px 12px;border-radius:16px;border:1px solid var(--brd);background:${t.id==='all'?'var(--hi)':'var(--bg2)'};color:${t.id==='all'?'#000':'var(--txt)'};font-size:.72rem;cursor:pointer;font-weight:600">${t.l}</button>`).join('');
+  tabContainer.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-grt]');
+    if(!btn)return;
+    tabContainer.querySelectorAll('[data-grt]').forEach(b=>{b.style.background='var(--bg2)';b.style.color='var(--txt)';b.classList.remove('active');});
+    btn.style.background='var(--hi)';btn.style.color='#000';btn.classList.add('active');
+    renderGuideRoles(btn.dataset.grt);
   });
-  const upcoming=document.createElement('div');
-  upcoming.innerHTML=`<div class="st mt8" style="color:var(--hi)">⏳ Yakında / Demo Roller</div><div class="guide-card"><p>Bu bölümdeki roller aktif rol havuzuna otomatik eklenmez. Lobi kurucusu ileride “demo rolleri dahil et” seçeneğini açarsa bu roller oyun havuzunda görünebilir; kapalıysa görünmez ve oyuna girmez.</p></div>`;
-  Object.entries({...RDEF_DEMO,VAMPIR:RDEF.VAMPIR}).forEach(([k,v])=>{
-    if(!v)return;
-    const d=document.createElement('div');
-    d.className=`role-guide-item team-${v.t}`;
-    d.innerHTML=`<div class="role-guide-h"><span class="em">${v.e}</span><span class="nm">${v.n}</span><span class="role-guide-tag rtag ${v.t}">${v.t.toUpperCase()}</span></div><div class="role-guide-d">${v.d}</div>${v.full?`<div class="guide-role-full">${v.full}</div>`:''}`;
-    upcoming.appendChild(d);
-  });
-  c.appendChild(upcoming);
+  renderGuideRoles('all');
+}
+
+function renderGuideRoles(team){
+  const list=Q('GUIDE_ROLE_LIST');
+  if(!list)return;
+  const allRoles={...RDEF,...RDEF_DEMO};
+  const entries=Object.entries(allRoles).filter(([k,v])=>team==='all'||v.t===team);
+  list.innerHTML=entries.map(([k,rd])=>`
+    <div class="role-guide-item team-${rd.t}" style="cursor:pointer" onclick="this.querySelector('.guide-role-full')?.classList.toggle('open')">
+      <div class="role-guide-h"><span class="em">${rd.e}</span><span class="nm">${rd.n}</span><span class="role-guide-tag rtag ${rd.t}">${rd.t.toUpperCase()}</span></div>
+      <div class="role-guide-d">${rd.d}</div>
+      ${rd.full?`<div class="guide-role-full">${rd.full}</div>`:''}
+    </div>
+  `).join('');
 }
 
 // ── ROOM ──
@@ -1346,6 +1478,22 @@ function spectate(){
   const c=Q('IC').value.trim();if(c.length!==4)return toast('4 haneli kod!',1);
   io2.emit('room:spectate',{code:c},r=>{if(r.ok){isSpec=true;Q('SB').classList.add('sh');show('S10');stopMusic();}else toast(r.err,1);});
 }
+// ── ADMIN BOT KONTROLÜ ──
+function addBots(){
+  const n = parseInt(Q('BOT_COUNT')?.value) || 1;
+  io2.emit('bot:add', { count: n }, r => {
+    if(r?.ok) toast(`🤖 ${r.added} bot eklendi (toplam: ${r.total})`);
+    else toast(r?.err || 'Bot eklenemedi', 1);
+  });
+}
+function removeAllBots(){
+  if(!confirm('Tüm botları odadan çıkarmak istediğine emin misin?')) return;
+  io2.emit('bot:removeAll', {}, r => {
+    if(r?.ok) toast('🤖 Tüm botlar atıldı');
+    else toast(r?.err || 'Bot atılamadı', 1);
+  });
+}
+
 function leaveRoom(){
   io2.emit('room:leave');
   clearLastRoom();
@@ -1992,6 +2140,17 @@ function renderLobby(){
   const sp=Q('LS');
   sp.innerHTML=gs.spectators?.length?`<div class="lbl mt8">👁️ İzleyiciler</div>`+gs.spectators.map(s=>`<div class="pi" style="opacity:.5">${avHTML(s.avatar,'sm','👁️')}<span class="pi-name"><span>${s.name}</span></span></div>`).join(''):'';
   Q('SP2').style.display=io2.id===gs.leaderId?'block':'none';
+  // Admin Bot Paneli (sadece admin + lider)
+  const bp2=Q('BOT_PANEL');
+  if(bp2){
+    const isAdminLeader = !!user?.isAdmin && me===gs.leaderId;
+    bp2.style.display = isAdminLeader ? 'block' : 'none';
+    if(isAdminLeader){
+      const botCount = gs.players.filter(p=>p.isBot).length;
+      const info=Q('BOT_INFO');
+      if(info) info.textContent = botCount>0 ? `🤖 ${botCount} bot odada (${gs.players.length}/${20})` : `Henüz bot eklenmedi (${gs.players.length}/${20})`;
+    }
+  }
   Q('BS').disabled=gs.players.length<4;
   // Altın Havuzu paneli sadece login olmuş ve oyuncu olarak katılmış kişiye görünür
   const bp=Q('BET_PANEL');
@@ -4018,11 +4177,14 @@ io2.on('suikastPrivate',(res)=>{
 
 io2.on('disconnect',(reason)=>{
   console.log('[socket] disconnect:', reason);
+  // Watchdog'un tetiklenmemesi için state tracking sıfırla
+  _lastStateTime = Date.now();
   if(reason!=='io client disconnect'){
     Q('CONN_BANNER').style.display='block';
   }
   if(reason==='io server disconnect'){
     toast('Sunucudan ayrıldın.',1);
+    gs=null;
   }
   if(reason==='ping timeout'||reason==='transport close'||reason==='transport error'){
     setTimeout(()=>{

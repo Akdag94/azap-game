@@ -60,6 +60,9 @@ class GameEngine {
     this.gameEnded = false;
     this.gameResult = null;
 
+    // Bot oyuncular (test amaçlı)
+    this.bots = new Set(); // bot playerId'leri
+
     // Tur geçmişi (her gece çözümlemesinin snapshot'ı)
     this.roundHistory = []; // [{round, deaths:[{id,name}], playerReports:{pid:[...]}}]
 
@@ -75,6 +78,7 @@ class GameEngine {
     this.koruyucuTargets = new Map();  // koruyucuId -> targetId
     // Demirci (Masum): çelik zırh kalıcı, tek saldırı emer
     this.steelArmor = new Map();       // targetId -> demirciId
+    this.demirciHistory = new Set();   // daha önce zırh verilen targetId'ler
     // İnfazcı (Masum, henüz IMPLEMENTED:false): zindan + infaz hakkı
     this.imprisoned = new Map();
     this.infazExecutionsLeft = new Map();
@@ -195,6 +199,7 @@ class GameEngine {
     moveMapKey(this.ambushTrap);
     moveMapKey(this.hackedTarget, replace);
     moveMapKey(this.steelArmor, replace);
+    moveSet(this.demirciHistory);
     moveMapKey(this.plagued, replace);
     moveMapKey(this.yamyamAbilities);
     moveMapKey(this.sabotageTargets, t => t && typeof t === 'object' ? { ...t, opponentId: replace(t.opponentId) } : t);
@@ -205,6 +210,7 @@ class GameEngine {
       this.sabotageVotes
     ].forEach(moveSet);
 
+    moveSet(this.bots);
     this.deadThisNight = this.deadThisNight.map(replace);
     this.roleSelectionOrder = this.roleSelectionOrder.map(replace);
     moveMapKey(this.roleSelectionPicks);
@@ -1013,14 +1019,15 @@ class GameEngine {
           }
           this.hist(a.pid, 'Vurma', t.name, 'Kahraman');
         } else {
-          // Masum vuruldu → hedef ölür, şerif ertesi gece intihar
+          // Masum vuruldu → hedef ve şerif ikisi de anında ölür
           if (!t.isShielded && !t.isImmortal) {
             t.isAlive = false;
             this.deadThisNight.push(t.id);
-            rep.get(a.pid)?.push({ i: '🤠', t: `${t.name}'i vurdun... Ama masumlarmış! Vicdan azabı...` });
+            const sheriff = this.players.get(a.pid);
+            if (sheriff?.isAlive) { sheriff.isAlive = false; this.deadThisNight.push(a.pid); }
+            rep.get(a.pid)?.push({ i: '🤠', t: `${t.name}'i vurdun... Ama masumlarmış! İkiniz de öldünüz!` });
             rep.get(t.id)?.push({ i: '🤠', t: 'Şerif tarafından vuruldun!' });
-            this.serifPendingSuicide.add(a.pid);
-            this.log(`🤠 Şerif ${this.pn(a.pid)} → ${t.name} MASUM vuruldu. İntihar bekliyor.`);
+            this.log(`🤠 Şerif ${this.pn(a.pid)} → ${t.name} MASUM vuruldu. İkisi de anında öldü.`);
           } else {
             rep.get(a.pid)?.push({ i: '🤠', t: `${t.name}'i vurdun ama korunuyordu!` });
           }
@@ -1339,12 +1346,18 @@ class GameEngine {
     eff.filter(a => a.role === 'demirci' && a.targetId).forEach(a => {
       const t = this.players.get(a.targetId); if (!t?.isAlive) return;
       if (a.targetId === a.pid) return; // Kendine zırh yapamaz
+      // Aynı kişiye tekrar zırh veremez
+      if (this.demirciHistory.has(a.targetId)) {
+        rep.get(a.pid)?.push({ i: '⚒️', t: `${t.name}'e daha önce zırh verdin, tekrar veremezsin!` });
+        return;
+      }
       const insane = this.isInsane(a.pid);
       if (insane) {
         rep.get(a.pid)?.push({ i: '⚒️', t: `${t.name}'e zırh giydirdin (sahte)` });
         return;
       }
       this.steelArmor.set(a.targetId, a.pid);
+      this.demirciHistory.add(a.targetId);
       rep.get(a.pid)?.push({ i: '⚒️', t: `${t.name}'e Çelik Zırh giydirdin.` });
       this.hist(a.pid, 'Zırh', t.name, 'Aktif');
     });
@@ -2154,6 +2167,7 @@ class GameEngine {
     // Yeni rol state'leri
     this.koruyucuTargets.clear();
     this.steelArmor.clear();
+    this.demirciHistory.clear();
     this.imprisoned.clear();
     this.infazExecutionsLeft.clear();
     this.gardiyanShield = false;
@@ -2189,6 +2203,7 @@ class GameEngine {
     this.suikastUsedThisRound = false;
     // Bahisler de temizlensin (yeni oyun)
     if (this.bets) this.bets.clear();
+    // Botları koru (yeni oyunda da kalsınlar)
 
     this.players.forEach(p => {
       p.role = null; p.actualTeam = null; p.displayedRole = null;
@@ -2199,6 +2214,31 @@ class GameEngine {
   }
 
   // ── HELPERS ──
+  // ── BOT SİSTEMİ ──
+  addBot(botId, botName) {
+    if (this.players.size >= this.config.MAX_PLAYERS) return false;
+    if (this.phase !== PHASES.LOBBY && this.phase !== PHASES.POST_GAME) return false;
+    this.players.set(botId, {
+      id: botId, name: botName, username: null,
+      wins: 0, mvp: 0, avatar: null, cosmetics: {},
+      role: null, actualTeam: null, displayedRole: null,
+      isAlive: true, isInsane: false, isTempInsane: false,
+      isShielded: false, isImmortal: false, isSilenced: false,
+      isReady: false, isAdmin: false, isBot: true
+    });
+    this.bots.add(botId);
+    this.actionHistory.set(botId, []);
+    return true;
+  }
+  removeAllBots() {
+    for (const botId of this.bots) {
+      this.players.delete(botId);
+      this.actionHistory.delete(botId);
+    }
+    this.bots.clear();
+  }
+  isBot(pid) { return this.bots.has(pid); }
+
   shuf(a) { for (let i = a.length - 1; i > 0; i--) { const j = crypto.randomInt(0, i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   hist(pid, action, target, result) { this.actionHistory.get(pid)?.push({ round: this.round, action, target, result }); }
   log(msg) { this.gameLog.push({ round: this.round, time: Date.now(), msg }); }
@@ -2439,7 +2479,7 @@ class GameEngine {
       // Cellat hedefini astırdıysa daima kazanır
       if (p.role === 'cellat' && this.cellatWon.has(p.id)) return true;
       // Yamyam: hain veya masum kazanırsa o da kazanır
-      if (p.role === 'yamyam' && (winnerKey === TEAMS.MASUM || winnerKey === TEAMS.HAIN)) return true;
+      if (p.role === 'yamyam' && p.isAlive && (winnerKey === TEAMS.MASUM || winnerKey === TEAMS.HAIN)) return true;
       // Koruyucu: koruduğu kişi hayattaysa kazanır (hangi takım kazansa)
       if (p.role === 'koruyucu') {
         const targetId = this.koruyucuTargets.get(p.id);
