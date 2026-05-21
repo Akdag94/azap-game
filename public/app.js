@@ -4570,6 +4570,19 @@ function _renderSpeakerList(){
 window.toggleVoiceEnabled = toggleVoiceEnabled;
 window.toggleMic = toggleMic;
 window.toggleDeafen = toggleDeafen;
+window.VOICE = VOICE;
+window.voiceDebug = function(){
+  const cards = document.querySelectorAll('.pi[data-pid]');
+  console.log('=== VOICE DEBUG ===');
+  console.log('me:', me);
+  console.log('VOICE.enabled:', VOICE.enabled, 'active:', VOICE.active, 'canSpeak:', VOICE.canSpeak, 'micMuted:', VOICE.micMuted);
+  console.log('speakingIds:', [...VOICE.speakingIds]);
+  console.log('VAD lastState:', VOICE.vad?.lastState, 'graceUntil:', VOICE.vad?.graceUntil, 'now:', Date.now());
+  console.log('Cards with data-pid:', cards.length);
+  cards.forEach(c => console.log('  pid=' + c.dataset.pid, 'speaking?', c.classList.contains('speaking'), 'classes:', c.className));
+  console.log('LP children count:', Q('LP')?.children?.length);
+  return 'VOICE state above';
+};
 
 // Ayar checkbox başlangıç durumu + panel sürüklenebilir yap
 (function initVoiceUI(){
