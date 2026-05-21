@@ -312,17 +312,17 @@ body.modern-ui .pi.speaking .pi-name span{color:#4ade80!important}
 .htog{position:fixed;bottom:14px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--dim);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .htog.sh{display:flex}
 /* Rol bilgisi - sol üst (her zaman görünür) */
-.role-info-btn{position:fixed;top:50px;left:14px;z-index:91;background:var(--bg3);border:1px solid var(--brd);color:var(--txt);padding:6px 10px;border-radius:6px;cursor:pointer;display:none;align-items:center;gap:6px;font-size:.78rem;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.role-info-btn{position:fixed;top:50px;left:60px;z-index:91;background:var(--bg3);border:1px solid var(--brd);color:var(--txt);padding:6px 10px;border-radius:6px;cursor:pointer;display:none;align-items:center;gap:6px;font-size:.78rem;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .role-info-btn.sh{display:flex}
 .role-info-btn:hover{background:var(--bg2)}
 /* Rol rehberi butonu */
-.role-guide-btn{position:fixed;bottom:60px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--dim);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.role-guide-btn{position:fixed;bottom:62px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--dim);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .role-guide-btn.sh{display:flex}
 /* Admin bakış butonu (sadece admin görür) */
-.admin-btn{position:fixed;bottom:62px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#5d3a8e,#9b59b6);border:1.5px solid #9b59b6;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(155,89,182,.5)}
+.admin-btn{position:fixed;bottom:110px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#5d3a8e,#9b59b6);border:1.5px solid #9b59b6;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(155,89,182,.5)}
 .admin-btn.sh{display:flex}
 /* Admin menü butonu (sadece admin görür) */
-.admin-menu-btn{position:fixed;bottom:110px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7d3c98,#bb8fce);border:1.5px solid #bb8fce;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(187,143,206,.5)}
+.admin-menu-btn{position:fixed;bottom:158px;left:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7d3c98,#bb8fce);border:1.5px solid #bb8fce;color:#fff;font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 14px rgba(187,143,206,.5)}
 .admin-menu-btn.sh{display:flex}
 /* Report butonu - sağ alt floating, profil/rehberden uzak */
 .report-btn{position:fixed;bottom:62px;right:14px;z-index:90;width:38px;height:38px;border-radius:50%;background:rgba(192,57,43,.15);border:1px solid var(--hain);color:var(--hain);font-size:1.05rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3);transition:all .15s}
