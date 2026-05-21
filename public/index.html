@@ -21,7 +21,7 @@
 <link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="/style.css?v=20260521m">
+<link rel="stylesheet" href="/style.css?v=20260521n">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -256,10 +256,6 @@
     <button class="b" onclick="refreshGame();closeModal('MDL_VSETTINGS')" style="font-size:.75rem">🔄 Yenile</button>
     <button class="b" onclick="closeModal('MDL_VSETTINGS');exitToMainMenu()" style="font-size:.75rem;border-color:rgba(192,57,43,.4);color:#ee9999">� Ana Menü</button>
     <button class="b" onclick="closeModal('MDL_VSETTINGS');openReportModal()" style="font-size:.75rem;border-color:rgba(192,57,43,.4);color:var(--hain)">🐛 Hata Bildir</button>
-  </div>
-  <div id="VSETTINGS_ADMIN" style="display:none;margin-top:14px;border-top:1px solid rgba(180,150,90,.2);padding-top:10px">
-    <div class="lbl" style="margin-bottom:6px;color:#e74c3c">🅰️ Admin</div>
-    <div style="display:flex;flex-direction:column;gap:6px" id="VSETTINGS_ADMIN_BTNS"></div>
   </div>
 </div>
 </div></div>
@@ -1023,6 +1019,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="/app.js?v=20260521m"></script>
+<script src="/app.js?v=20260521n"></script>
 </body>
 </html>

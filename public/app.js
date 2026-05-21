@@ -3049,11 +3049,11 @@ function updateRoleInfoBtn(){
       adminMenuBtn.classList.remove('sh');
     }
   }
-  // Report butonu — giriş yapmış herkes için (giriş ekranında değilse)
+  // Report butonu artık ayarlar panelinde
   const reportBtn=Q('REPORT_BTN');
   if(reportBtn){
     if(user){
-      reportBtn.style.display='flex';
+      reportBtn.style.display='none';
       setupReportImg();
     } else {
       reportBtn.style.display='none';
@@ -4670,19 +4670,6 @@ function toggleVoiceSettings(){
   // Voice toggle buton metni
   const vToggle = Q('VSETTINGS_VOICE_TOGGLE');
   if (vToggle) vToggle.textContent = VOICE.enabled ? '🎙️ Sesli Sohbeti Kapat' : '🎙️ Sesli Sohbeti Aç';
-  // Admin bölümü
-  const adminDiv = Q('VSETTINGS_ADMIN');
-  if (adminDiv) {
-    adminDiv.style.display = user?.isAdmin ? 'block' : 'none';
-    if (user?.isAdmin) {
-      const btns = Q('VSETTINGS_ADMIN_BTNS');
-      btns.innerHTML = `
-        <button class="b" onclick="io2.emit('admin:forceEnd');closeModal('MDL_VSETTINGS')" style="font-size:.75rem;background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.4)">🛑 Oyunu Bitir</button>
-        <button class="b" onclick="io2.emit('admin:kick-all');closeModal('MDL_VSETTINGS')" style="font-size:.75rem;background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.4)">🚫 Herkesi At</button>
-        <button class="b" onclick="io2.emit('admin:resetRoom');closeModal('MDL_VSETTINGS')" style="font-size:.75rem;background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.4)">♻️ Odayı Sıfırla</button>
-      `;
-    }
-  }
   openModal('MDL_VSETTINGS');
 }
 
