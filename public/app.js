@@ -4560,6 +4560,11 @@ function _renderSpeakerList(){
   status.innerHTML = '';
 }
 
+// HTML inline handler'lar için global expose
+window.toggleVoiceEnabled = toggleVoiceEnabled;
+window.toggleMic = toggleMic;
+window.toggleDeafen = toggleDeafen;
+
 // Ayar checkbox başlangıç durumu + panel sürüklenebilir yap
 (function initVoiceUI(){
   const cb = Q('VOICE_ENABLED');
