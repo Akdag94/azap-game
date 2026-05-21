@@ -4253,7 +4253,12 @@ const VOICE = {
   speakingIds: new Set(), // aktif konuşan peer'lar (uzaktan + lokal)
   vad: { ctx: null, analyser: null, raf: null, lastEmit: 0, lastState: false }
 };
-const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+let RTC_CONFIG = { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' }
+] };
+// TURN sunucusu config (server'dan gelecek)
+const VOICE_VOLUMES = {}; // peerId -> 0..1 ses seviyesi
 
 // localStorage'dan tercihi oku
 try {
@@ -4434,10 +4439,13 @@ async function _createPeer(remoteId, isInitiator){
       audio.autoplay = true;
       audio.playsInline = true;
       audio.muted = VOICE.deafened;
+      audio.volume = VOICE_VOLUMES[remoteId] ?? 1;
       Q('VOICE_AUDIO_CONTAINER')?.appendChild(audio);
       VOICE.audioEls.set(remoteId, audio);
+      _voiceLog('audio element oluşturuldu, peer:', remoteId);
     }
     audio.srcObject = ev.streams[0];
+    _voiceLog('remote track alındı, peer:', remoteId, 'tracks:', ev.streams[0]?.getTracks()?.length);
   };
   pc.onicecandidate = (ev) => {
     if (ev.candidate) io2.emit('voice:ice', { to: remoteId, candidate: ev.candidate });
@@ -4467,9 +4475,15 @@ function _closePeer(remoteId){
 }
 
 // ── Server signalling event'leri ──
-io2.on('voice:peers', ({ peers, canSpeak }) => {
+io2.on('voice:peers', ({ peers, canSpeak, turnServers }) => {
   VOICE.canSpeak = !!canSpeak;
   _updateMicButton();
+  // TURN sunucuları server'dan gelirse ekle
+  if (turnServers?.length && !RTC_CONFIG._turnApplied) {
+    RTC_CONFIG.iceServers = RTC_CONFIG.iceServers.concat(turnServers);
+    RTC_CONFIG._turnApplied = true;
+    _voiceLog('TURN sunucuları eklendi:', turnServers.map(t => t.urls));
+  }
   if (!VOICE.enabled) return;
   // Server "ses bağlantısı olması gereken peer ID'leri" listesini yolladı.
   // Listede olmayanları kapat, yeni olanlara bağlan.
@@ -4525,6 +4539,16 @@ io2.on('voice:speaking', ({ from, speaking }) => {
   _applyVoiceClassesToCards();
 });
 
+// Ses seviyesi ayarla (0..1)
+function setPlayerVolume(pid, vol){
+  vol = Math.max(0, Math.min(1, parseFloat(vol) || 0));
+  VOICE_VOLUMES[pid] = vol;
+  const audio = VOICE.audioEls.get(pid);
+  if (audio) audio.volume = vol;
+  try { localStorage.setItem('azap_vol_' + pid, vol.toFixed(2)); } catch {}
+}
+window.setPlayerVolume = setPlayerVolume;
+
 // Mic durumu sadece kendimize görünür (diğerlerine bildirim yok)
 
 // Oyuncu kartlarına .speaking ve mic mute göstergesi uygula
@@ -4549,6 +4573,23 @@ function _applyVoiceClassesToCards(){
       }
     } else if (micEl) {
       micEl.remove();
+    }
+    // Ses seviyesi slider — diğer oyuncuların kartına (voice aktifse)
+    if (pid !== me && VOICE.active) {
+      let volWrap = el.querySelector('.pi-vol');
+      if (!volWrap) {
+        // localStorage'dan kayıtlı seviye oku
+        let saved = 1;
+        try { saved = parseFloat(localStorage.getItem('azap_vol_' + pid)) || 1; } catch {}
+        VOICE_VOLUMES[pid] = saved;
+        const audio = VOICE.audioEls.get(pid);
+        if (audio) audio.volume = saved;
+        volWrap = document.createElement('div');
+        volWrap.className = 'pi-vol';
+        volWrap.innerHTML = `<span class="pi-vol-icon">🔊</span><input type="range" min="0" max="100" value="${Math.round(saved*100)}" class="pi-vol-slider" oninput="setPlayerVolume('${pid}',this.value/100);this.previousElementSibling.textContent=this.value==0?'🔇':this.value<50?'🔉':'🔊'">`;
+        volWrap.addEventListener('click', e => e.stopPropagation());
+        el.appendChild(volWrap);
+      }
     }
   });
 }

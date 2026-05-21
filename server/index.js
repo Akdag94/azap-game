@@ -15,6 +15,22 @@ const registerLegalRoutes = require('./legalPages');
 // Yeni hali:
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || '4794akd.';
 
+// ── TURN sunucusu config (WebRTC relay — uzak bağlantılar için) ──
+const TURN_CONFIG = [];
+if (process.env.TURN_URL) {
+  TURN_CONFIG.push(
+    { urls: process.env.TURN_URL, username: process.env.TURN_USER || 'azap', credential: process.env.TURN_PASS || 'azap2026' }
+  );
+  if (process.env.TURN_URL_TCP) {
+    TURN_CONFIG.push(
+      { urls: process.env.TURN_URL_TCP, username: process.env.TURN_USER || 'azap', credential: process.env.TURN_PASS || 'azap2026' }
+    );
+  }
+  console.log('[TURN] Yapılandırıldı:', TURN_CONFIG.map(t => t.urls));
+} else {
+  console.warn('[TURN] TURN_URL env yok — uzak bağlantılar çalışmayabilir. .env dosyasına TURN_URL, TURN_USER, TURN_PASS ekleyin.');
+}
+
 // ── GÜVENLİK: opsiyonel middleware'ler (npm install helmet express-rate-limit) ──
 let helmet = null, rateLimit = null;
 try { helmet = require('helmet'); } catch(e){ console.warn('[GÜVENLİK] helmet yok — npm install helmet öneriliyor'); }
@@ -1656,7 +1672,7 @@ function _emitImmediate(rc) {
       try {
         const peers = g.getVoicePeers(pid);
         const canSpeak = g.canSpeak(pid);
-        sock.emit('voice:peers', { peers, canSpeak });
+        sock.emit('voice:peers', { peers, canSpeak, turnServers: TURN_CONFIG });
       } catch(e) { /* voice opsiyonel — hata oyunu durdurmasın */ }
     });
     if (g.spectators.size > 0) {
