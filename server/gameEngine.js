@@ -1461,27 +1461,45 @@ class GameEngine {
     });
 
     // ── HACKER FİLTRESİ ──
-    // Hacker hedefi olan ve bilgi toplayan rolün raporlarını sil + herkese duyur
+    // Hack başarılıysa (hedef bilgi rolü + gece aksiyonu var) → TÜM bilgi rolleri etkilenir
     const infoCollectorRoles = ['gazeteci','savci','psikolog','dedikoducu','ajan','takipci','kostebek','polis','cilingir','doktor','gazi'];
+
+    // Başarılı hack var mı?
+    let networkHacked = false;
     this.hackedTarget.forEach((targetId, hackerId) => {
       const t = this.players.get(targetId);
-      if (!t?.isAlive) return; // Ölüler buraya gelmez (kurban vasiyette zaten işlendi)
+      if (!t?.isAlive) return;
       if (!infoCollectorRoles.includes(t.role)) return;
       const action = eff.find(a => a.pid === targetId);
-      if (!action) return; // Gece aksiyonu yoksa hack etkisiz
-      // Raporları sil — saldırı/ölüm/sistem bildirimleri korunur, bilgi raporları temizlenir
-      const oldReports = rep.get(targetId) || [];
-      const filteredReports = oldReports.filter(r =>
-        !r.i || ['⚒️','💀','🪦','🪤','🦠','🤐','❄️','🔨','💣'].includes(r.i)
-      );
-      filteredReports.push({ i: '💻', t: 'Bu gece HACKLENDİN! Bilgi akışın tamamen engellendi.' });
-      rep.set(targetId, filteredReports);
-      // Diğer herkese sabah duyurusu
-      this.players.forEach((_, pid) => {
-        if (pid !== targetId) rep.get(pid)?.push({ i: '💻', t: `${t.name} bu gece hacklendi!` });
-      });
-      this.log(`💻 Hacker ${this.pn(hackerId)} → ${t.name} (raporlar silindi, herkese duyuruldu)`);
+      if (!action) return;
+      networkHacked = true;
+      this.log(`💻 Hacker ${this.pn(hackerId)} → ${t.name} (ağ saldırısı tetiklendi)`);
     });
+
+    if (networkHacked) {
+      // Tüm bilgi rollerinin raporlarını sil
+      const affectedPids = new Set();
+      this.players.forEach((p, pid) => {
+        if (!p.isAlive) return;
+        if (!infoCollectorRoles.includes(p.role)) return;
+        const action = eff.find(a => a.pid === pid);
+        if (!action) return; // Bu gece aksiyon yapmamışsa bilgisi zaten yok, etkilenmez
+        affectedPids.add(pid);
+        const oldReports = rep.get(pid) || [];
+        const filteredReports = oldReports.filter(r =>
+          !r.i || ['⚒️','💀','🪦','🪤','🦠','🤐','❄️','🔨','💣'].includes(r.i)
+        );
+        filteredReports.push({ i: '💻', t: 'Bu gece HACKLENDİN! Bilgi akışın tamamen engellendi.' });
+        rep.set(pid, filteredReports);
+        this.log(`💻 Ağ saldırısı → ${p.name} (raporlar silindi)`);
+      });
+      // Herkese sabah duyurusu (bilgi rolleri kendi "HACKLENDİN" mesajını zaten aldı)
+      this.players.forEach((_, pid) => {
+        if (!affectedPids.has(pid)) {
+          rep.get(pid)?.push({ i: '💻', t: 'Bu gece ağ saldırısı gerçekleşti! Tüm bilgi akışı kesildi.' });
+        }
+      });
+    }
 
     // ── VEBA SAYIM ──
     // Tüm hayatta olanlar hastalandı mı?
