@@ -4349,7 +4349,7 @@ function _setupVAD(){
         sum += v * v;
       }
       const rms = Math.sqrt(sum / buf.length);
-      const SPEAK_THR = 0.045;
+      const SPEAK_THR = 0.018;
       const rawSpeaking = rms > SPEAK_THR && !VOICE.micMuted && VOICE.canSpeak;
       const now = Date.now();
       // Grace period: konuşma durunca hemen söndürme (kelimeler arası sessizlik)
@@ -4548,10 +4548,16 @@ function _applyVoiceClassesToCards(){
   });
 }
 
-// State değiştiğinde de uygula (yeni renderden sonra)
-const _origStateHandler = io2.listeners('state')?.[0];
+// State değiştiğinde voice'u başlat (gerekirse) ve göstergeleri uygula
 io2.on('state', () => {
-  setTimeout(_applyVoiceClassesToCards, 30);
+  setTimeout(() => {
+    if (VOICE.enabled && gs && me && !VOICE.active && !isSpec) {
+      _voiceLog('state event → startVoice tetik');
+      startVoice();
+    }
+    _applyVoiceClassesToCards();
+    updateVoicePanelVisibility();
+  }, 50);
 });
 
 // Konuşan kişiler artık doğrudan kartlarda gösterilir; panel listesi kaldırıldı
