@@ -4298,7 +4298,10 @@ async function startVoice(){
     });
     VOICE.active = true;
     VOICE.micMuted = false;
-    _voiceLog('lokal mic alındı');
+    // canSpeak false ise track'ı baştan kapat
+    const shouldSend = VOICE.canSpeak && !VOICE.micMuted;
+    VOICE.localStream.getAudioTracks().forEach(t => t.enabled = shouldSend);
+    _voiceLog('lokal mic alındı, canSpeak:', VOICE.canSpeak, 'track enabled:', shouldSend);
     _setupVAD();
     _updateMicButton();
     _updateDeafenButton();
@@ -4476,8 +4479,19 @@ function _closePeer(remoteId){
 
 // ── Server signalling event'leri ──
 io2.on('voice:peers', ({ peers, canSpeak, turnServers }) => {
+  const prevCanSpeak = VOICE.canSpeak;
   VOICE.canSpeak = !!canSpeak;
   _updateMicButton();
+  // canSpeak değiştiğinde audio track'ı aç/kapat
+  if (VOICE.localStream) {
+    const shouldSend = VOICE.canSpeak && !VOICE.micMuted;
+    VOICE.localStream.getAudioTracks().forEach(t => t.enabled = shouldSend);
+    if (!VOICE.canSpeak && prevCanSpeak) {
+      VOICE.speakingIds.delete(me);
+      _applyVoiceClassesToCards();
+      _voiceLog('canSpeak=false → mic kapatıldı');
+    }
+  }
   // TURN sunucuları server'dan gelirse ekle
   if (turnServers?.length && !RTC_CONFIG._turnApplied) {
     RTC_CONFIG.iceServers = RTC_CONFIG.iceServers.concat(turnServers);
