@@ -2110,7 +2110,7 @@ function renderLobby(){
   Q('LP').innerHTML='';
   const isLeader = me===gs.leaderId;
   gs.players.forEach(p=>{
-    const li=document.createElement('li');li.className='pi fade';
+    const li=document.createElement('li');li.className='pi fade';li.dataset.pid=p.id;
     const isMe=p.id===me;
     const showKick = isLeader && !isMe;
     const avatarHtml = cosmeticPlayerAvatarHTML(p,'sm',isMe,'4px');
@@ -2529,7 +2529,7 @@ function renderDay(){
     const isT=tmIds.has(p.id);
     const isMe=p.id===me;
     const isCT=p.id===cellatTargetId;
-    const li=document.createElement('li');li.className='pi'+(p.isAlive?'':' dead')+(p.isPresident?' president':'');
+    const li=document.createElement('li');li.className='pi'+(p.isAlive?'':' dead')+(p.isPresident?' president':'');li.dataset.pid=p.id;
     const nameStyle=isT?'color:var(--hain);font-weight:600':(isCT?'color:var(--tarafsiz);font-weight:600':'');
     const meTag=isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'';
     const ctIcon=isCT?' <span style="color:var(--tarafsiz)" title="Cellat hedefin">⛓️</span>':'';
@@ -3647,7 +3647,7 @@ function renderSpec(data){
   }
   // İzleyici DELİ rozetini görür - kim deli net belli
   Q('SPP').innerHTML='<div id="SPP_GRID">'+data.players.map(p=>
-    `<div class="pi ${p.isAlive?'':'dead'}${p.isPresident?' president':''}">${cosmeticPlayerAvatarHTML(p,'sm',p.id===me)}<span class="pi-name">${cosmeticPlayerNameHTML(p,p.id===me,p.id===me?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'')}${p.isPresident?'<span class="crown">👑</span>':''}</span>
+    `<div class="pi ${p.isAlive?'':'dead'}${p.isPresident?' president':''}" data-pid="${p.id}">${cosmeticPlayerAvatarHTML(p,'sm',p.id===me)}<span class="pi-name">${cosmeticPlayerNameHTML(p,p.id===me,p.id===me?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'')}${p.isPresident?'<span class="crown">👑</span>':''}</span>
       <span style="font-size:.74rem;color:var(--dim)">${p.roleEmoji} ${p.roleName}</span>
       ${p.isInsane?'<span class="deli-tag">DELİ</span>':''}
       ${p.isSilenced?'<span style="font-size:.72rem">🤐</span>':''}</div>`).join('')+'</div>';
@@ -4232,3 +4232,409 @@ io2.on('connect_error',(err)=>{
 Q('IC').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'')});
 Q('AU').addEventListener('keypress',e=>{if(e.key==='Enter')Q('AP').focus()});
 Q('AP').addEventListener('keypress',e=>{if(e.key==='Enter')doAuth()});
+
+// ============================================================
+// SESLİ SOHBET — WebRTC mesh client
+// ============================================================
+const VOICE = {
+  enabled: false,         // ayardan kullanıcı tercih
+  active: false,          // gerçekten getUserMedia aldı mı
+  micMuted: false,        // kullanıcı kendi mic'ini kapadı mı
+  deafened: false,        // tüm sesleri sustur
+  canSpeak: true,         // server: rol-mute (Gölge) varsa false
+  localStream: null,
+  pcs: new Map(),         // peerId -> RTCPeerConnection
+  audioEls: new Map(),    // peerId -> <audio>
+  speakingIds: new Set(), // aktif konuşan peer'lar (uzaktan + lokal)
+  vad: { ctx: null, analyser: null, raf: null, lastEmit: 0, lastState: false }
+};
+const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+// localStorage'dan tercihi oku
+try {
+  VOICE.enabled = localStorage.getItem('azap_voice_enabled') === '1';
+} catch {}
+
+function _voiceLog(...a){ try{ console.log('[voice]', ...a); }catch{} }
+
+function toggleVoiceEnabled(on){
+  VOICE.enabled = !!on;
+  try { localStorage.setItem('azap_voice_enabled', on ? '1' : '0'); } catch {}
+  if (on) {
+    // Bir odaya bağlıysak hemen başlat
+    if (gs && me) startVoice();
+  } else {
+    stopVoice();
+  }
+  updateVoicePanelVisibility();
+}
+
+function updateVoicePanelVisibility(){
+  const panel = Q('VOICE_PANEL');
+  if (!panel) return;
+  const inGame = !!(gs && me);
+  panel.style.display = (VOICE.enabled && VOICE.active && inGame) ? 'flex' : 'none';
+}
+
+async function startVoice(){
+  if (VOICE.active) return;
+  if (!VOICE.enabled) return;
+  // Spectator → ses yok (şimdilik)
+  if (isSpec) return;
+  try {
+    VOICE.localStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: false
+    });
+    VOICE.active = true;
+    VOICE.micMuted = false;
+    _voiceLog('lokal mic alındı');
+    _setupVAD();
+    _updateMicButton();
+    _updateDeafenButton();
+    updateVoicePanelVisibility();
+    // Server'a mevcut peers için signal başlat — voice:peers handler tetikleyecek
+    // Sunucu zaten voice:peers gönderiyor faz değişiminde; biz state'imizi resetleyip
+    // io2'ye bir tetikleyici göndermiyoruz — voice:peers event'inde bağlantılar kurulacak.
+  } catch(err) {
+    _voiceLog('mic alınamadı:', err.message);
+    toast('Mikrofon izni reddedildi', 1);
+    VOICE.active = false;
+    VOICE.enabled = false;
+    try { localStorage.setItem('azap_voice_enabled', '0'); } catch {}
+    const cb = Q('VOICE_ENABLED'); if (cb) cb.checked = false;
+  }
+}
+
+function stopVoice(){
+  // Tüm peer connection'ları kapat
+  VOICE.pcs.forEach(pc => { try { pc.close(); } catch {} });
+  VOICE.pcs.clear();
+  // Audio elements
+  VOICE.audioEls.forEach(el => { try { el.srcObject = null; el.remove(); } catch {} });
+  VOICE.audioEls.clear();
+  VOICE.speakingIds.clear();
+  // Local stream
+  if (VOICE.localStream) {
+    VOICE.localStream.getTracks().forEach(t => { try { t.stop(); } catch {} });
+    VOICE.localStream = null;
+  }
+  // VAD cleanup
+  if (VOICE.vad.raf) cancelAnimationFrame(VOICE.vad.raf);
+  if (VOICE.vad.ctx) { try { VOICE.vad.ctx.close(); } catch {} }
+  VOICE.vad = { ctx: null, analyser: null, raf: null, lastEmit: 0, lastState: false };
+  VOICE.active = false;
+  updateVoicePanelVisibility();
+  _renderSpeakerList();
+}
+
+function _setupVAD(){
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    VOICE.vad.ctx = new AC();
+    const src = VOICE.vad.ctx.createMediaStreamSource(VOICE.localStream);
+    VOICE.vad.analyser = VOICE.vad.ctx.createAnalyser();
+    VOICE.vad.analyser.fftSize = 512;
+    src.connect(VOICE.vad.analyser);
+    const buf = new Uint8Array(VOICE.vad.analyser.fftSize);
+    const tick = () => {
+      VOICE.vad.raf = requestAnimationFrame(tick);
+      if (!VOICE.localStream) return;
+      VOICE.vad.analyser.getByteTimeDomainData(buf);
+      // RMS hesapla
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / buf.length);
+      const SPEAK_THR = 0.045;
+      const rawSpeaking = rms > SPEAK_THR && !VOICE.micMuted && VOICE.canSpeak;
+      const now = Date.now();
+      // Grace period: konuşma durunca hemen söndürme (kelimeler arası sessizlik)
+      if (rawSpeaking) VOICE.vad.graceUntil = now + 600;
+      const isSpeaking = rawSpeaking || now < (VOICE.vad.graceUntil || 0);
+      // State değişimi veya 1sn timeout
+      if (isSpeaking !== VOICE.vad.lastState || (isSpeaking && now - VOICE.vad.lastEmit > 800)) {
+        VOICE.vad.lastState = isSpeaking;
+        VOICE.vad.lastEmit = now;
+        try { io2.emit('voice:speaking', { speaking: isSpeaking }); } catch {}
+        // Lokal indicator
+        if (isSpeaking) VOICE.speakingIds.add(me); else VOICE.speakingIds.delete(me);
+        _renderSpeakerList();
+        _applyVoiceClassesToCards();
+      }
+    };
+    tick();
+  } catch(e) { _voiceLog('VAD setup err:', e.message); }
+}
+
+function toggleMic(){
+  if (!VOICE.active) return;
+  if (!VOICE.canSpeak) { toast('Şu an konuşamazsın (rol etkisi)', 1); return; }
+  VOICE.micMuted = !VOICE.micMuted;
+  VOICE.localStream?.getAudioTracks().forEach(t => t.enabled = !VOICE.micMuted);
+  _updateMicButton();
+  if (VOICE.micMuted) {
+    VOICE.speakingIds.delete(me);
+    _renderSpeakerList();
+  }
+  _applyVoiceClassesToCards();
+}
+
+function toggleDeafen(){
+  if (!VOICE.active) return;
+  VOICE.deafened = !VOICE.deafened;
+  // Tüm remote audio'ları sustur
+  VOICE.audioEls.forEach(el => { el.muted = VOICE.deafened; });
+  // Sağırlaşırken mic'i de kapat (Discord standart)
+  if (VOICE.deafened && !VOICE.micMuted) {
+    VOICE.micMuted = true;
+    VOICE.localStream?.getAudioTracks().forEach(t => t.enabled = false);
+  }
+  _updateMicButton();
+  _updateDeafenButton();
+  _applyVoiceClassesToCards();
+}
+
+function _updateMicButton(){
+  const btn = Q('VOICE_MIC_BTN'); if (!btn) return;
+  btn.classList.toggle('muted', VOICE.micMuted || !VOICE.canSpeak);
+  btn.classList.toggle('role-muted', !VOICE.canSpeak);
+  btn.textContent = !VOICE.canSpeak ? '🚫' : '🎤';
+  btn.title = !VOICE.canSpeak ? 'Susturuldun' : (VOICE.micMuted ? 'Mikrofon kapalı' : 'Mikrofon açık');
+}
+function _updateDeafenButton(){
+  const btn = Q('VOICE_DEAF_BTN'); if (!btn) return;
+  btn.classList.toggle('deafened', VOICE.deafened);
+  btn.textContent = VOICE.deafened ? '🔇' : '🎧';
+  btn.title = VOICE.deafened ? 'Sağırlaştın' : 'Tüm sesler açık';
+}
+
+// ── Peer mesh yönetimi ──
+async function _createPeer(remoteId, isInitiator){
+  if (VOICE.pcs.has(remoteId)) return VOICE.pcs.get(remoteId);
+  const pc = new RTCPeerConnection(RTC_CONFIG);
+  VOICE.pcs.set(remoteId, pc);
+  // Lokal audio'yu ekle
+  if (VOICE.localStream) {
+    VOICE.localStream.getTracks().forEach(t => pc.addTrack(t, VOICE.localStream));
+  }
+  // Remote stream geldiğinde audio element oluştur
+  pc.ontrack = (ev) => {
+    let audio = VOICE.audioEls.get(remoteId);
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.autoplay = true;
+      audio.playsInline = true;
+      audio.muted = VOICE.deafened;
+      Q('VOICE_AUDIO_CONTAINER')?.appendChild(audio);
+      VOICE.audioEls.set(remoteId, audio);
+    }
+    audio.srcObject = ev.streams[0];
+  };
+  pc.onicecandidate = (ev) => {
+    if (ev.candidate) io2.emit('voice:ice', { to: remoteId, candidate: ev.candidate });
+  };
+  pc.onconnectionstatechange = () => {
+    _voiceLog('pc state', remoteId, pc.connectionState);
+    if (['failed','disconnected','closed'].includes(pc.connectionState)) {
+      _closePeer(remoteId);
+    }
+  };
+  if (isInitiator) {
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      io2.emit('voice:offer', { to: remoteId, sdp: pc.localDescription });
+    } catch(e) { _voiceLog('offer err:', e.message); }
+  }
+  return pc;
+}
+function _closePeer(remoteId){
+  const pc = VOICE.pcs.get(remoteId);
+  if (pc) { try { pc.close(); } catch {} VOICE.pcs.delete(remoteId); }
+  const el = VOICE.audioEls.get(remoteId);
+  if (el) { try { el.srcObject = null; el.remove(); } catch {} VOICE.audioEls.delete(remoteId); }
+  VOICE.speakingIds.delete(remoteId);
+  _renderSpeakerList();
+}
+
+// ── Server signalling event'leri ──
+io2.on('voice:peers', ({ peers, canSpeak }) => {
+  VOICE.canSpeak = !!canSpeak;
+  _updateMicButton();
+  if (!VOICE.enabled) return;
+  // Server "ses bağlantısı olması gereken peer ID'leri" listesini yolladı.
+  // Listede olmayanları kapat, yeni olanlara bağlan.
+  if (!VOICE.active) {
+    // Kullanıcı henüz mic vermedi — listening'e başlamak için get them now
+    startVoice().then(() => _syncPeerMesh(peers));
+    return;
+  }
+  _syncPeerMesh(peers);
+});
+
+function _syncPeerMesh(peers){
+  const wanted = new Set(peers || []);
+  // Eski bağlantıları kapat
+  for (const pid of [...VOICE.pcs.keys()]) {
+    if (!wanted.has(pid)) _closePeer(pid);
+  }
+  // Yeni bağlantıları kur — initiator: ID karşılaştırması (deterministik, ikiz offer önle)
+  for (const pid of wanted) {
+    if (VOICE.pcs.has(pid)) continue;
+    const initiator = me < pid; // küçük ID offer atar
+    _createPeer(pid, initiator);
+  }
+}
+
+io2.on('voice:offer', async ({ from, sdp }) => {
+  if (!VOICE.enabled) return;
+  if (!VOICE.active) await startVoice();
+  if (!VOICE.active) return;
+  const pc = await _createPeer(from, false);
+  try {
+    await pc.setRemoteDescription(sdp);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    io2.emit('voice:answer', { to: from, sdp: pc.localDescription });
+  } catch(e) { _voiceLog('answer err:', e.message); }
+});
+
+io2.on('voice:answer', async ({ from, sdp }) => {
+  const pc = VOICE.pcs.get(from); if (!pc) return;
+  try { await pc.setRemoteDescription(sdp); } catch(e) { _voiceLog('setRemote err:', e.message); }
+});
+
+io2.on('voice:ice', async ({ from, candidate }) => {
+  const pc = VOICE.pcs.get(from); if (!pc) return;
+  try { await pc.addIceCandidate(candidate); } catch(e) { _voiceLog('ice err:', e.message); }
+});
+
+io2.on('voice:speaking', ({ from, speaking }) => {
+  if (speaking) VOICE.speakingIds.add(from);
+  else VOICE.speakingIds.delete(from);
+  _renderSpeakerList();
+  _applyVoiceClassesToCards();
+});
+
+// Mic durumu sadece kendimize görünür (diğerlerine bildirim yok)
+
+// Oyuncu kartlarına .speaking ve mic mute göstergesi uygula
+function _applyVoiceClassesToCards(){
+  if (!gs?.players) return;
+  document.querySelectorAll('.pi[data-pid]').forEach(el => {
+    const pid = el.dataset.pid;
+    if (!pid) return;
+    // Konuşma class'ı (kendinde de göster)
+    const isSpeaking = VOICE.speakingIds.has(pid);
+    el.classList.toggle('speaking', !!isSpeaking);
+    // Mic kapalı rozeti — sadece kendi kartımızda göster
+    const isMuted = (pid === me) ? VOICE.micMuted : false;
+    let micEl = el.querySelector('.pi-mic-off');
+    if (isMuted && !isSpeaking) {
+      if (!micEl) {
+        micEl = document.createElement('div');
+        micEl.className = 'pi-mic-off';
+        micEl.textContent = '🎤';
+        micEl.title = 'Mikrofon kapalı';
+        el.appendChild(micEl);
+      }
+    } else if (micEl) {
+      micEl.remove();
+    }
+  });
+}
+
+// State değiştiğinde de uygula (yeni renderden sonra)
+const _origStateHandler = io2.listeners('state')?.[0];
+io2.on('state', () => {
+  setTimeout(_applyVoiceClassesToCards, 30);
+});
+
+// Konuşan kişiler artık doğrudan kartlarda gösterilir; panel listesi kaldırıldı
+function _renderSpeakerList(){
+  const status = Q('VOICE_STATUS'); if (!status) return;
+  status.innerHTML = '';
+}
+
+// Ayar checkbox başlangıç durumu + panel sürüklenebilir yap
+(function initVoiceUI(){
+  const cb = Q('VOICE_ENABLED');
+  if (cb) cb.checked = VOICE.enabled;
+  _makeDraggable(Q('VOICE_PANEL'));
+})();
+
+function _makeDraggable(el){
+  if (!el) return;
+  const handle = Q('VOICE_DRAG_HANDLE') || el;
+  let dragging = false, offsetX = 0, offsetY = 0;
+  handle.addEventListener('mousedown', e => {
+    dragging = true;
+    const rect = el.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    el.style.cursor = 'grabbing';
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    el.style.left = (e.clientX - offsetX) + 'px';
+    el.style.top = (e.clientY - offsetY) + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    el.style.cursor = 'grab';
+    try { localStorage.setItem('azap_voice_panel', JSON.stringify({left: el.style.left, top: el.style.top})); } catch {}
+  });
+  // Touch desteği
+  handle.addEventListener('touchstart', e => {
+    dragging = true;
+    const rect = el.getBoundingClientRect();
+    const touch = e.touches[0];
+    offsetX = touch.clientX - rect.left;
+    offsetY = touch.clientY - rect.top;
+  }, {passive: false});
+  document.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    el.style.left = (touch.clientX - offsetX) + 'px';
+    el.style.top = (touch.clientY - offsetY) + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+  }, {passive: false});
+  document.addEventListener('touchend', () => {
+    if (!dragging) return;
+    dragging = false;
+    try { localStorage.setItem('azap_voice_panel', JSON.stringify({left: el.style.left, top: el.style.top})); } catch {}
+  });
+  // Son konum yükle
+  try {
+    const saved = JSON.parse(localStorage.getItem('azap_voice_panel'));
+    if (saved && saved.left && saved.top) {
+      el.style.left = saved.left;
+      el.style.top = saved.top;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+  } catch {}
+}
+
+// Oyuncu odaya girince/çıkınca voice durumunu güncelle
+const _origShow = show;
+window.show = function(id){
+  _origShow(id);
+  // S2 (oda lobi) veya S10 (spectator) ekranındayken voice başlat
+  setTimeout(() => {
+    const shouldStart = VOICE.enabled && gs && me && !VOICE.active && !isSpec;
+    if (shouldStart) startVoice();
+    // Ekran ana menü ise voice durdur
+    if (id === 'S0' || id === 'S1') stopVoice();
+    updateVoicePanelVisibility();
+  }, 100);
+};

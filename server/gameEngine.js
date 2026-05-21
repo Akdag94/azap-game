@@ -2239,6 +2239,51 @@ class GameEngine {
   }
   isBot(pid) { return this.bots.has(pid); }
 
+  // ── SESLİ SOHBET KURALLARI (Klasik Mafya) ──
+  // Bu oyuncu mikrofonunu açıp konuşabilir mi? (rol-mute kontrolü)
+  canSpeak(pid) {
+    const p = this.players.get(pid);
+    if (!p) return false;
+    if (this.isBot(pid)) return false;
+    if (p.isSilenced) return false; // Gölge tarafından susturuldu
+    return true;
+  }
+  // Listener konuşmacıyı duyabilir mi?
+  canHear(listenerId, speakerId) {
+    if (listenerId === speakerId) return false;
+    if (this.isBot(listenerId) || this.isBot(speakerId)) return false;
+    const l = this.players.get(listenerId);
+    const s = this.players.get(speakerId);
+    if (!l || !s) return false;
+    if (s.isSilenced) return false; // Konuşmacı sustu → kimse duymaz
+    // Lobi/post-game/rol seçimi/rol açılışı → herkes
+    const lobbyLikePhases = [PHASES.LOBBY, PHASES.POST_GAME, PHASES.ROLE_SELECTION, PHASES.ROLE_REVEAL, PHASES.GAME_OVER];
+    if (lobbyLikePhases.includes(this.phase)) return true;
+    // Ölü/canlı ayrımı: aynı statüde olmayanlar duyamaz
+    if (l.isAlive !== s.isAlive) return false;
+    // İkisi de ölü → ölü kanalında konuşur
+    if (!l.isAlive && !s.isAlive) return true;
+    // İkisi de canlı:
+    if (this.phase === PHASES.NIGHT) {
+      // Gece → sadece hainler kendi aralarında
+      return l.actualTeam === TEAMS.HAIN && s.actualTeam === TEAMS.HAIN;
+    }
+    // Gündüz/oylama/sabah raporu/MVP/sonuç/sabotaj → tüm canlılar
+    return true;
+  }
+  // Bir oyuncunun ses olarak bağlanması gereken peer ID listesi
+  getVoicePeers(pid) {
+    const peers = [];
+    for (const [otherId] of this.players) {
+      if (otherId === pid) continue;
+      if (this.isBot(otherId)) continue;
+      if (this.canHear(pid, otherId) || this.canHear(otherId, pid)) {
+        peers.push(otherId);
+      }
+    }
+    return peers;
+  }
+
   shuf(a) { for (let i = a.length - 1; i > 0; i--) { const j = crypto.randomInt(0, i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   hist(pid, action, target, result) { this.actionHistory.get(pid)?.push({ round: this.round, action, target, result }); }
   log(msg) { this.gameLog.push({ round: this.round, time: Date.now(), msg }); }

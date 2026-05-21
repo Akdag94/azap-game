@@ -1652,6 +1652,12 @@ function _emitImmediate(rc) {
         if (!spec) spec = g.spectatorState(); // lazy compute
         sock.emit('spec', spec);
       }
+      // Sesli sohbet: bu oyuncunun bağlanması gereken peer listesi
+      try {
+        const peers = g.getVoicePeers(pid);
+        const canSpeak = g.canSpeak(pid);
+        sock.emit('voice:peers', { peers, canSpeak });
+      } catch(e) { /* voice opsiyonel — hata oyunu durdurmasın */ }
     });
     if (g.spectators.size > 0) {
       if (!spec) spec = g.spectatorState();
@@ -1976,6 +1982,38 @@ io.on('connection', (socket) => {
       prooms.set(socket.id, rc); socket.join(rc);
       cb?.({ ok: true, code: rc, active: false }); emit(rc);
     }
+  });
+
+  // ── SESLİ SOHBET SIGNALING (WebRTC mesh) ──
+  // Tüm voice event'leri sadece odadaki ve canHear() koşulunu sağlayan eşler için relay edilir.
+  socket.on('voice:offer', ({ to, sdp }) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return;
+    if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return; // kanal yetkisi yok
+    io.to(to).emit('voice:offer', { from: socket.id, sdp });
+  });
+  socket.on('voice:answer', ({ to, sdp }) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return;
+    if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return;
+    io.to(to).emit('voice:answer', { from: socket.id, sdp });
+  });
+  socket.on('voice:ice', ({ to, candidate }) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return;
+    if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return;
+    io.to(to).emit('voice:ice', { from: socket.id, candidate });
+  });
+  // Konuşuyor mu? (VAD) — sadece duyabilenlere broadcast
+  socket.on('voice:speaking', ({ speaking }) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g) return;
+    if (!g.canSpeak(socket.id)) return; // Susturulmuş → indikatör de yok
+    g.players.forEach((_, pid) => {
+      if (pid === socket.id) return;
+      if (!g.canHear(pid, socket.id)) return; // duymuyor → indikatör yok (gece sızıntısı önleme)
+      io.to(pid).emit('voice:speaking', { from: socket.id, speaking: !!speaking });
+    });
   });
 
   // ── BOT EKLEME (sadece admin + lider) ──
