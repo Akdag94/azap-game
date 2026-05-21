@@ -107,6 +107,7 @@ class GameEngine {
   // ── SABOTAJ SİSTEMİ ──
     // Hain gece kolektif sabotaj oyu kullanır. 1 oy yeter
     this.sabotageVotes = new Set(); // hainId Set (bu gece sabotaj isteyenler)
+    this.sabotageUsedCount = 0;     // oyun boyunca hainlerin kullandığı sabotaj sayısı (max 2)
     this.sabotagePending = false;   // gündüz başında pending olur, rastgele anda tetiklenir
     this.sabotagePendingFromSystem = false; // hain değil, sistem mi tetikliyor
     this.sabotageActive = false;    // şu an mini oyun çalışıyor mu
@@ -1641,6 +1642,7 @@ class GameEngine {
     if (this.phase !== PHASES.NIGHT) return { ok: false, err: 'Sadece gece sabotaj yapılabilir!' };
     const p = this.players.get(pid);
     if (!p?.isAlive || p.actualTeam !== TEAMS.HAIN) return { ok: false, err: 'Hain değilsin!' };
+    if (this.sabotageUsedCount >= 2) return { ok: false, err: 'Sabotaj hakkı bitti (maks 2)!' };
     if (this.sabotageVotes.has(pid)) {
       this.sabotageVotes.delete(pid);
     } else {
@@ -1653,12 +1655,20 @@ class GameEngine {
   _checkSabotageActivation() {
     const aliveHain = this.alive().filter(p => p.actualTeam === TEAMS.HAIN);
     const vampirVar = aliveHain.some(p => p.role === 'vampir');
+    // Hain sabotajı için limit kontrolü (sistem sabotajı limitsiz)
+    const hainVoted = this.sabotageVotes.size > 0;
+    if (hainVoted && this.sabotageUsedCount >= 2) {
+      this.sabotagePending = false;
+      return false;
+    }
     if (aliveHain.length === 0 || (!vampirVar && this.sabotageVotes.size === 0)) {
       this.sabotagePending = false;
       return false;
     }
     this.sabotagePending = true;
     this.sabotagePendingFromSystem = vampirVar && this.sabotageVotes.size === 0;
+    // Hain sabotajıysa sayı arttır
+    if (!this.sabotagePendingFromSystem) this.sabotageUsedCount++;
     return true;
   }
 
@@ -2468,6 +2478,7 @@ class GameEngine {
       // Sabotaj oyu (sadece hainler görür)
       sabotageVoted: p.actualTeam === TEAMS.HAIN ? this.sabotageVotes.has(pid) : false,
       sabotageVoteCount: p.actualTeam === TEAMS.HAIN ? this.sabotageVotes.size : 0,
+      sabotageUsedCount: p.actualTeam === TEAMS.HAIN ? this.sabotageUsedCount : 0,
       gaziUsed: this.gaziUsed.has(pid), savciUsed: this.savciUsed.has(pid),
       serifUsed: this.serifUsed.has(pid),
       doktorSelfUsed: this.doktorSelfUsed.has(pid),

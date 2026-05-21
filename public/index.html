@@ -21,7 +21,7 @@
 <link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="/style.css?v=20260521n">
+<link rel="stylesheet" href="/style.css?v=20260521p">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -233,7 +233,7 @@
 
 <!-- Geçmiş Raporlar Modal -->
 <div class="mdl-bg" id="MDL_HISTORY"><div class="mdl" style="max-width:420px;max-height:80vh;display:flex;flex-direction:column">
-<div class="mdl-h"><h2>📜 Geçmiş Raporlar</h2><button class="mdl-cl" onclick="closeModal('MDL_HISTORY')">✕</button></div>
+<div class="mdl-h"><h2>� Geçmiş Raporlar</h2><button class="mdl-cl" onclick="closeModal('MDL_HISTORY')">✕</button></div>
 <div id="HISTORY_TABS" style="display:flex;gap:6px;padding:0 12px 8px;flex-shrink:0;overflow-x:auto"></div>
 <div id="HISTORY_CONTENT" style="flex:1;overflow-y:auto;padding:0 12px 12px"></div>
 </div></div>
@@ -418,7 +418,7 @@
 <button class="suikast-btn" id="SABOTAJ_BTN_FLOAT" onclick="toggleSabotage()" title="Sabotaj oyu ver" style="background:linear-gradient(135deg,#5e2c1c,#8e3a1a);border-color:#a04020;display:none">🚨</button>
 
 <!-- Floating Mini Oyun butonu (gündüz, eğlence) -->
-<button class="suikast-btn" id="MINIGAME_BTN_FLOAT" onclick="openFakeMinigame()" title="Mini Oyun (Eğlence)" style="background:linear-gradient(135deg,#1e6091,#2980b9);border-color:#3498db;display:none;bottom:14px;left:14px;right:auto">🎮</button>
+<button class="suikast-btn" id="MINIGAME_BTN_FLOAT" onclick="openFakeMinigame()" title="Mini Oyun (Eğlence)" style="background:linear-gradient(135deg,#1e6091,#2980b9);border-color:#3498db;display:none;left:auto;right:14px">🎮</button>
 
 <!-- Engizitör Modal -->
 <div class="suikast-modal" id="ENGIZITOR_MODAL">
@@ -766,14 +766,14 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="pb"><div class="pi2">🌅</div><div class="pt">Sabah Raporu</div><div class="ps" id="RR"></div></div>
 <div class="reps" id="RL"></div>
 <div style="text-align:center;padding:8px 0 4px">
-  <button class="b bs" style="font-size:.8rem;padding:6px 16px;opacity:.8" onclick="openHistoryModal()">📜 Geçmiş Raporlar</button>
+  <button class="b bs" style="font-size:.8rem;padding:6px 16px;opacity:.8" onclick="openHistoryModal()">� Geçmiş Raporlar</button>
 </div>
 </div></div>
 
 <!-- Day -->
 <div class="scr" id="S6"><div class="scroll">
 <div class="pb"><div class="pi2">☀️</div><div class="pt" style="color:var(--hi)">Tartışma</div><div class="ps" id="DAY_PS">Konuşun, tartışın!</div></div>
-<div style="text-align:right;padding:0 12px 4px"><button class="b bs" style="font-size:.72rem;padding:4px 10px;opacity:.7" onclick="openHistoryModal()">📜 Geçmiş</button></div>
+<div style="text-align:right;padding:0 12px 4px"><button class="b bs" style="font-size:.72rem;padding:4px 10px;opacity:.7" onclick="openHistoryModal()">� Geçmiş</button></div>
 <div id="SM"></div><div id="DA" class="mb8"></div>
 <ul class="pl" id="DP"></ul>
 </div></div>
@@ -1019,6 +1019,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="/app.js?v=20260521n"></script>
+<script src="/app.js?v=20260521p"></script>
 </body>
 </html>
