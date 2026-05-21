@@ -240,20 +240,27 @@ const RDEF={
 
 // DEMO ROLLER (İsteğe bağlı oyun havuzuna eklenebilir)
 const RDEF_DEMO={
-  INFAZCI:{e:'🔨',n:'İnfazcı (Demo)',t:'masum',d:'Birini zindana kapatır + 1 infaz hakkı.',
-    full:'Gece bir kişiyi zindana kapatırsın. Zindandaki kişi yetenek kullanamaz, dışarıdan saldırılamaz. Ayrıca oyun boyunca 1 kez zindandakini direkt infaz edebilirsin.'},
-  GARDIYAN:{e:'🛡️',n:'Gardiyan (Demo)',t:'masum',d:'1 kez tüm köyü gece korur.',
-    full:'Oyun boyunca 1 kez "Sokağa Çıkma Yasağı" ilan edersin. O gece HİÇBİR ölüm gerçekleşemez — hain saldırısı, seri katil, bomba bile etkisiz.'},
-  ENGIZITOR:{e:'⚖️',n:'Engizitör (Demo)',t:'masum',d:'Gündüz infaz hakkı (1 kez).',
-    full:'Tartışma fazında butona basıp ANINDA birini infaz edersin. Hain/tarafsız ise hedef ölür, masum ise SEN ölürsün.'},
-  BUZCU:{e:'❄️',n:'Buzcu (Demo)',t:'masum',d:'2 kez birini karantinaya alır.',
-    full:'Oyun boyunca 2 kullanım hakkın var. Karantinaya aldığın oyuncu oylamaya katılamaz, saldırıdan etkilenmez, yetenek kullanamaz.'},
-  KOSTEBEK:{e:'🦔',n:'Köstebek (Demo)',t:'hain',d:'Hain Savcı (her gece kullanılabilir).',
-    full:'Her gece birini incelersin. 2 rol seçeneği gösterilir, biri kesinlikle doğru. Hain sohbetinde paylaşıp suikastçıya hedef gösterirsin.'},
-  PUSUCU:{e:'🪤',n:'Pusucu (Demo)',t:'hain',d:'Pusu kurar; gelenler ölür.',
-    full:'O gece evine gelen oyunculardan biri rastgele ölür (hain takım arkadaşların bile dahil). Diğer hainler ana cinayeti yaparken sen arkayı kollarsın.'},
-  VEBA:{e:'☠️',n:'Veba (Demo)',t:'tarafsız',d:'Hastalık yayar; herkes hastayken kazanır.',
-    full:'Her gece bir kişiye hastalık bulaştırırsın. Hayattaki HERKES hastalandığında, tüm hastalar anında ölür ve sen TEK BAŞINA kazanırsın.'}
+  INFAZCI:{e:'🔨',n:'İnfazcı (Demo)',t:'masum',
+    d:'Her gece birini zindana kapatır. Zindan: yetenek kullanamaz, saldırılamaz. Oyun boyunca 1 kez idam edebilir.',
+    full:'<b>Ne yapar?</b> Her gece bir kişiyi zindana kapatırsın. Ek olarak oyun boyunca 1 kez o zindandaki kişiyi doğrudan infaz edebilirsin.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. Ayrı bir "İdam Et" butonu çıkar — kullanırsan o kişi sabah raporunda ölü görünür.<br><br><b>Önemli kurallar:</b><ul><li>Zindandaki: yetenek kullanamaz ve dışarıdan saldırılamaz (korunur).</li><li>İdam hakkı tüm oyun boyunca sadece 1 kez. Harcandıktan sonra sadece zindan kalır.</li><li>Zindan etkisi bir gecelik; ertesi gece aynı kişiyi tekrar zindana atman gerekir.</li></ul>'},
+  GARDIYAN:{e:'🛡️',n:'Gardiyan (Demo)',t:'masum',
+    d:'Oyun boyunca 1 kez sokağa çıkma yasağı ilan eder. O gece hiçbir ölüm gerçekleşmez.',
+    full:'<b>Ne yapar?</b> O geceyi tamamen koruma altına alırsın. Hain saldırısı, Seri Katil, Şerif, Bomba dahil HİÇBİR ölüm o gece gerçekleşemez.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında "Sokağa Çıkma Yasağı" butonuna bas. Bir kez kullandıktan sonra bu yetenek bir daha gelmez.<br><br><b>Önemli kurallar:</b><ul><li>Ertesi sabah herkes yasağın uygulandığını öğrenir (kimin uyguladığını değil).</li><li>Seri Katil bile bu gece öldüremez.</li></ul>'},
+  ENGIZITOR:{e:'⚖️',n:'Engizitör (Demo)',t:'masum',
+    d:'Tartışma fazında 1 kez anında infaz yapabilir. Masum infaz edersen kendin ölürsün.',
+    full:'<b>Ne yapar?</b> Oylama beklemeden, tartışma sırasında tek başına bir kişiyi anında infaz edebilirsin.<br><br><b>Nasıl kullanılır?</b> Tartışma fazında özel "Engizitör İnfazı" butonu belirir. Hedefi seç, onayla — hemen etkisi olur.<br><br><b>Önemli kurallar:</b><ul><li>Hain veya Tarafsız infaz edersen: hedef ölür, sen kurtulursun.</li><li>Masum infaz edersen: hedef ölür VE sen de anında ölürsün.</li><li>Oyun boyunca 1 kez kullanılabilir.</li></ul>'},
+  BUZCU:{e:'❄️',n:'Buzcu (Demo)',t:'masum',
+    d:'Oyun boyunca 2 kez birini karantinaya alır. Karantinadaki: oylayamaz, oylanamaz, saldırıdan etkilenmez, yetenek kullanamaz.',
+    full:'<b>Ne yapar?</b> Seçtiğin oyuncuyu bir sonraki gün boyunca karantinaya alırsın. Karantinadaki kişi hem tamamen izole edilir hem saldırıdan korunur.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. 2 kullanım hakkın var (kalan sayı ekranda görünür).<br><br><b>Önemli kurallar:</b><ul><li>Karantinadaki: oylamaya katılamaz, kendisine oy verilemez, gece saldırısından etkilenmez, yetenek kullanamaz.</li><li>2 hak dolunca gece aksiyonun olmaz.</li></ul>'},
+  KOSTEBEK:{e:'🦔',n:'Köstebek (Demo)',t:'hain',
+    d:'Her gece birinin rolünü 2 seçenek arasında görür (biri kesinlikle doğru). Hain takımın bilgi toplayıcısı.',
+    full:'<b>Ne yapar?</b> Her gece bir kişiyi hain gözüyle incelersin. O kişinin gerçek rolü dahil 2 seçenek alırsın — biri kesinlikle doğru.<br><br><b>Nasıl kullanılır?</b> Hedef seç, onayla. Sabah raporunda 2 olası rol gösterilir; doğru olanı Savcı gibi kesin değil, tahmin et. Hain sohbetinde paylaşıp Suikastçıya hedef gösterebilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Her gece kullanılabilir — sınırsız.</li><li>Hacker seni hacklerse bilgiyi göremezsin.</li><li>Deli Köstebek: her iki seçenek de yanlış olabilir.</li></ul>'},
+  PUSUCU:{e:'🪤',n:'Pusucu (Demo)',t:'hain',
+    d:'Gece evine pusu kurar. O gece evine gelen biri rastgele ölür. Hain takım arkadaşları da risk altında.',
+    full:'<b>Ne yapar?</b> Hain takımında beklenmedik tuzak. O geceyi seçersen evine gelen herhangi bir oyuncu (hain olsun masum olsun) rastgele ölür.<br><br><b>Nasıl kullanılır?</b> Gece ekranında "Pusu Kur" butonuna bas. Evine kim gelirse gelsin tuzak aktifleşir.<br><br><b>Önemli kurallar:</b><ul><li>Hain kill oylamasına katılırsın; hem kill hem pusu aynı gecede olabilir.</li><li>Hain takım arkadaşın seni "ziyaret" etmeye giderse pusuya düşebilir — dikkat!</li><li>Gazeteci/Takipçi/Polis seni hedef alırsa pusuya düşer.</li></ul>'},
+  VEBA:{e:'☠️',n:'Veba (Demo)',t:'tarafsız',
+    d:'Her gece birine hastalık bulaştırır. Hayattaki herkes hastalanınca tüm hastalar ölür, Veba TEK BAŞINA kazanır.',
+    full:'<b>Ne yapar?</b> Bağımsız biyolojik tehdit. Her gece bir kişiye sessizce hastalık bulaştırırsın. Hayattaki tüm oyuncular hastalandığında salgın başlar ve herkesi öldürerek tek başına kazanırsın.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. Hastalanan kişi fark etmez.<br><br><b>Önemli kurallar:</b><ul><li>Kazanmak için hayattaki HERKES (sen hariç) hastalanmış olmalı.</li><li>Sadece sen kazanırsın; masumlar, hainler, tarafsızlar hepsi kaybeder.</li><li>Tamamen gizli kal — şüphe çekersen köy seni eleyebilir.</li></ul>'}
 };
 
 // id -> emoji+name lookup
@@ -1283,7 +1290,7 @@ function renderGuide(){
     </div>
     <div class="guide-card">
       <h3>🎭 Detaylı Roller Rehberi</h3>
-      <p>Aşağıda roller takımına göre listelenmiştir. Her rolün kısa açıklaması ve mümkünse detaylı oynanış bilgisi yer alır.</p>
+      <p>Aşağıda tüm aktif roller takımlarına göre listelenmiştir. Her rol için: ne işe yaradığı, nasıl kullanıldığı, önemli kurallar ve strateji ipuçları yer alır. Rol adının altındaki kısa açıklama günlük özettir; altındaki detaylı metin her şeyi kapsar.</p>
     </div>
   `;
   teams.forEach(team=>{
