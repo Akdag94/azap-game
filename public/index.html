@@ -21,7 +21,7 @@
 <link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="/style.css?v=20260521k">
+<link rel="stylesheet" href="/style.css?v=20260521m">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -252,8 +252,10 @@
   </div>
   <div class="lbl" style="margin-bottom:6px">🎮 Oyun Ayarları</div>
   <div style="display:flex;flex-direction:column;gap:6px">
-    <button class="b" onclick="location.reload()" style="font-size:.75rem">🔄 Sayfayı Yenile</button>
     <button class="b" onclick="toggleVoiceEnabled(!VOICE.enabled);closeModal('MDL_VSETTINGS')" id="VSETTINGS_VOICE_TOGGLE" style="font-size:.75rem">🎙️ Sesli Sohbet Aç/Kapat</button>
+    <button class="b" onclick="refreshGame();closeModal('MDL_VSETTINGS')" style="font-size:.75rem">🔄 Yenile</button>
+    <button class="b" onclick="closeModal('MDL_VSETTINGS');exitToMainMenu()" style="font-size:.75rem;border-color:rgba(192,57,43,.4);color:#ee9999">� Ana Menü</button>
+    <button class="b" onclick="closeModal('MDL_VSETTINGS');openReportModal()" style="font-size:.75rem;border-color:rgba(192,57,43,.4);color:var(--hain)">🐛 Hata Bildir</button>
   </div>
   <div id="VSETTINGS_ADMIN" style="display:none;margin-top:14px;border-top:1px solid rgba(180,150,90,.2);padding-top:10px">
     <div class="lbl" style="margin-bottom:6px;color:#e74c3c">🅰️ Admin</div>
@@ -451,8 +453,8 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
   </div>
 </div>
 
-<!-- Hata Bildir floating buton (giriş yapmış herkese, sağ alt) -->
-<button class="report-btn" id="REPORT_BTN" onclick="openReportModal()" title="Hata Bildir">🐛</button>
+<!-- Hata Bildir artık ayarlar panelinde -->
+<button class="report-btn" id="REPORT_BTN" onclick="openReportModal()" title="Hata Bildir" style="display:none!important">🐛</button>
 
 <!-- Suikast Modal -->
 <div class="suikast-modal" id="SUIKAST_MODAL">
@@ -488,15 +490,8 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
 <div class="logo-s">Sosyal Dedüksiyon</div>
 </div>
 
-<!-- Oyun içi butonlar (sadece oyundayken) -->
-<div class="game-actions" id="GAME_ACTIONS" style="display:none">
-  <button class="game-action-btn" onclick="refreshGame()">
-    <span class="ga-icon">🔄</span> Yenile
-  </button>
-  <button class="game-action-btn danger" onclick="exitToMainMenu()">
-    <span class="ga-icon">🏠</span> Ana Menü
-  </button>
-</div>
+<!-- Oyun içi butonlar artık ayarlar panelinde -->
+<div class="game-actions" id="GAME_ACTIONS" style="display:none!important"></div>
 <!-- Hareketli lobi arka planı -->
 <div id="LOBBY_BG">
   <div class="orb orb1"></div>
@@ -1028,6 +1023,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="/app.js?v=20260521k"></script>
+<script src="/app.js?v=20260521m"></script>
 </body>
 </html>

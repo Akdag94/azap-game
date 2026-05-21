@@ -4285,7 +4285,12 @@ function updateVoicePanelVisibility(){
   const panel = Q('VOICE_PANEL');
   if (!panel) return;
   const inGame = !!(gs && me);
-  panel.style.display = (VOICE.enabled && VOICE.active && inGame) ? 'flex' : 'none';
+  // Panel her zaman görünür (ayarlar butonu için), mic/headphone sesli sohbet aktifse görünür
+  panel.style.display = inGame ? 'flex' : 'none';
+  const micBtn = Q('VOICE_MIC_BTN');
+  const deafBtn = Q('VOICE_DEAF_BTN');
+  if (micBtn) micBtn.style.display = (VOICE.enabled && VOICE.active) ? 'flex' : 'none';
+  if (deafBtn) deafBtn.style.display = (VOICE.enabled && VOICE.active) ? 'flex' : 'none';
 }
 
 async function startVoice(){
