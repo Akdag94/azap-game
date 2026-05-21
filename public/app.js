@@ -4550,6 +4550,7 @@ function _applyVoiceClassesToCards(){
 
 // State değiştiğinde voice'u başlat (gerekirse) ve göstergeleri uygula
 io2.on('state', () => {
+  // Re-render bitmesini bekle, sonra class'ları tekrar uygula
   setTimeout(() => {
     if (VOICE.enabled && gs && me && !VOICE.active && !isSpec) {
       _voiceLog('state event → startVoice tetik');
@@ -4557,7 +4558,7 @@ io2.on('state', () => {
     }
     _applyVoiceClassesToCards();
     updateVoicePanelVisibility();
-  }, 50);
+  }, 150);
 });
 
 // Konuşan kişiler artık doğrudan kartlarda gösterilir; panel listesi kaldırıldı
