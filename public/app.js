@@ -4358,7 +4358,7 @@ function _setupVAD(){
       const rawSpeaking = rms > SPEAK_THR && !VOICE.micMuted && VOICE.canSpeak;
       const now = Date.now();
       // Grace period: konuşma durunca hemen söndürme (kelimeler arası sessizlik)
-      if (rawSpeaking) VOICE.vad.graceUntil = now + 600;
+      if (rawSpeaking) VOICE.vad.graceUntil = now + 800;
       const isSpeaking = rawSpeaking || now < (VOICE.vad.graceUntil || 0);
       // State değişimi veya 1sn timeout
       if (isSpeaking !== VOICE.vad.lastState || (isSpeaking && now - VOICE.vad.lastEmit > 800)) {
