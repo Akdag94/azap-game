@@ -1559,6 +1559,10 @@ function resetClient(){
   Q('HT').classList.remove('sh');Q('HP').classList.remove('op');
   Q('DOV').classList.remove('sh');
   Q('TB').style.display='none';Q('TN').style.display='none';
+  // Tüm floating butonları gizle
+  ['SUIKAST_BTN_FLOAT','ENGIZITOR_BTN_FLOAT','SABOTAJ_BTN_FLOAT','MINIGAME_BTN_FLOAT','ROLE_INFO_BTN','ROLE_GUIDE_BTN'].forEach(id=>{
+    const el=Q(id); if(el){el.style.display='none';el.classList.remove('sh');}
+  });
   theme(false);
 }
 function newGame(){
@@ -2586,19 +2590,9 @@ function updateSuikastFloatingBtn(){
       sbtn.style.display='none';
     }
   }
-  // Mini Oyun butonu (sadece HAINLER için — sahte mod, coin yok, eğlence)
+  // Mini Oyun butonu kaldırıldı
   const mgBtn = Q('MINIGAME_BTN_FLOAT');
-  if(mgBtn){
-    const inDayPhase = gs?.phase === 'day_discussion' || gs?.phase === 'voting';
-    const isAlive = ps?.isAlive;
-    const isHain = ps?.team === 'hain';
-    const sabotageActive = !!ps?.sabotageGame;
-    if(inDayPhase && isAlive && isHain && !sabotageActive){
-      mgBtn.style.display='flex';
-    } else {
-      mgBtn.style.display='none';
-    }
-  }
+  if(mgBtn) mgBtn.style.display='none';
 }
 
 // Sahte mini oyun (eğlence — coin yok, sabotaj sırası dışı)
