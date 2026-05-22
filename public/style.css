@@ -711,10 +711,10 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 .donate-preset:hover{background:rgba(233,30,99,.1);border-color:#e91e63;color:#e91e63}
 /* ── KOZMETİK MAĞAZA & ENVANTER ── */
 .ci-grid{display:grid;grid-template-columns:1fr;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px;position:relative}
-.ci-card{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--brd);border-radius:13px;transition:all .18s;position:relative;box-sizing:border-box}
+.ci-card{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--brd);border-radius:13px;transition:all .18s;position:relative;box-sizing:border-box;overflow:visible}
 .ci-card:hover{border-color:var(--hi);background:var(--bg3)}
 .ci-card.owned{border-color:var(--gold);background:rgba(255,215,0,.05)}
-.ci-preview{width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;position:relative;overflow:hidden;background:var(--bg3);border:1px solid var(--brd)}
+.ci-preview{width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;position:relative;overflow:visible;background:var(--bg3);border:1px solid var(--brd)}
 .ci-preview .av{border-radius:13px !important}
 .ci-info{flex:1;min-width:0}
 .ci-name{font-weight:600;font-size:.82rem;color:var(--txt)}
@@ -757,7 +757,7 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 @keyframes cyberGlitch{0%,100%{border-color:#00ffff;box-shadow:0 0 8px rgba(0,255,255,.5),0 0 16px rgba(0,255,255,.2)}50%{border-color:#ffffff;box-shadow:0 0 14px rgba(255,255,255,.65),0 0 22px rgba(0,220,255,.45),0 0 32px rgba(0,255,255,.18)}}
 @keyframes natureBreath{0%,100%{transform:scale(1);box-shadow:0 0 10px #228b22;border-color:#228b22}50%{transform:scale(1.02);box-shadow:0 0 25px #32cd32,inset 0 0 10px #32cd32;border-color:#3fdf3f}}
 /* Yeni çerçeve animasyonları */
-@keyframes laserDot{0%{box-shadow:28px -4px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}12%{box-shadow:28px 14px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}25%{box-shadow:28px 28px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}37%{box-shadow:0 28px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}50%{box-shadow:-28px 28px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}62%{box-shadow:-28px 14px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}75%{box-shadow:-28px -4px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}87%{box-shadow:0 -4px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}100%{box-shadow:28px -4px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}}
+@keyframes laserDot{0%{box-shadow:22px -3px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}12%{box-shadow:22px 11px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}25%{box-shadow:22px 22px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}37%{box-shadow:0 22px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}50%{box-shadow:-22px 22px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}62%{box-shadow:-22px 11px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}75%{box-shadow:-22px -3px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}87%{box-shadow:0 -3px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}100%{box-shadow:22px -3px 6px 3px rgba(0,255,255,.95),0 0 8px rgba(0,255,255,.2)}}
 @keyframes auroraPulse{0%,100%{box-shadow:0 0 10px rgba(75,0,130,.4),0 0 4px rgba(100,50,200,.25);border-color:#4a0082}50%{box-shadow:0 0 30px rgba(120,0,220,.7),0 0 55px rgba(75,0,130,.3),inset 0 0 12px rgba(100,0,180,.15);border-color:#8a2be2}}
 @keyframes matrixGlow{0%,100%{box-shadow:0 0 8px rgba(57,255,20,.2);border-color:rgba(57,255,20,.4)}50%{box-shadow:0 0 18px rgba(57,255,20,.5),inset 0 0 8px rgba(57,255,20,.1);border-color:rgba(57,255,20,.85)}}
 @keyframes tickerPulse{0%,100%{box-shadow:0 0 6px rgba(100,255,218,.2),inset 0 0 3px rgba(100,255,218,.08)}50%{box-shadow:0 0 14px rgba(100,255,218,.4),inset 0 0 8px rgba(100,255,218,.12)}}
@@ -777,18 +777,18 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 .frame-preview-card span{font-size:.72rem}
 /* Özel çerçeve sınıfları — ticker, matrix, premium yazı, donor emoji */
 .fr-ticker,.fr-matrix,.fr-premium-txt,.fr-donor-ring{position:relative;overflow:visible}
-.fr-ticker::before,.fr-ticker::after{content:'AZAP • SYSTEM ONLINE • SABOTAJ • OY • HAİN • AZAP • SYSTEM ONLINE • SABOTAJ • OY • HAİN • ';position:absolute;left:0;white-space:nowrap;font-size:6.5px;font-family:'Courier New',monospace;color:#64ffda;opacity:.9;letter-spacing:.3px;pointer-events:none;animation:tickScroll 7s linear infinite}
-.fr-ticker::before{top:-10px}
-.fr-ticker::after{bottom:-10px;animation-direction:reverse}
-.fr-matrix::before,.fr-matrix::after{content:'01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E ';position:absolute;left:0;white-space:nowrap;font-size:6px;font-family:'Courier New',monospace;color:#39ff14;opacity:.8;letter-spacing:.8px;pointer-events:none;animation:tickScroll 5s linear infinite}
-.fr-matrix::before{top:-10px}
-.fr-matrix::after{bottom:-10px;animation-direction:reverse}
-.fr-premium-txt::before,.fr-premium-txt::after{content:'PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ ';position:absolute;left:0;white-space:nowrap;font-size:6px;font-family:'Courier New',monospace;color:#bb8fce;opacity:.92;font-weight:700;letter-spacing:.3px;pointer-events:none;animation:tickScroll 10s linear infinite}
-.fr-premium-txt::before{top:-10px}
-.fr-premium-txt::after{bottom:-10px;animation-direction:reverse}
-.fr-donor-ring::before,.fr-donor-ring::after{content:'💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 ';position:absolute;left:0;white-space:nowrap;font-size:8px;opacity:.75;pointer-events:none;animation:tickScroll 20s linear infinite}
-.fr-donor-ring::before{top:-12px}
-.fr-donor-ring::after{bottom:-12px;animation-direction:reverse}
+.fr-ticker::before,.fr-ticker::after{content:'AZAP • SYSTEM ONLINE • SABOTAJ • OY • HAİN • AZAP • SYSTEM ONLINE • SABOTAJ • OY • HAİN • ';position:absolute;left:0;white-space:nowrap;font-size:7px;font-family:'Courier New',monospace;color:#64ffda;opacity:.95;letter-spacing:.3px;pointer-events:none;z-index:10;animation:tickScroll 7s linear infinite}
+.fr-ticker::before{top:-11px}
+.fr-ticker::after{bottom:-11px;animation-direction:reverse}
+.fr-matrix::before,.fr-matrix::after{content:'01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E ';position:absolute;left:0;white-space:nowrap;font-size:7px;font-family:'Courier New',monospace;color:#39ff14;opacity:.9;letter-spacing:.8px;pointer-events:none;z-index:10;animation:tickScroll 5s linear infinite}
+.fr-matrix::before{top:-11px}
+.fr-matrix::after{bottom:-11px;animation-direction:reverse}
+.fr-premium-txt::before,.fr-premium-txt::after{content:'PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ ';position:absolute;left:0;white-space:nowrap;font-size:7px;font-family:'Courier New',monospace;color:#bb8fce;opacity:.95;font-weight:700;letter-spacing:.3px;pointer-events:none;z-index:10;animation:tickScroll 10s linear infinite}
+.fr-premium-txt::before{top:-11px}
+.fr-premium-txt::after{bottom:-11px;animation-direction:reverse}
+.fr-donor-ring::before,.fr-donor-ring::after{content:'💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 ';position:absolute;left:0;white-space:nowrap;font-size:9px;opacity:.85;pointer-events:none;z-index:10;animation:tickScroll 20s linear infinite}
+.fr-donor-ring::before{top:-13px}
+.fr-donor-ring::after{bottom:-13px;animation-direction:reverse}
 @keyframes tickScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 /* Font önizleme - gerçek font */
 .font-preview-text{font-size:.9rem;color:var(--txt);padding:6px 10px;display:block;line-height:1.2}
