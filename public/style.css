@@ -754,8 +754,20 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 @keyframes legendaryShine{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes oceanWave{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @keyframes voidCollapse{0%,100%{transform:scale(1);box-shadow:0 0 5px #4b0082,inset 0 0 10px #4b0082}50%{transform:scale(.96);box-shadow:0 0 30px #2e004f,inset 0 0 25px #000;border-color:#1a0033}}
-@keyframes cyberGlitch{0%{transform:translate(0) skew(0)}20%{transform:translate(-2px,1px)}21%{transform:translate(0) skew(0)}60%{transform:translate(0)}80%{transform:translate(2px,-2px) skew(-5deg)}81%{transform:translate(0) skew(0)}100%{transform:translate(0)}}
+@keyframes cyberGlitch{0%,100%{border-color:#00ffff;box-shadow:0 0 8px rgba(0,255,255,.5),0 0 16px rgba(0,255,255,.2)}50%{border-color:#ffffff;box-shadow:0 0 14px rgba(255,255,255,.65),0 0 22px rgba(0,220,255,.45),0 0 32px rgba(0,255,255,.18)}}
 @keyframes natureBreath{0%,100%{transform:scale(1);box-shadow:0 0 10px #228b22;border-color:#228b22}50%{transform:scale(1.02);box-shadow:0 0 25px #32cd32,inset 0 0 10px #32cd32;border-color:#3fdf3f}}
+/* Yeni çerçeve animasyonları */
+@keyframes laserDot{0%{box-shadow:28px -4px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}12%{box-shadow:28px 14px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}25%{box-shadow:28px 28px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}37%{box-shadow:0 28px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}50%{box-shadow:-28px 28px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}62%{box-shadow:-28px 14px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}75%{box-shadow:-28px -4px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}87%{box-shadow:0 -4px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}100%{box-shadow:28px -4px 5px 2px rgba(0,255,255,.9),0 0 6px rgba(0,255,255,.15)}}
+@keyframes auroraPulse{0%,100%{box-shadow:0 0 10px rgba(75,0,130,.4),0 0 4px rgba(100,50,200,.25);border-color:#4a0082}50%{box-shadow:0 0 30px rgba(120,0,220,.7),0 0 55px rgba(75,0,130,.3),inset 0 0 12px rgba(100,0,180,.15);border-color:#8a2be2}}
+@keyframes matrixGlow{0%,100%{box-shadow:0 0 8px rgba(57,255,20,.2);border-color:rgba(57,255,20,.4)}50%{box-shadow:0 0 18px rgba(57,255,20,.5),inset 0 0 8px rgba(57,255,20,.1);border-color:rgba(57,255,20,.85)}}
+@keyframes tickerPulse{0%,100%{box-shadow:0 0 6px rgba(100,255,218,.2),inset 0 0 3px rgba(100,255,218,.08)}50%{box-shadow:0 0 14px rgba(100,255,218,.4),inset 0 0 8px rgba(100,255,218,.12)}}
+@keyframes donorCalm{0%,100%{box-shadow:0 0 10px rgba(233,30,99,.25),0 0 3px rgba(233,30,99,.12)}50%{box-shadow:0 0 22px rgba(233,30,99,.42),0 0 8px rgba(233,30,99,.2)}}
+@keyframes obsidianSweep{0%{box-shadow:0 0 4px rgba(200,200,220,.08),inset 0 0 6px rgba(200,200,220,.04);border-color:#1a1a2e}40%{box-shadow:0 0 20px rgba(220,220,240,.22),inset 0 0 16px rgba(220,220,240,.1);border-color:#3a3a52}100%{box-shadow:0 0 4px rgba(200,200,220,.08),inset 0 0 6px rgba(200,200,220,.04);border-color:#1a1a2e}}
+@keyframes smokeDrift{0%,100%{box-shadow:0 0 14px rgba(30,30,38,.85),0 4px 22px rgba(40,40,50,.5);border-color:#28283a}33%{box-shadow:5px 0 18px rgba(40,40,52,.9),2px 5px 28px rgba(30,30,42,.6);border-color:#323244}66%{box-shadow:-5px 2px 20px rgba(22,22,32,.8),0 0 25px rgba(42,42,55,.45);border-color:#2e2e40}}
+@keyframes steelFlash{0%,88%,100%{box-shadow:0 0 6px rgba(80,80,92,.4),inset 0 0 4px rgba(100,100,115,.06);border-color:#3a3a48}44%{box-shadow:0 0 28px rgba(190,190,210,.55),inset 0 0 14px rgba(200,200,220,.14),0 0 50px rgba(160,160,180,.25);border-color:#9a9ab0}}
+@keyframes templarGlow{0%{box-shadow:4px -2px 14px rgba(255,215,0,.22),0 0 8px rgba(192,192,192,.28);border-color:#c8c8c8}50%{box-shadow:-4px 2px 22px rgba(192,192,192,.38),0 0 18px rgba(255,215,0,.38);border-color:#e8e8b8}100%{box-shadow:4px -2px 14px rgba(255,215,0,.22),0 0 8px rgba(192,192,192,.28);border-color:#c8c8c8}}
+@keyframes emperorRuby{0%,100%{box-shadow:0 0 5px rgba(70,70,80,.5),0 -12px 10px rgba(180,0,0,.35);border-color:#3a3a4a}50%{box-shadow:0 0 14px rgba(90,0,0,.3),0 -12px 22px rgba(240,0,0,.55),0 0 30px rgba(160,0,0,.18);border-color:#5a3048}}
+@keyframes crusadeShine{0%{box-shadow:-5px 0 14px rgba(170,130,0,.42),0 0 6px rgba(180,140,0,.2);border-color:#b8860b}33%{box-shadow:0 -5px 16px rgba(210,175,0,.52),0 0 8px rgba(205,170,0,.28);border-color:#cdab00}66%{box-shadow:5px 5px 18px rgba(185,155,20,.42),0 0 8px rgba(180,150,20,.22);border-color:#c8a018}100%{box-shadow:-5px 0 14px rgba(170,130,0,.42),0 0 6px rgba(180,140,0,.2);border-color:#b8860b}}
 /* Pet animasyonları - smooth, göz yormayan */
 @keyframes catIdle{0%,90%,100%{transform:translateY(0) scaleY(1)}5%{transform:translateY(-2px) scaleY(1.02)}10%{transform:translateY(0) scaleY(1)}15%{transform:translateY(-1px) scaleY(1.01)}20%{transform:translateY(0) scaleY(1)}}
 @keyframes ghostDrift{0%,100%{transform:translateY(0) translateX(0);opacity:.9}50%{transform:translateY(-6px) translateX(3px);opacity:1}}
@@ -763,6 +775,21 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 /* Frame önizleme - tüm kart gibi, köşeli 13px, üst üste binme yok */
 .frame-preview-card{padding:10px 12px;border-radius:13px;display:flex;align-items:center;justify-content:center;min-height:52px;font-size:.78rem;font-weight:600;color:var(--txt);background:var(--bg3);width:100%;height:100%;box-sizing:border-box}
 .frame-preview-card span{font-size:.72rem}
+/* Özel çerçeve sınıfları — ticker, matrix, premium yazı, donor emoji */
+.fr-ticker,.fr-matrix,.fr-premium-txt,.fr-donor-ring{position:relative;overflow:visible}
+.fr-ticker::before,.fr-ticker::after{content:'AZAP • SYSTEM ONLINE • SABOTAJ • OY • HAİN • AZAP • SYSTEM ONLINE • SABOTAJ • OY • HAİN • ';position:absolute;left:0;white-space:nowrap;font-size:6.5px;font-family:'Courier New',monospace;color:#64ffda;opacity:.9;letter-spacing:.3px;pointer-events:none;animation:tickScroll 7s linear infinite}
+.fr-ticker::before{top:-10px}
+.fr-ticker::after{bottom:-10px;animation-direction:reverse}
+.fr-matrix::before,.fr-matrix::after{content:'01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E 01 F3 A7 10 B2 00 FF 3E ';position:absolute;left:0;white-space:nowrap;font-size:6px;font-family:'Courier New',monospace;color:#39ff14;opacity:.8;letter-spacing:.8px;pointer-events:none;animation:tickScroll 5s linear infinite}
+.fr-matrix::before{top:-10px}
+.fr-matrix::after{bottom:-10px;animation-direction:reverse}
+.fr-premium-txt::before,.fr-premium-txt::after{content:'PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ PREMIUM ✦ ';position:absolute;left:0;white-space:nowrap;font-size:6px;font-family:'Courier New',monospace;color:#bb8fce;opacity:.92;font-weight:700;letter-spacing:.3px;pointer-events:none;animation:tickScroll 10s linear infinite}
+.fr-premium-txt::before{top:-10px}
+.fr-premium-txt::after{bottom:-10px;animation-direction:reverse}
+.fr-donor-ring::before,.fr-donor-ring::after{content:'💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 💝 ';position:absolute;left:0;white-space:nowrap;font-size:8px;opacity:.75;pointer-events:none;animation:tickScroll 20s linear infinite}
+.fr-donor-ring::before{top:-12px}
+.fr-donor-ring::after{bottom:-12px;animation-direction:reverse}
+@keyframes tickScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 /* Font önizleme - gerçek font */
 .font-preview-text{font-size:.9rem;color:var(--txt);padding:6px 10px;display:block;line-height:1.2}
 

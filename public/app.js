@@ -769,10 +769,12 @@ function cosmeticPreviewHTML(id, item){
   if(!item) return '<span>?</span>';
   if(item.cat==='frame'){
     const p=item.preview||{};
-    const aDur=p.anim==='legendaryShine'?'3s linear':p.anim==='oceanWave'?'4s ease':p.anim==='lightningStrike'?'2.5s ease-in-out':p.anim==='cyberGlitch'?'.5s steps(1) ':p.anim==='natureBreath'?'3s ease-in-out':'1.5s ease-in-out';
+    const durMap={legendaryShine:'3s linear',oceanWave:'4s ease',lightningStrike:'2.5s ease-in-out',cyberGlitch:'2s ease-in-out',natureBreath:'3s ease-in-out',laserDot:'3s linear',auroraPulse:'4s ease-in-out',matrixGlow:'2.5s ease-in-out',tickerPulse:'3s ease-in-out',donorCalm:'4s ease-in-out',obsidianSweep:'3.5s ease-in-out',smokeDrift:'4s ease-in-out',steelFlash:'5s ease-in-out',templarGlow:'3s ease-in-out',emperorRuby:'3.5s ease-in-out',crusadeShine:'4s linear'};
+    const aDur=p.animDur||(durMap[p.anim]||'1.5s ease-in-out');
     const animStyle=p.anim?`animation:${p.anim} ${aDur} infinite;`:'';
     const bgSizeStyle=p.bgSize?`background-size:${p.bgSize};`:'';
-    return `<div class="frame-preview-card" style="border:${p.border||'1px solid var(--brd)'};box-shadow:${p.shadow||'none'};background:${p.bg||'var(--bg3)'};${bgSizeStyle}${animStyle}"><span>Azat</span></div>`;
+    const clsStr=p.cls?` ${p.cls}`:'';
+    return `<div class="frame-preview-card${clsStr}" style="border:${p.border||'1px solid var(--brd)'};box-shadow:${p.shadow||'none'};background:${p.bg||'var(--bg3)'};position:relative;overflow:visible;${bgSizeStyle}${animStyle}"><span>Azat</span></div>`;
   }
   if(item.cat==='pet'){
     const p=item.preview||{};
@@ -2094,7 +2096,10 @@ function cosmeticFrameWrap(cosm, isMe){
     border: p.border||'1px solid var(--brd)',
     shadow: p.shadow||'none',
     bg: p.bg||'transparent',
-    anim: p.anim||null
+    anim: p.anim||null,
+    cls: p.cls||null,
+    animDur: p.animDur||null,
+    animEase: p.animEase||null
   };
 }
 // Eski fonksiyon (name span için style)
@@ -2121,7 +2126,10 @@ function cosmeticPlayerAvatarHTML(p, size, isMe, pad){
   const fw=cosmeticFrameWrap(p?.cosmetics,isMe);
   let avatar=avHTML(p?.avatar,size||'sm');
   if(fw){
-    avatar=`<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:${pad||'3px'};margin:1px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatar}</div>`;
+    const dur=fw.animDur||'2s';
+    const ease=fw.animEase||'ease-in-out';
+    const cls=fw.cls?` ${fw.cls}`:'';
+    avatar=`<div class="fr-wrap${cls}" style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:${pad||'3px'};margin:1px;position:relative;${fw.anim?`animation:${fw.anim} ${dur} ${ease} infinite`:''}">${avatar}</div>`;
   }
   return avatar;
 }
