@@ -109,12 +109,15 @@ app.use('/avatars', express.static(path.join(__dirname, '..', 'data', 'avatars')
 }));
 
 app.use(express.static(path.join(__dirname, '..', 'public'), {
-  dotfiles: 'deny', // Dotfile'ları statik servis etme
-  // Cache static assets (CSS, fonts) ama HTML cache'lenmesin
+  dotfiles: 'deny',
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
+    if (/\.(css|js)$/i.test(filePath)) {
+      // CSS/JS sık güncellenir — tarayıcı her seferinde sunucuyu kontrol etsin
+      res.setHeader('Cache-Control', 'no-cache');
+    } else if (/\.(html)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     } else {
+      // Görseller, fontlar vs. — 24 saat cache
       res.setHeader('Cache-Control', 'public, max-age=86400');
     }
   }
