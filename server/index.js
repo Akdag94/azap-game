@@ -499,7 +499,7 @@ app.get('/admin/users', adminLimiter, (req, res) => {
   res.json({ ok: true, users });
 });
 
-// HTML Dashboard: kapsamlı admin istatistik paneli
+// HTML Dashboard — modernize edilmiş admin paneli
 app.get('/admin/dashboard', adminLimiter, (req, res) => {
   const html = `<!DOCTYPE html>
 <html lang="tr">
@@ -507,24 +507,40 @@ app.get('/admin/dashboard', adminLimiter, (req, res) => {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AZAP Admin Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a14;color:#e0e0ff;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#080814;color:#e0e0ff;min-height:100vh}
 a{color:inherit;text-decoration:none}
+/* STICKY TOPBAR */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(8,8,20,.95);backdrop-filter:blur(10px);border-bottom:1px solid #1e1e30;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;gap:12px}
+.topbar-title{font-size:16px;font-weight:800;color:#ff6b6b;white-space:nowrap;letter-spacing:-0.5px}
+.topbar-nav{display:flex;gap:4px;flex-wrap:wrap}
+.topbar-nav a{font-size:11px;color:#555577;padding:5px 9px;border-radius:6px;transition:.15s;font-weight:500}
+.topbar-nav a:hover{color:#e0e0ff;background:#1e1e30}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.topbar-time{font-size:11px;color:#555577}
+.topbar-time span{color:#64ffda}
 /* LAYOUT */
-.page{max-width:1400px;margin:0 auto;padding:20px 16px}
-/* HEADER */
-.hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:16px 0 20px;border-bottom:1px solid #1e1e30;margin-bottom:24px}
-.hdr-title{font-size:22px;font-weight:800;color:#ff6b6b;letter-spacing:-0.5px}
-.hdr-sub{font-size:12px;color:#555577;margin-top:2px}
-.hdr-right{display:flex;gap:8px;align-items:center}
-.upd-txt{font-size:11px;color:#555577}
-.upd-txt span{color:#64ffda}
-.btn{border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+.page{max-width:1400px;margin:0 auto;padding:20px 16px 40px}
+/* BUTTONS */
+.btn{border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
 .btn-r{background:#ff6b6b;color:#fff}.btn-r:hover{background:#ff5252}
 .btn-g{background:#1e3a2a;color:#27ae60;border:1px solid #27ae60}.btn-g:hover{background:#27ae60;color:#fff}
 .btn-d{background:#1a1a2e;color:#8892b0;border:1px solid #2d2d44}.btn-d:hover{background:#2d2d44;color:#e0e0ff}
+/* PULSE ROW */
+.pulse-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+@media(max-width:800px){.pulse-row{grid-template-columns:repeat(2,1fr)}}
+.pulse-card{background:#12121f;border:1px solid #1e1e30;border-radius:14px;padding:22px 16px;text-align:center;position:relative;overflow:hidden;transition:.2s;cursor:default}
+.pulse-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.pulse-card.p-green::before{background:linear-gradient(90deg,#27ae60,#64ffda)}
+.pulse-card.p-teal::before{background:linear-gradient(90deg,#64ffda,#00b4d8)}
+.pulse-card.p-purple::before{background:linear-gradient(90deg,#bb8fce,#9b59b6)}
+.pulse-card.p-blue::before{background:linear-gradient(90deg,#3498db,#64ffda)}
+.pulse-card:hover{transform:translateY(-3px);box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.pulse-ico{font-size:28px;margin-bottom:8px}
+.pulse-val{font-size:36px;font-weight:800;color:#fff;letter-spacing:-1.5px;line-height:1}
+.pulse-lbl{font-size:10px;color:#555577;text-transform:uppercase;letter-spacing:1px;margin-top:6px}
 /* SECTIONS */
 .sec{margin-bottom:28px}
 .sec-title{font-size:11px;font-weight:800;color:#64ffda;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;padding-left:10px;border-left:3px solid #64ffda;display:flex;align-items:center;gap:8px}
@@ -547,9 +563,10 @@ a{color:inherit;text-decoration:none}
 .sc.c-gold{border-color:rgba(255,215,0,.25);background:linear-gradient(135deg,rgba(255,215,0,.05),#12121f)}
 .sc.c-pink{border-color:rgba(233,30,99,.25);background:linear-gradient(135deg,rgba(233,30,99,.05),#12121f)}
 .sc.c-blue{border-color:rgba(52,152,219,.25);background:linear-gradient(135deg,rgba(52,152,219,.05),#12121f)}
-/* CHARTS */
-.cg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:680px){.cg{grid-template-columns:1fr}}
+/* 3-CHART GRID */
+.cg3{display:grid;grid-template-columns:2fr 2fr 1.5fr;gap:14px}
+@media(max-width:900px){.cg3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.cg3{grid-template-columns:1fr}}
 .cbox{background:#12121f;border:1px solid #1e1e30;border-radius:10px;padding:16px}
 .ct{font-size:11px;font-weight:700;color:#555577;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
 /* TABLE */
@@ -600,7 +617,12 @@ a{color:inherit;text-decoration:none}
 .bdg{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:800;margin-left:4px;vertical-align:middle}
 .bdg-p{background:rgba(187,143,206,.2);color:#bb8fce}
 .bdg-a{background:rgba(255,107,107,.2);color:#ff6b6b}
-/* KULLANICI YÖNETİMİ */
+/* WIN RATE BAR */
+.wr-cell{display:flex;align-items:center;gap:5px}
+.wr-bar{width:44px;height:4px;background:#1a1a2e;border-radius:2px;overflow:hidden;flex-shrink:0}
+.wr-bf{height:100%;border-radius:2px;background:linear-gradient(90deg,#27ae60,#64ffda)}
+.wr-pct{font-size:10px;color:#555577;white-space:nowrap}
+/* USER MANAGEMENT */
 .usr-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
 .usr-toolbar input{background:#0a0a14;border:1px solid #1e1e30;border-radius:8px;padding:7px 12px;color:#e0e0ff;font-size:13px;outline:none;min-width:200px;transition:.15s}
 .usr-toolbar input:focus{border-color:#64ffda}
@@ -611,19 +633,19 @@ a{color:inherit;text-decoration:none}
 .ub-prem{background:rgba(187,143,206,.15);color:#bb8fce}
 .ub-don{background:rgba(233,30,99,.12);color:#e91e63}
 /* LOGIN */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a14}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080814}
 .login-box{background:#12121f;border:1px solid #1e1e30;border-radius:16px;padding:40px;width:100%;max-width:360px;text-align:center}
-.login-box h2{color:#ff6b6b;font-size:20px;margin-bottom:6px}
+.login-box h2{color:#ff6b6b;font-size:22px;margin-bottom:6px;letter-spacing:-0.5px}
 .login-box p{color:#555577;font-size:13px;margin-bottom:24px}
 .login-box input{width:100%;padding:12px 14px;background:#0a0a14;border:1px solid #1e1e30;border-radius:8px;color:#e0e0ff;font-size:14px;margin-bottom:12px;outline:none;transition:.15s}
 .login-box input:focus{border-color:#64ffda}
 .login-box .btn-r{width:100%;padding:12px;font-size:15px}
 .login-err{color:#ff6b6b;font-size:12px;margin-top:8px;min-height:18px}
 .hidden{display:none!important}
-.divider{height:1px;background:#1e1e30;margin:4px 0}
 </style>
 </head>
 <body>
+
 <!-- GİRİŞ -->
 <div id="loginWrap" class="login-wrap">
   <div class="login-box">
@@ -637,55 +659,70 @@ a{color:inherit;text-decoration:none}
 
 <!-- PANEL -->
 <div id="dash" class="hidden">
-<div class="page">
 
-<!-- HEADER -->
-<div class="hdr">
-  <div>
-    <div class="hdr-title">⚡ AZAP İstatistik Paneli</div>
-    <div class="hdr-sub">Son güncelleme: <span id="lastUpd" style="color:#64ffda">—</span> &nbsp;·&nbsp; Her 30 saniyede otomatik yenilenir</div>
-  </div>
-  <div class="hdr-right">
-    <button class="btn btn-g" onclick="loadAll()">🔄 Yenile</button>
-    <button class="btn btn-d" onclick="doLogout()">🚪 Çıkış</button>
+<!-- STICKY TOPBAR -->
+<div class="topbar">
+  <div class="topbar-title">⚡ AZAP Admin</div>
+  <nav class="topbar-nav">
+    <a href="#pulse">📊 Özet</a>
+    <a href="#srv">🖥️ Sunucu</a>
+    <a href="#usr">👥 Kullanıcı</a>
+    <a href="#game">🎮 Oyun</a>
+    <a href="#charts">📈 Grafikler</a>
+    <a href="#rooms">🟢 Odalar</a>
+    <a href="#lb">🏆 Lider</a>
+    <a href="#mgmt">⚙️ Yönetim</a>
+  </nav>
+  <div class="topbar-right">
+    <div class="topbar-time">Güncellendi: <span id="lastUpd">—</span></div>
+    <button class="btn btn-g" onclick="loadAll()">🔄</button>
+    <button class="btn btn-d" onclick="doLogout()">🚪</button>
   </div>
 </div>
 
+<div class="page">
+
+<!-- PULSE ROW -->
+<div id="pulse" style="padding-top:20px">
+  <div class="pulse-row" id="pulseRow"></div>
+</div>
+
 <!-- SUNUCU SAĞLIĞI -->
-<div class="sec">
+<div class="sec" id="srv">
   <div class="sec-title">🖥️ Sunucu Sağlığı</div>
   <div class="sg" id="srvCards"></div>
 </div>
 
 <!-- KULLANICI ANALİZİ -->
-<div class="sec">
+<div class="sec" id="usr">
   <div class="sec-title">👥 Kullanıcı Analizi</div>
   <div class="sg" id="usrCards"></div>
 </div>
 
 <!-- OYUN & FİNANS -->
-<div class="sec">
+<div class="sec" id="game">
   <div class="sec-title red">🎮 Oyun &amp; Finansal Özet</div>
   <div class="sg" id="gfCards"></div>
 </div>
 
 <!-- GRAFİKLER -->
-<div class="sec">
+<div class="sec" id="charts">
   <div class="sec-title green">📈 Grafikler</div>
-  <div class="cg">
-    <div class="cbox"><div class="ct">Canlı Oyuncu (Son 5 Dakika)</div><canvas id="pChart" height="110"></canvas></div>
-    <div class="cbox"><div class="ct">Son 30 Gün Kayıt</div><canvas id="rChart" height="110"></canvas></div>
+  <div class="cg3">
+    <div class="cbox"><div class="ct">Canlı Oyuncu (Son 5 Dakika)</div><canvas id="pChart" height="130"></canvas></div>
+    <div class="cbox"><div class="ct">Son 30 Gün Kayıt</div><canvas id="rChart" height="130"></canvas></div>
+    <div class="cbox"><div class="ct">Kazanma / Kaybetme</div><canvas id="wlChart" height="130"></canvas></div>
   </div>
 </div>
 
 <!-- CANLI ODALAR -->
-<div class="sec">
+<div class="sec" id="rooms">
   <div class="sec-title green">🟢 Canlı Odalar <span id="rmCnt" style="color:#555577;font-weight:400;letter-spacing:0"></span></div>
   <div class="tbl-wrap" id="rmWrap"><p class="empty">Şu an aktif oda yok</p></div>
 </div>
 
 <!-- LEADERBOARD HAVUZU -->
-<div class="sec">
+<div class="sec" id="lb">
   <div class="sec-title gold">🏆 Liderboard Havuzu</div>
   <div class="lb-grid" id="lbGrid"></div>
 </div>
@@ -703,7 +740,7 @@ a{color:inherit;text-decoration:none}
 </div>
 
 <!-- TÜM KULLANICILAR -->
-<div class="sec">
+<div class="sec" id="mgmt">
   <div class="sec-title red">👥 Tüm Kullanıcılar <span id="usrLoadCnt" style="color:#555577;font-weight:400;letter-spacing:0;text-transform:none;font-size:11px"></span></div>
   <div class="usr-toolbar">
     <input type="text" id="usrSearch" placeholder="🔍 Kullanıcı ara..." oninput="filterUsers()">
@@ -730,7 +767,7 @@ a{color:inherit;text-decoration:none}
     <table class="dtbl" id="usrTable">
       <thead><tr>
         <th>#</th><th>Kullanıcı</th><th>Rozetler</th>
-        <th>Oyun</th><th>Galibiyet</th><th>MVP</th>
+        <th>Oyun</th><th>Kazanma Oranı</th><th>MVP</th>
         <th>Altın</th><th>Bağış</th><th>Kayıt</th>
       </tr></thead>
       <tbody id="usrTbody"><tr><td colspan="9" style="text-align:center;color:#555577;padding:24px">Yükleniyor...</td></tr></tbody>
@@ -743,13 +780,15 @@ a{color:inherit;text-decoration:none}
 
 <script>
 var tk = localStorage.getItem('azap_admin_token');
-var pChart, rChart;
+var pChart, rChart, wlChart;
 
 function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-function fmtUp(s){ var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return d>0 ? d+'g '+h+'s '+m+'dk' : h+'s '+m+'dk '+(s%60)+'sn'; }
-function phaseName(p){ var m={'lobby':'Lobi','role_selection':'Rol Seç','role_reveal':'Rol Açıl','president_vote':'Başkan Oy','night':'Gece','morning_report':'Sabah','day_discussion':'Tartışma','voting':'Oylama','vote_result':'Oy Sonuç','mvp_vote':'MVP Oy','mvp_result':'MVP Sonuç','game_over':'Oyun Bitti','post_game':'Oyun Sonu'}; return m[p]||p; }
+function fmt(n){ return (n||0).toLocaleString('tr-TR'); }
+function fmtUp(s){ var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return d>0?d+'g '+h+'s':h+'s '+m+'dk'; }
+function phaseName(p){ var m={'lobby':'Lobi','role_selection':'Rol Seç','role_reveal':'Rol Açıl','president_vote':'Başkan Oy','night':'Gece','morning_report':'Sabah','day_discussion':'Tartışma','voting':'Oylama','vote_result':'Oy Sonuç','mvp_vote':'MVP Oy','mvp_result':'MVP Sonuç','game_over':'Bitti','post_game':'Sonu'}; return m[p]||p; }
 function phaseCls(p){ if(p==='lobby'||p==='role_selection'||p==='role_reveal'||p==='president_vote') return 'ph-lobby'; if(p==='night'||p==='morning_report') return 'ph-night'; if(p==='day_discussion') return 'ph-day'; if(p==='voting'||p==='vote_result') return 'ph-vote'; return 'ph-over'; }
 function card(ico,val,lbl,cls){ return '<div class="sc '+(cls||'')+'"><div class="ico">'+ico+'</div><div class="val">'+val+'</div><div class="lbl">'+lbl+'</div></div>'; }
+function pulseCard(ico,val,lbl,cls){ return '<div class="pulse-card '+(cls||'')+'"><div class="pulse-ico">'+ico+'</div><div class="pulse-val">'+val+'</div><div class="pulse-lbl">'+lbl+'</div></div>'; }
 function makeLb(title,rows,emptyMsg,barColor){
   var h='<div class="lb-box"><div class="lb-hdr">'+title+'</div>';
   if(!rows||!rows.length){ h+='<p class="empty">'+(emptyMsg||'Veri yok')+'</p></div>'; return h; }
@@ -784,8 +823,9 @@ function doLogout(){ showLogin(); }
 document.getElementById('tkInp').addEventListener('keypress',function(e){ if(e.key==='Enter') doLogin(); });
 
 function initCharts(){
-  pChart=new Chart(document.getElementById('pChart'),{type:'line',data:{labels:[],datasets:[{label:'Aktif',data:[],borderColor:'#64ffda',backgroundColor:'rgba(100,255,218,.07)',fill:true,tension:0.4,pointRadius:2,pointHoverRadius:4}]},options:{responsive:true,animation:false,interaction:{mode:'index',intersect:false},scales:{x:{display:false},y:{beginAtZero:true,grid:{color:'#1a1a2e'},ticks:{color:'#555577',font:{size:10}}}},plugins:{legend:{display:false},tooltip:{callbacks:{title:function(items){return items[0].label;}}}}}});
+  pChart=new Chart(document.getElementById('pChart'),{type:'line',data:{labels:[],datasets:[{label:'Aktif',data:[],borderColor:'#64ffda',backgroundColor:'rgba(100,255,218,.07)',fill:true,tension:0.4,pointRadius:2,pointHoverRadius:4}]},options:{responsive:true,animation:false,interaction:{mode:'index',intersect:false},scales:{x:{display:false},y:{beginAtZero:true,grid:{color:'#1a1a2e'},ticks:{color:'#555577',font:{size:10}}}},plugins:{legend:{display:false}}}});
   rChart=new Chart(document.getElementById('rChart'),{type:'bar',data:{labels:[],datasets:[{label:'Kayıt',data:[],backgroundColor:'rgba(187,143,206,.55)',borderColor:'#bb8fce',borderWidth:1,borderRadius:3}]},options:{responsive:true,animation:false,scales:{x:{ticks:{color:'#555577',font:{size:10},maxRotation:45},grid:{display:false}},y:{beginAtZero:true,grid:{color:'#1a1a2e'},ticks:{color:'#555577',font:{size:10}}}},plugins:{legend:{display:false}}}});
+  wlChart=new Chart(document.getElementById('wlChart'),{type:'doughnut',data:{labels:['Kazandı','Kaybetti'],datasets:[{data:[1,1],backgroundColor:['rgba(39,174,96,.75)','rgba(255,107,107,.75)'],borderColor:['#27ae60','#ff6b6b'],borderWidth:1,hoverOffset:6}]},options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#8892b0',font:{size:11},padding:10,boxWidth:12}}}}});
 }
 
 async function loadAll(){
@@ -797,55 +837,65 @@ async function loadAll(){
     var s=d.stats;
     document.getElementById('lastUpd').textContent=new Date().toLocaleTimeString('tr-TR');
 
-    /* SUNUCU KARTLARI */
+    /* PULSE ROW */
+    document.getElementById('pulseRow').innerHTML=
+      pulseCard('👁️',fmt(s.server.currentActive),'Şu An Online','p-green')+
+      pulseCard('🟢',s.live.activeRooms,'Aktif Oda','p-teal')+
+      pulseCard('🎮',s.live.playersInRooms,'Odada Oyuncu','p-purple')+
+      pulseCard('👥',fmt(s.users.total),'Toplam Kullanıcı','p-blue');
+
+    /* SUNUCU */
     document.getElementById('srvCards').innerHTML=
       card('⏱️',fmtUp(s.server.uptime),'Uptime','c-teal')+
-      card('🔗',s.server.totalConnections.toLocaleString('tr-TR'),'Toplam Bağlantı','c-teal')+
-      card('👁️',s.server.currentActive,'Şu An Sitede','c-green')+
+      card('🔗',fmt(s.server.totalConnections),'Toplam Bağlantı','c-teal')+
       card('🚀',s.server.peakConcurrent,'Rekor Anlık','c-blue')+
-      card('🟢',s.live.activeRooms,'Aktif Oda','c-green')+
-      card('🎮',s.live.playersInRooms,'Odada Oyuncu','c-green');
+      card('📡',s.server.currentActive,'Şu An Aktif','c-green');
 
-    /* KULLANICI KARTLARI */
+    /* KULLANICI */
     document.getElementById('usrCards').innerHTML=
-      card('👥',s.users.total.toLocaleString('tr-TR'),'Toplam Kullanıcı','')+
       card('📅',s.users.today,'Bugün Kayıt','c-teal')+
       card('📆',s.users.thisWeek,'Bu Hafta','')+
       card('🗓️',s.users.thisMonth,'Bu Ay (30g)','')+
       card('👑',s.users.premium,'Aktif Premium','c-purple')+
       card('🛡️',s.users.admins,'Admin','c-red')+
+      card('💝',(s.users.donorCount||0),'Bağışçı','c-pink')+
+      card('🎯',(s.users.playersEver||0),'Oyun Oynadı','')+
+      card('🔄',(s.users.retentionRate||0)+'%','Elde Tutma','c-green')+
       card('🛍️',s.users.withInventory,'Eşya Sahibi','')+
       card('🚫',s.users.neverPlayed,'Hiç Oynamamış','');
 
-    /* OYUN & FİNANS KARTLARI */
+    /* OYUN & FİNANS */
     document.getElementById('gfCards').innerHTML=
-      card('🎯',s.games.played.toLocaleString('tr-TR'),'Toplam Oyun','')+
-      card('🏆',s.games.won.toLocaleString('tr-TR'),'Toplam Galibiyet','c-green')+
-      card('💀',s.games.lost.toLocaleString('tr-TR'),'Toplam Mağlubiyet','c-red')+
-      card('❤️',s.games.mvps.toLocaleString('tr-TR'),'Toplam MVP','c-pink')+
-      card('📊','%'+s.games.avgWinRate,'Ort. Kazanma Oranı','c-green')+
+      card('🎯',fmt(s.games.played),'Toplam Oyun','')+
+      card('🏆',fmt(s.games.won),'Toplam Galibiyet','c-green')+
+      card('💀',fmt(s.games.lost),'Toplam Mağlubiyet','c-red')+
+      card('❤️',fmt(s.games.mvps),'Toplam MVP','c-pink')+
+      card('📊','%'+s.games.avgWinRate,'Ort. Kazanma','c-green')+
       card('🎲',s.games.avgGamesPerPlayer,'Kişi Başı Oyun','')+
       card('💝','₺'+s.finance.totalDonations.toFixed(0),'Toplam Bağış','c-pink')+
-      card('💰',s.finance.totalCoins.toLocaleString('tr-TR'),'Toplam Altın','c-gold')+
-      card('📊',s.finance.avgCoins.toLocaleString('tr-TR'),'Kişi Başı Altın','c-gold')+
-      card('📦',s.inventory.totalItemsOwned.toLocaleString('tr-TR'),'Toplam Eşya','')+
+      card('💰',fmt(s.finance.totalCoins),'Toplam Altın','c-gold')+
+      card('📊',fmt(s.finance.avgCoins),'Kişi Başı Altın','c-gold')+
+      card('📦',fmt(s.inventory.totalItemsOwned),'Toplam Eşya','')+
+      card('🎁',(s.inventory.avgItemsPerUser||'0'),'Kişi Başı Eşya','')+
       card('🐛',s.reports.open,'Açık Bug','c-red')+
       card('✅',s.reports.closed,'Çözülen Bug','c-green')+
+      card('📋',(s.reports.resolutionRate||0)+'%','Çözüm Oranı','c-teal')+
       card('📋',s.reports.total,'Toplam Rapor','');
 
-    /* OYUNCU GRAFİĞİ */
+    /* GRAFİKLER */
     if(s.server.history&&s.server.history.length&&pChart){
-      var hist=s.server.history;
-      pChart.data.labels=hist.map(function(h){ return new Date(h.timestamp).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); });
-      pChart.data.datasets[0].data=hist.map(function(h){ return h.currentActive; });
+      pChart.data.labels=s.server.history.map(function(h){ return new Date(h.timestamp).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); });
+      pChart.data.datasets[0].data=s.server.history.map(function(h){ return h.currentActive; });
       pChart.update('none');
     }
-
-    /* KAYIT GRAFİĞİ */
     if(s.registrationsByDay&&s.registrationsByDay.length&&rChart){
-      rChart.data.labels=s.registrationsByDay.map(function(d){ return new Date(d[0]).toLocaleDateString('tr-TR',{month:'short',day:'numeric'}); });
-      rChart.data.datasets[0].data=s.registrationsByDay.map(function(d){ return d[1]; });
+      rChart.data.labels=s.registrationsByDay.map(function(r){ return new Date(r[0]).toLocaleDateString('tr-TR',{month:'short',day:'numeric'}); });
+      rChart.data.datasets[0].data=s.registrationsByDay.map(function(r){ return r[1]; });
       rChart.update('none');
+    }
+    if(wlChart&&s.games){
+      wlChart.data.datasets[0].data=[s.games.won||0,s.games.lost||0];
+      wlChart.update();
     }
 
     /* CANLI ODALAR */
@@ -854,8 +904,7 @@ async function loadAll(){
       var rh='<table class="dtbl"><thead><tr><th>Kod</th><th>Oyuncu</th><th>İzleyici</th><th>Faz</th><th>Tur</th></tr></thead><tbody>';
       s.live.rooms.forEach(function(rm){
         rh+='<tr><td><b style="color:#64ffda;font-family:monospace;letter-spacing:1px">'+esc(rm.code)+'</b></td>';
-        rh+='<td><b>'+rm.playerCount+'</b></td>';
-        rh+='<td>'+(rm.spectatorCount||0)+'</td>';
+        rh+='<td><b>'+rm.playerCount+'</b></td><td>'+(rm.spectatorCount||0)+'</td>';
         rh+='<td><span class="phase '+phaseCls(rm.phase)+'">'+phaseName(rm.phase)+'</span></td>';
         rh+='<td>'+(rm.round>0?rm.round+'. tur':'—')+'</td></tr>';
       });
@@ -868,10 +917,10 @@ async function loadAll(){
     /* LEADERBOARDlar */
     var tp=s.topPlayers.map(function(p){ return Object.assign({},p,{_stat:'🎮 '+p.played+' / 🏆 '+p.won,_barV:p.played}); });
     var tw=s.topWinners.map(function(p){ return Object.assign({},p,{_stat:'🏆 '+p.won+' (%'+p.winRate+')',_barV:p.won}); });
-    var twr=s.topWinRate.map(function(p){ return Object.assign({},p,{_stat:'%'+p.winRate+' — '+p.played+' oyun',_barV:p.winRate}); });
+    var twr=s.topWinRate.map(function(p){ return Object.assign({},p,{_stat:'%'+p.winRate+' ('+p.played+' oyun)',_barV:p.winRate}); });
     var tm=s.topMvps.map(function(p){ return Object.assign({},p,{_stat:'❤️ '+p.mvp+' MVP',_barV:p.mvp}); });
     var tl=s.topLosers.map(function(p){ return Object.assign({},p,{_stat:'💀 '+p.lost+' mağl.',_barV:p.lost}); });
-    var td=s.topDonors.map(function(p){ return Object.assign({},p,{_stat:'₺'+p.totalDonated.toFixed(0),_barV:p.totalDonated}); });
+    var tdl=s.topDonors.map(function(p){ return Object.assign({},p,{_stat:'₺'+p.totalDonated.toFixed(0),_barV:p.totalDonated}); });
     var tr2=s.topRichest.map(function(p){ return Object.assign({},p,{_stat:p.coins.toLocaleString('tr-TR')+' 💰',_barV:p.coins}); });
 
     document.getElementById('lbGrid').innerHTML=
@@ -880,10 +929,10 @@ async function loadAll(){
       makeLb('📊 En Yüksek Kazanma Oranı <small style="font-weight:400;color:#555577">(min 5 oyun)</small>',twr,'Henüz 5+ oyun oynayan yok','#27ae60')+
       makeLb('❤️ En Çok MVP Alanlar',tm,'','#e91e63')+
       makeLb('💀 En Çok Kaybeden',tl,'','#ff6b6b')+
-      makeLb('💝 En Büyük Destekçiler',td,'Henüz bağış yapan yok','#e91e63')+
+      makeLb('💝 En Büyük Destekçiler',tdl,'Henüz bağış yapan yok','#e91e63')+
       makeLb('💰 En Zenginler',tr2,'','#ffd700');
 
-    /* PREMİUM KULLANICILARI */
+    /* PREMİUM */
     if(s.premiumUsers&&s.premiumUsers.length){
       var ph='<div class="prem-list">';
       s.premiumUsers.forEach(function(p){
@@ -899,18 +948,16 @@ async function loadAll(){
       document.getElementById('premSec').style.display='none';
     }
 
-    /* EN POPÜLER EŞYALAR */
+    /* EŞYALAR */
     if(s.inventory.topItems&&s.inventory.topItems.length){
       var maxC=s.inventory.topItems[0].count;
       var ih='<div>';
       s.inventory.topItems.forEach(function(item,i){
         var pct=maxC>0?Math.round(item.count/maxC*100):0;
-        ih+='<div class="item-row">';
-        ih+='<span class="item-rk">'+(i+1)+'</span>';
+        ih+='<div class="item-row"><span class="item-rk">'+(i+1)+'</span>';
         ih+='<span class="item-id">'+esc(item.id)+'</span>';
         ih+='<div class="item-bar"><div class="item-bf" style="width:'+pct+'%"></div></div>';
-        ih+='<span class="item-cnt">'+item.count+'</span>';
-        ih+='</div>';
+        ih+='<span class="item-cnt">'+item.count+'</span></div>';
       });
       ih+='</div>';
       document.getElementById('itmWrap').innerHTML=ih;
@@ -941,21 +988,21 @@ function filterUsers(){
   var flt=document.getElementById('usrFilter').value;
   var srt=document.getElementById('usrSort').value;
   var list=allUsers.filter(function(u){
-    if(q && !u.username.toLowerCase().includes(q)) return false;
-    if(flt==='admin' && !u.isAdmin) return false;
-    if(flt==='premium' && !u.premium?.active) return false;
-    if(flt==='donor' && !(u.totalDonated>0)) return false;
-    if(flt==='active' && !(u.stats?.played>0)) return false;
-    if(flt==='never' && (u.stats?.played>0)) return false;
+    if(q&&!u.username.toLowerCase().includes(q)) return false;
+    if(flt==='admin'&&!u.isAdmin) return false;
+    if(flt==='premium'&&!(u.premium&&u.premium.active)) return false;
+    if(flt==='donor'&&!(u.totalDonated>0)) return false;
+    if(flt==='active'&&!(u.stats&&u.stats.played>0)) return false;
+    if(flt==='never'&&(u.stats&&u.stats.played>0)) return false;
     return true;
   });
   list.sort(function(a,b){
     if(srt==='created_asc') return (a.created||0)-(b.created||0);
-    if(srt==='played_desc') return (b.stats?.played||0)-(a.stats?.played||0);
-    if(srt==='won_desc') return (b.stats?.won||0)-(a.stats?.won||0);
+    if(srt==='played_desc') return ((b.stats&&b.stats.played)||0)-((a.stats&&a.stats.played)||0);
+    if(srt==='won_desc') return ((b.stats&&b.stats.won)||0)-((a.stats&&a.stats.won)||0);
     if(srt==='coins_desc') return (b.coins||0)-(a.coins||0);
     if(srt==='donated_desc') return (b.totalDonated||0)-(a.totalDonated||0);
-    return (b.created||0)-(a.created||0); // created_desc default
+    return (b.created||0)-(a.created||0);
   });
   document.getElementById('usrFilterInfo').textContent=list.length+' sonuç';
   var html='';
@@ -965,17 +1012,19 @@ function filterUsers(){
     list.forEach(function(u,i){
       var badges='';
       if(u.isAdmin) badges+='<span class="usr-badge ub-admin">ADMİN</span> ';
-      if(u.premium?.active) badges+='<span class="usr-badge ub-prem">👑 VIP '+(u.premium.daysLeft||0)+'g</span> ';
+      if(u.premium&&u.premium.active) badges+='<span class="usr-badge ub-prem">👑 VIP '+(u.premium.daysLeft||0)+'g</span> ';
       if(u.totalDonated>0) badges+='<span class="usr-badge ub-don">💝</span>';
-      var wr=u.stats?.played>0?Math.round(u.stats.won/u.stats.played*100):0;
+      var played=(u.stats&&u.stats.played)||0;
+      var won=(u.stats&&u.stats.won)||0;
+      var wr=played>0?Math.round(won/played*100):0;
       var created=u.created?new Date(u.created).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
       html+='<tr>';
       html+='<td style="color:#555577;font-size:11px">'+(i+1)+'</td>';
       html+='<td><b style="color:#dde">'+esc(u.username)+'</b></td>';
       html+='<td>'+(badges||'<span style="color:#555577">—</span>')+'</td>';
-      html+='<td><b>'+(u.stats?.played||0)+'</b></td>';
-      html+='<td><span style="color:#27ae60">'+(u.stats?.won||0)+'</span>'+(u.stats?.played>0?' <span style="color:#555577;font-size:10px">%'+wr+'</span>':'')+'</td>';
-      html+='<td><span style="color:#e91e63">'+(u.stats?.mvp||0)+'</span></td>';
+      html+='<td><b>'+played+'</b></td>';
+      html+='<td><div class="wr-cell"><span style="color:#27ae60;font-weight:700">'+won+'</span>'+(played>0?'<div class="wr-bar"><div class="wr-bf" style="width:'+wr+'%"></div></div><span class="wr-pct">%'+wr+'</span>':'')+'</div></td>';
+      html+='<td><span style="color:#e91e63">'+((u.stats&&u.stats.mvp)||0)+'</span></td>';
       html+='<td style="color:#ffd700;font-weight:700">'+(u.coins||0).toLocaleString('tr-TR')+'</td>';
       html+='<td>'+(u.totalDonated>0?'<span style="color:#e91e63;font-weight:700">₺'+u.totalDonated.toFixed(0)+'</span>':'<span style="color:#555577">—</span>')+'</td>';
       html+='<td style="color:#555577;font-size:11px">'+created+'</td>';
@@ -986,8 +1035,8 @@ function filterUsers(){
 }
 
 if(tk){ showDash(); }
-setInterval(function(){ if(!document.getElementById('dash').classList.contains('hidden')) loadAll(); }, 30000);
-</script>
+setInterval(function(){ if(!document.getElementById('dash').classList.contains('hidden')) loadAll(); },30000);
+<\/script>
 </body></html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
