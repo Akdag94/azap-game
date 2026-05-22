@@ -73,12 +73,15 @@ function createPaymentRoutes(deps) {
         return res.status(400).json({ ok: false, error: result.error });
       }
 
-      // Checkout form HTML'ini döndür (frontend iframe/popup'ta gösterir)
-      res.json({
-        ok: true,
-        checkoutFormContent: result.checkoutFormContent,
-        token: result.token
-      });
+      // Shopier → redirectUrl + formData, Iyzico → checkoutFormContent
+      const response = { ok: true, token: result.token };
+      if (result.redirectUrl) {
+        response.redirectUrl = result.redirectUrl;
+        response.formData = result.formData;
+      } else {
+        response.checkoutFormContent = result.checkoutFormContent;
+      }
+      res.json(response);
     } catch (err) {
       console.error('[paymentRoutes] /create hata:', err);
       res.status(500).json({ ok: false, error: 'Sunucu hatası' });

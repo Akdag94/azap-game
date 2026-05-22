@@ -119,11 +119,12 @@ class PaymentService {
       return { ok: false, error: 'Geçersiz imza' };
     }
 
-    const token = req.body?.token;
-    if (!token) return { ok: false, error: 'Token eksik' };
+    // Token: Iyzico → req.body.token, Shopier → req.body.platform_order_id
+    const token = req.body?.token || req.body?.platform_order_id;
+    if (!token) return { ok: false, error: 'Token/OrderID eksik' };
 
-    // 2. Ödeme durumunu provider'dan doğrula
-    const verification = await this.gateway.verifyPayment(token);
+    // 2. Ödeme durumunu provider'dan doğrula (reqBody Shopier için gerekli)
+    const verification = await this.gateway.verifyPayment(token, req.body);
     if (!verification.ok) {
       console.error('[PaymentService] Ödeme doğrulama başarısız:', verification.error);
       return { ok: false, error: verification.error || 'Ödeme doğrulanamadı' };

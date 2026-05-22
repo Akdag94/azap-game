@@ -7,6 +7,7 @@
  */
 const PaymentService = require('./PaymentService');
 const IyzicoProvider = require('./providers/IyzicoProvider');
+const ShopierProvider = require('./providers/ShopierProvider');
 const createPaymentRoutes = require('./paymentRoutes');
 
 /**
@@ -28,11 +29,24 @@ function createProvider() {
         baseUrl: process.env.IYZICO_BASE_URL || 'https://api.iyzipay.com'
       });
 
-    // Gelecekte eklenecek provider'lar:
-    // case 'paytr':
-    //   return new PayTRProvider({ ... });
-    // case 'stripe':
-    //   return new StripeProvider({ ... });
+    case 'shopier': {
+      if (!process.env.SHOPIER_API_KEY || !process.env.SHOPIER_API_SECRET) {
+        console.warn('[Payment] SHOPIER_API_KEY veya SHOPIER_API_SECRET tanımlı değil — ödeme devre dışı');
+        return null;
+      }
+      // Ürün eşleşmesi: SHOPIER_PRODUCTS='{"gold_100":"xxx","premium_1m":"yyy"}'
+      let productMap = {};
+      try {
+        productMap = JSON.parse(process.env.SHOPIER_PRODUCTS || '{}');
+      } catch (e) {
+        console.warn('[Payment] SHOPIER_PRODUCTS JSON parse hatası:', e.message);
+      }
+      return new ShopierProvider({
+        apiKey: process.env.SHOPIER_API_KEY,
+        apiSecret: process.env.SHOPIER_API_SECRET,
+        productMap
+      });
+    }
 
     default:
       console.warn(`[Payment] Bilinmeyen provider: ${providerName}`);

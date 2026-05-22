@@ -658,7 +658,10 @@ async function shopBuy(packageId){
       body: JSON.stringify({ username: user.username, packageId, consents })
     });
     const d = await r.json();
-    if(d.checkoutFormContent){
+    if(d.redirectUrl && d.formData){
+      // Shopier: hidden form oluşturup POST ile yönlendir
+      _submitShopierForm(d.redirectUrl, d.formData);
+    } else if(d.checkoutFormContent){
       const w = window.open('','azap_pay','width=500,height=700');
       if(w){w.document.write(d.checkoutFormContent);}
       else{toast('Ödeme penceresi açılamadı. Popup engelleyiciyi kapatın.',1);}
@@ -685,7 +688,9 @@ async function shopDonate(){
       body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt, consents })
     });
     const d = await r.json();
-    if(d.checkoutFormContent){
+    if(d.redirectUrl && d.formData){
+      _submitShopierForm(d.redirectUrl, d.formData);
+    } else if(d.checkoutFormContent){
       const w = window.open('','azap_pay','width=500,height=700');
       if(w){w.document.write(d.checkoutFormContent);}
       else{toast('Ödeme penceresi açılamadı. Popup engelleyiciyi kapatın.',1);}
@@ -695,6 +700,26 @@ async function shopDonate(){
   }catch(e){
     toast('Bağış gerçekleşmedi.',1);
   }
+}
+
+// Shopier redirect: hidden form POST ile yeni sekmede ödeme sayfasına yönlendir
+function _submitShopierForm(url, formData){
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = url;
+  form.target = '_blank'; // Yeni sekmede aç
+  form.style.display = 'none';
+  for(const [key, val] of Object.entries(formData)){
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = val;
+    form.appendChild(input);
+  }
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+  toast('Ödeme sayfası açılıyor...');
 }
 
 function updateShopHeader(){
