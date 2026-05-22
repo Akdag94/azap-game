@@ -2766,6 +2766,22 @@ io.on('connection', (socket) => {
     cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
   });
 
+  // Premium ver / kaldır
+  socket.on('admin:setPremium', ({ username, days }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const d = parseInt(days);
+    if (isNaN(d) || d < 0) return cb?.({ ok: false, err: 'Geçersiz gün sayısı.' });
+    const r = Accounts.adminSetPremium(username, d);
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+
+  // Bağışçı permi ver / kaldır
+  socket.on('admin:setDonor', ({ username, isDonor }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Accounts.adminSetDonor(username, !!isDonor);
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
+  });
+
   // Bug raporlarını listele
   socket.on('admin:listReports', (_, cb) => {
     if (!requireAdmin(cb)) return;

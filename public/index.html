@@ -342,35 +342,58 @@
 
 <!-- Admin Menü modal: Kullanıcılar + Raporlar -->
 <div class="role-modal" id="ADMIN_MENU_MODAL">
-<div class="role-modal-content" style="max-width:780px">
-<button class="role-modal-close" onclick="Q('ADMIN_MENU_MODAL').classList.remove('sh')">✕</button>
-<div class="role-modal-title" style="color:#bb8fce">⚙️ ADMİN MENÜ</div>
-<div class="am-tabs">
-<button class="am-tab active" data-amtab="users" onclick="amSwitchTab('users')">👥 Kullanıcılar</button>
-<button class="am-tab" data-amtab="stats" onclick="amSwitchTab('stats')">📊 İstatistikler</button>
-<button class="am-tab" data-amtab="reports" onclick="amSwitchTab('reports')">🐛 Bug Raporları</button>
-</div>
-<div id="AM_USERS_PANE">
-<div class="am-create-form">
-<div style="font-size:.78rem;font-weight:600;margin-bottom:6px;color:#bb8fce">+ Yeni Hesap Oluştur</div>
-<input id="AM_NEW_U" placeholder="Kullanıcı adı (2-16 karakter)" maxlength="16">
-<input id="AM_NEW_P" type="password" placeholder="Şifre (min 3)">
-<label style="display:flex;align-items:center;gap:6px;font-size:.78rem;margin:4px 0"><input type="checkbox" id="AM_NEW_ADMIN"> Admin yetkisi</label>
-<button class="b b1 bs" style="width:100%;margin-top:4px" onclick="amCreateUser()">Hesap Oluştur</button>
-</div>
-<div id="AM_USERS_LIST">Yükleniyor...</div>
-</div>
-<div id="AM_STATS_PANE" style="display:none">
-<div style="display:flex;gap:6px;margin-bottom:10px"><button class="am-btn info" onclick="amLoadStats()">🔄 Yenile</button></div>
-<div id="AM_STATS_BODY">Yükleniyor...</div>
-</div>
-<div id="AM_REPORTS_PANE" style="display:none">
-<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-<button class="am-btn info" onclick="amLoadReports()">🔄 Yenile</button>
-<button class="am-btn ok" onclick="amExportReports()">📥 Tüm Raporları İndir (HTML)</button>
-</div>
-<div id="AM_REPORTS_LIST">Yükleniyor...</div>
-</div>
+<div class="am-shell">
+  <div class="am-hdr">
+    <div class="am-hdr-title">⚙️ ADMİN PANEL</div>
+    <button class="am-close" onclick="Q('ADMIN_MENU_MODAL').classList.remove('sh')">✕</button>
+  </div>
+  <div class="am-nav">
+    <button class="am-nav-btn active" data-amtab="users" onclick="amSwitchTab('users')">👥 Kullanıcılar</button>
+    <button class="am-nav-btn" data-amtab="stats" onclick="amSwitchTab('stats')">📊 İstatistikler</button>
+    <button class="am-nav-btn" data-amtab="reports" onclick="amSwitchTab('reports')">🐛 Bug Raporları</button>
+  </div>
+  <div class="am-body">
+    <div id="AM_USERS_PANE">
+      <div class="am-create-section">
+        <div class="am-create-hdr" onclick="amToggleCreate()">
+          <span>+ Yeni Hesap Oluştur</span>
+          <span id="AM_CREATE_ARROW" style="font-size:.7rem;opacity:.6">▶</span>
+        </div>
+        <div class="am-create-body" id="AM_CREATE_BODY">
+          <div class="am-create-grid">
+            <input id="AM_NEW_U" placeholder="Kullanıcı adı (2-16)" maxlength="16">
+            <input id="AM_NEW_P" type="password" placeholder="Şifre (min 3)">
+            <label class="am-create-chk"><input type="checkbox" id="AM_NEW_ADMIN"> Admin</label>
+            <button class="b b1 bs" onclick="amCreateUser()">Oluştur</button>
+          </div>
+        </div>
+      </div>
+      <div class="am-toolbar">
+        <input id="AM_SEARCH" class="am-search" placeholder="🔍 Kullanıcı ara..." oninput="amFilterUsers()">
+        <select id="AM_FILTER" class="am-filter-sel" onchange="amFilterUsers()">
+          <option value="all">Tümü</option>
+          <option value="admin">Admin</option>
+          <option value="premium">Premium</option>
+          <option value="donor">Bağışçı</option>
+        </select>
+      </div>
+      <div id="AM_USERS_COUNT" class="am-users-count"></div>
+      <div id="AM_USERS_LIST"></div>
+    </div>
+    <div id="AM_STATS_PANE" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="am-action-btn info" onclick="amLoadStats()">🔄 Yenile</button>
+      </div>
+      <div id="AM_STATS_BODY"></div>
+    </div>
+    <div id="AM_REPORTS_PANE" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="am-action-btn info" onclick="amLoadReports()">🔄 Yenile</button>
+        <button class="am-action-btn ok" onclick="amExportReports()">📥 Raporları İndir</button>
+      </div>
+      <div id="AM_REPORTS_LIST"></div>
+    </div>
+  </div>
 </div>
 </div>
 

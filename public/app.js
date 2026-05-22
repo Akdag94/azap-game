@@ -3127,9 +3127,14 @@ function amSwitchTab(tab){
   Q('AM_USERS_PANE').style.display = tab==='users' ? 'block' : 'none';
   Q('AM_STATS_PANE').style.display = tab==='stats' ? 'block' : 'none';
   Q('AM_REPORTS_PANE').style.display = tab==='reports' ? 'block' : 'none';
-  if(tab==='users')amLoadUsers();
-  else if(tab==='stats')amLoadStats();
-  else if(tab==='reports')amLoadReports();
+  if(tab==='users') amLoadUsers();
+  else if(tab==='stats') amLoadStats();
+  else if(tab==='reports') amLoadReports();
+}
+function amToggleCreate(){
+  const body=Q('AM_CREATE_BODY'), arrow=Q('AM_CREATE_ARROW');
+  const open=body.classList.toggle('open');
+  arrow.textContent=open?'▼':'▶';
 }
 
 // Site istatistikleri
@@ -3140,77 +3145,71 @@ function amLoadStats(){
     if(!r?.ok){body.innerHTML = `<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
     const s = r.stats;
     body.innerHTML = `
-      <!-- Üst Özet Kutuları -->
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${s.users.total}</div><div class="stat-lbl">Toplam Kullanıcı</div></div>
-        <div class="stat-card"><div class="stat-icon">👁️</div><div class="stat-num">${s.users.admins}</div><div class="stat-lbl">Admin</div></div>
-        <div class="stat-card premium"><div class="stat-icon">👑</div><div class="stat-num">${s.users.premium}</div><div class="stat-lbl">Aktif Premium</div></div>
-        <div class="stat-card live"><div class="stat-icon">🟢</div><div class="stat-num">${s.live.activeRooms}</div><div class="stat-lbl">Aktif Oda</div></div>
-        <div class="stat-card live"><div class="stat-icon">🎮</div><div class="stat-num">${s.live.playersInRooms}</div><div class="stat-lbl">Aktif Oyuncu</div></div>
-        <div class="stat-card finance"><div class="stat-icon">💝</div><div class="stat-num">₺${s.finance.totalDonations.toFixed(0)}</div><div class="stat-lbl">Toplam Bağış</div></div>
-        <div class="stat-card gold"><div class="stat-icon">💰</div><div class="stat-num">${s.finance.totalCoins.toLocaleString('tr-TR')}</div><div class="stat-lbl">Toplam Altın</div></div>
-        <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-num">${s.games.played}</div><div class="stat-lbl">Toplam Oyun</div></div>
-        <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-num">${s.games.won}</div><div class="stat-lbl">Toplam Galibiyet</div></div>
-        <div class="stat-card"><div class="stat-icon">❤️</div><div class="stat-num">${s.games.mvps}</div><div class="stat-lbl">Toplam MVP</div></div>
-        <div class="stat-card"><div class="stat-icon">🐛</div><div class="stat-num">${s.reports.open}</div><div class="stat-lbl">Açık Bug</div></div>
-        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${s.reports.closed}</div><div class="stat-lbl">Çözülen Bug</div></div>
+      <div class="am-stats-grid">
+        <div class="am-stat-card"><div class="am-stat-icon">👥</div><div class="am-stat-num">${s.users.total}</div><div class="am-stat-lbl">Kullanıcı</div></div>
+        <div class="am-stat-card"><div class="am-stat-icon">👁️</div><div class="am-stat-num">${s.users.admins}</div><div class="am-stat-lbl">Admin</div></div>
+        <div class="am-stat-card premium"><div class="am-stat-icon">👑</div><div class="am-stat-num">${s.users.premium}</div><div class="am-stat-lbl">Premium</div></div>
+        <div class="am-stat-card live"><div class="am-stat-icon">🟢</div><div class="am-stat-num">${s.live.activeRooms}</div><div class="am-stat-lbl">Aktif Oda</div></div>
+        <div class="am-stat-card live"><div class="am-stat-icon">🎮</div><div class="am-stat-num">${s.live.playersInRooms}</div><div class="am-stat-lbl">Aktif Oyuncu</div></div>
+        <div class="am-stat-card finance"><div class="am-stat-icon">💝</div><div class="am-stat-num">₺${s.finance.totalDonations.toFixed(0)}</div><div class="am-stat-lbl">Toplam Bağış</div></div>
+        <div class="am-stat-card gold"><div class="am-stat-icon">💰</div><div class="am-stat-num">${s.finance.totalCoins.toLocaleString('tr-TR')}</div><div class="am-stat-lbl">Toplam Altın</div></div>
+        <div class="am-stat-card"><div class="am-stat-icon">🎯</div><div class="am-stat-num">${s.games.played}</div><div class="am-stat-lbl">Toplam Oyun</div></div>
+        <div class="am-stat-card"><div class="am-stat-icon">🏆</div><div class="am-stat-num">${s.games.won}</div><div class="am-stat-lbl">Galibiyet</div></div>
+        <div class="am-stat-card"><div class="am-stat-icon">❤️</div><div class="am-stat-num">${s.games.mvps}</div><div class="am-stat-lbl">MVP</div></div>
+        <div class="am-stat-card"><div class="am-stat-icon">🐛</div><div class="am-stat-num">${s.reports.open}</div><div class="am-stat-lbl">Açık Bug</div></div>
+        <div class="am-stat-card"><div class="am-stat-icon">✅</div><div class="am-stat-num">${s.reports.closed}</div><div class="am-stat-lbl">Çözülen Bug</div></div>
       </div>
 
-      <!-- En Aktif Oyuncular -->
-      <div class="st mt12">🎮 En Aktif Oyuncular (Top 10)</div>
-      <div class="leaderboard">
+      <div class="am-section-title">🎮 En Aktif Oyuncular</div>
+      <div class="am-lb">
         ${s.topPlayers.length ? s.topPlayers.map((p,i)=>`
-          <div class="lb-row${i<3?' lb-top':''}">
-            <span class="lb-rank">${i+1}</span>
-            <span class="lb-name">${esc(p.username)}${p.premium?' 👑':''}</span>
-            <span class="lb-stat">🎮 ${p.played}</span>
-            <span class="lb-stat">🏆 ${p.won}</span>
-            <span class="lb-stat" style="color:var(--gold)">💰 ${p.coins}</span>
+          <div class="am-lb-row${i<3?' top':''}">
+            <span class="am-lb-rank">${i+1}</span>
+            <span class="am-lb-name">${esc(p.username)}${p.premium?' 👑':''}</span>
+            <span class="am-lb-stat">🎮 ${p.played}</span>
+            <span class="am-lb-stat">🏆 ${p.won}</span>
+            <span class="am-lb-stat" style="color:var(--gold)">💰 ${p.coins}</span>
           </div>
-        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+        `).join('') : '<div style="color:var(--dim);padding:12px;text-align:center;font-size:.8rem">Veri yok</div>'}
       </div>
 
-      <!-- En Çok Kazananlar -->
-      <div class="st mt12">🏆 En Çok Kazananlar (Top 10)</div>
-      <div class="leaderboard">
+      <div class="am-section-title">🏆 En Çok Kazananlar</div>
+      <div class="am-lb">
         ${s.topWinners.length ? s.topWinners.map((p,i)=>`
-          <div class="lb-row${i<3?' lb-top':''}">
-            <span class="lb-rank">${i+1}</span>
-            <span class="lb-name">${esc(p.username)}</span>
-            <span class="lb-stat">${p.won}/${p.played}</span>
-            <span class="lb-stat" style="color:var(--safe)">%${p.winRate}</span>
+          <div class="am-lb-row${i<3?' top':''}">
+            <span class="am-lb-rank">${i+1}</span>
+            <span class="am-lb-name">${esc(p.username)}</span>
+            <span class="am-lb-stat">${p.won}/${p.played}</span>
+            <span class="am-lb-stat" style="color:var(--safe)">%${p.winRate}</span>
           </div>
-        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+        `).join('') : '<div style="color:var(--dim);padding:12px;text-align:center;font-size:.8rem">Veri yok</div>'}
       </div>
 
-      <!-- Bağışçılar -->
-      <div class="st mt12">💝 En Çok Destekçiler (Top 10)</div>
-      <div class="leaderboard">
+      <div class="am-section-title">💝 En Çok Destekçiler</div>
+      <div class="am-lb">
         ${s.topDonors.length ? s.topDonors.map((p,i)=>`
-          <div class="lb-row${i<3?' lb-top':''}">
-            <span class="lb-rank">${i+1}</span>
-            <span class="lb-name">${esc(p.username)}</span>
-            <span class="lb-stat" style="color:#e91e63;font-weight:700">₺${p.totalDonated.toFixed(0)}</span>
+          <div class="am-lb-row${i<3?' top':''}">
+            <span class="am-lb-rank">${i+1}</span>
+            <span class="am-lb-name">${esc(p.username)}</span>
+            <span class="am-lb-stat" style="color:#f06292;font-weight:700">₺${p.totalDonated.toFixed(0)}</span>
           </div>
-        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Henüz bağış yapan yok</div>'}
+        `).join('') : '<div style="color:var(--dim);padding:12px;text-align:center;font-size:.8rem">Henüz bağış yapan yok</div>'}
       </div>
 
-      <!-- En Zenginler -->
-      <div class="st mt12">💰 En Zenginler (Top 10)</div>
-      <div class="leaderboard">
+      <div class="am-section-title">💰 En Zenginler</div>
+      <div class="am-lb">
         ${s.topRichest.length ? s.topRichest.map((p,i)=>`
-          <div class="lb-row${i<3?' lb-top':''}">
-            <span class="lb-rank">${i+1}</span>
-            <span class="lb-name">${esc(p.username)}</span>
-            <span class="lb-stat" style="color:var(--gold);font-weight:700">${p.coins.toLocaleString('tr-TR')} 💰</span>
+          <div class="am-lb-row${i<3?' top':''}">
+            <span class="am-lb-rank">${i+1}</span>
+            <span class="am-lb-name">${esc(p.username)}</span>
+            <span class="am-lb-stat" style="color:var(--gold);font-weight:700">${p.coins.toLocaleString('tr-TR')} 💰</span>
           </div>
-        `).join('') : '<div style="color:var(--dim);padding:8px;text-align:center">Veri yok</div>'}
+        `).join('') : '<div style="color:var(--dim);padding:12px;text-align:center;font-size:.8rem">Veri yok</div>'}
       </div>
 
-      <!-- Son 30 gün kayıtlar -->
-      <div class="st mt12">📅 Son 30 Gün Kayıtları</div>
-      <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px">
-        ${s.registrationsByDay.length ? renderRegistrationChart(s.registrationsByDay) : '<div style="color:var(--dim);text-align:center">Son 30 günde kayıt yok</div>'}
+      <div class="am-section-title">📅 Son 30 Gün Kayıtları</div>
+      <div style="background:rgba(255,255,255,.02);border:1px solid var(--brd);border-radius:9px;padding:12px">
+        ${s.registrationsByDay.length ? renderRegistrationChart(s.registrationsByDay) : '<div style="color:var(--dim);text-align:center;font-size:.8rem;padding:8px">Son 30 günde kayıt yok</div>'}
       </div>
     `;
   });
@@ -3231,29 +3230,55 @@ function renderRegistrationChart(data){
     </div>`;
   }).join('');
 }
+let amAllUsers=[];
 function amLoadUsers(){
   const list=Q('AM_USERS_LIST');
-  list.innerHTML='Yükleniyor...';
+  list.innerHTML='<div style="color:var(--dim);padding:16px;text-align:center;font-size:.8rem">Yükleniyor...</div>';
   io2.emit('admin:listUsers',{},r=>{
-    if(!r?.ok){list.innerHTML=`<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
-    if(!r.users.length){list.innerHTML='<div style="color:var(--dim)">Henüz kullanıcı yok.</div>';return;}
-    list.innerHTML=r.users.map(u=>`
-      <div class="am-user${u.isAdmin?' is-admin':''}">
-        <span style="font-size:1.2rem">${u.isAdmin?'👁️':'👤'}</span>
-        <div>
-          <div style="font-weight:600">${u.username}${u.isAdmin?' <span style="color:#bb8fce;font-size:.7rem">(ADMIN)</span>':''}</div>
-          <div style="font-size:.7rem;color:var(--dim)">🏆 ${u.stats.won} • 🎮 ${u.stats.played} • ❤️ ${u.stats.mvp||0} • <span style="color:var(--gold)">💰 ${u.coins??0}</span></div>
-        </div>
-        <div class="am-user-actions">
-          <button class="am-btn info" onclick="amEditStats('${u.username}')" title="İstatistikleri">📊</button>
-          <button class="am-btn" style="background:rgba(255,215,0,.15);color:var(--gold);border:1px solid var(--gold)" onclick="amEditCoins('${u.username}',${u.coins??0})" title="Coin yönet">💰</button>
-          <button class="am-btn warn" onclick="amResetPassword('${u.username}')" title="Şifre sıfırla">🔑</button>
-          <button class="am-btn ${u.isAdmin?'warn':'ok'}" onclick="amToggleAdmin('${u.username}',${!u.isAdmin})">${u.isAdmin?'⬇️':'⬆️'}</button>
-          <button class="am-btn danger" onclick="amDeleteUser('${u.username}')">🗑️</button>
-        </div>
-      </div>
-    `).join('');
+    if(!r?.ok){list.innerHTML=`<div style="color:var(--hain);padding:12px">${r?.err||'Hata'}</div>`;return;}
+    amAllUsers=r.users;
+    amFilterUsers();
   });
+}
+function amFilterUsers(){
+  const q=(Q('AM_SEARCH')?.value||'').toLowerCase().trim();
+  const flt=Q('AM_FILTER')?.value||'all';
+  const list=Q('AM_USERS_LIST'),countEl=Q('AM_USERS_COUNT');
+  let users=amAllUsers.filter(u=>{
+    if(q&&!u.username.toLowerCase().includes(q))return false;
+    if(flt==='admin'&&!u.isAdmin)return false;
+    if(flt==='premium'&&!u.premium?.active)return false;
+    if(flt==='donor'&&!(u.totalDonated>0))return false;
+    return true;
+  });
+  if(countEl)countEl.textContent=users.length!==amAllUsers.length?`${users.length} / ${amAllUsers.length} kullanıcı`:`${amAllUsers.length} kullanıcı`;
+  if(!users.length){list.innerHTML='<div style="color:var(--dim);padding:20px;text-align:center;font-size:.8rem">Sonuç yok.</div>';return;}
+  list.innerHTML=users.map(u=>{
+    const avatarStyle=u.avatar?`background-image:url('${u.avatar}');background-color:transparent`:'';
+    const initials=u.username?u.username[0].toUpperCase():'?';
+    const premDays=u.premium?.daysLeft||0;
+    return `<div class="am-user${u.isAdmin?' is-admin':''}">
+      <div class="am-avatar" style="${avatarStyle}">${u.avatar?'':initials}</div>
+      <div class="am-user-info">
+        <div class="am-user-name">
+          ${esc(u.username)}
+          ${u.isAdmin?'<span class="am-badge admin">ADMIN</span>':''}
+          ${u.premium?.active?`<span class="am-badge premium">PRE${premDays?' '+premDays+'g':''}</span>`:''}
+          ${u.totalDonated>0?'<span class="am-badge donor">BAĞIŞÇI</span>':''}
+        </div>
+        <div class="am-user-meta">🏆 ${u.stats.won} &nbsp;🎮 ${u.stats.played} &nbsp;❤️ ${u.stats.mvp||0} &nbsp;<span style="color:var(--gold)">💰 ${u.coins??0}</span></div>
+      </div>
+      <div class="am-user-actions">
+        <button class="am-btn info" onclick="amEditStats('${u.username}')" title="İstatistik düzenle">📊</button>
+        <button class="am-btn" onclick="amEditCoins('${u.username}',${u.coins??0})" title="Coin yönet" style="color:var(--gold)">💰</button>
+        <button class="am-btn${u.premium?.active?' active-st':''}" onclick="amSetPremium('${u.username}',${!!u.premium?.active})" title="${u.premium?.active?'Premium kaldır ('+(premDays)+' gün kaldı)':'Premium ver'}">👑</button>
+        <button class="am-btn${u.totalDonated>0?' active-st-pink':''}" onclick="amSetDonor('${u.username}',${!(u.totalDonated>0)})" title="${u.totalDonated>0?'Bağışçı yetkisini kaldır':'Bağışçı yap'}">💝</button>
+        <button class="am-btn" onclick="amResetPassword('${u.username}')" title="Şifre sıfırla" style="color:var(--dim)">🔑</button>
+        <button class="am-btn${u.isAdmin?' active-st':''}" onclick="amToggleAdmin('${u.username}',${!u.isAdmin})" title="${u.isAdmin?'Admin yetkisini kaldır':'Admin yap'}">👁️</button>
+        <button class="am-btn danger" onclick="amDeleteUser('${u.username}')" title="Hesabı sil">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 function amCreateUser(){
   const u=Q('AM_NEW_U').value.trim();
@@ -3278,6 +3303,30 @@ function amDeleteUser(username){
 function amToggleAdmin(username,makeAdmin){
   io2.emit('admin:toggleAdmin',{username,isAdmin:makeAdmin},r=>{
     if(r.ok){toast(makeAdmin?'Admin yapıldı.':'Admin yetkisi kaldırıldı.');amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+function amSetPremium(username,hasActive){
+  if(hasActive){
+    if(!confirm(`"${username}" kullanıcısının premium üyeliğini kaldırmak istiyor musun?`))return;
+    io2.emit('admin:setPremium',{username,days:0},r=>{
+      if(r.ok){toast('Premium kaldırıldı.');amLoadUsers();}
+      else toast(r.err||'Hata!',1);
+    });
+  } else {
+    const inp=prompt(`"${username}" için kaç günlük premium? (örn: 30, 90, 365)`);
+    if(!inp)return;
+    const days=parseInt(inp);
+    if(isNaN(days)||days<=0){toast('Geçersiz gün sayısı.',1);return;}
+    io2.emit('admin:setPremium',{username,days},r=>{
+      if(r.ok){toast(`${days} günlük premium verildi.`);amLoadUsers();}
+      else toast(r.err||'Hata!',1);
+    });
+  }
+}
+function amSetDonor(username,makeDonor){
+  io2.emit('admin:setDonor',{username,isDonor:makeDonor},r=>{
+    if(r.ok){toast(makeDonor?'Bağışçı yetkisi verildi.':'Bağışçı yetkisi kaldırıldı.');amLoadUsers();}
     else toast(r.err||'Hata!',1);
   });
 }
@@ -3334,21 +3383,21 @@ function amLoadReports(){
     const token = tr?.token;
     io2.emit('admin:listReports',{},r=>{
       if(!r?.ok){list.innerHTML=`<div style="color:var(--hain)">${r?.err||'Hata'}</div>`;return;}
-      if(!r.reports.length){list.innerHTML='<div style="color:var(--dim);text-align:center;padding:20px">📭 Henüz rapor yok.</div>';return;}
+      if(!r.reports.length){list.innerHTML='<div style="color:var(--dim);text-align:center;padding:24px;font-size:.85rem">📭 Henüz rapor yok.</div>';return;}
       list.innerHTML=r.reports.map(rp=>{
         const date=new Date(rp.createdAt).toLocaleString('tr-TR');
         const escaped=rp.description.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         const imgHtml=rp.screenshot?`<img class="am-report-img" src="/admin/screenshot/${rp.screenshot}?token=${token}" onclick="window.open(this.src,'_blank')">`:'';
         return `<div class="am-report${rp.status==='closed'?' closed':''}">
           <div class="am-report-hdr">
-            <span><span class="am-report-user">${rp.username}</span> <span style="font-family:monospace;font-size:.65rem;opacity:.6">${rp.id}</span></span>
+            <span><span class="am-report-user">${rp.username}</span> <span style="font-family:'Fira Code',monospace;font-size:.6rem;opacity:.5">#${rp.id}</span></span>
             <span>${date}</span>
           </div>
           <div class="am-report-desc">${escaped}</div>
           ${imgHtml}
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="am-btn ${rp.status==='closed'?'info':'ok'}" onclick="amSetReportStatus('${rp.id}','${rp.status==='closed'?'open':'closed'}')">${rp.status==='closed'?'↩️ Aç':'✓ Kapat'}</button>
-            <button class="am-btn danger" onclick="amDeleteReport('${rp.id}')">🗑️ Sil</button>
+          <div class="am-report-actions">
+            <button class="am-action-btn ${rp.status==='closed'?'info':'ok'}" onclick="amSetReportStatus('${rp.id}','${rp.status==='closed'?'open':'closed'}')">${rp.status==='closed'?'↩️ Yeniden Aç':'✓ Kapat'}</button>
+            <button class="am-action-btn danger" onclick="amDeleteReport('${rp.id}')">🗑️ Sil</button>
           </div>
         </div>`;
       }).join('');

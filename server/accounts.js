@@ -506,5 +506,42 @@ module.exports = {
     db[key].hash = bcrypt.hashSync(newPass, 8);
     write(db);
     return { success: true };
+  },
+
+  // Admin tarafından premium ver / kaldır
+  adminSetPremium(username, days) {
+    const db = read(), key = (username || '').toLowerCase().trim();
+    if (!db[key]) return { success: false, error: 'Kullanıcı yok.' };
+    ensureStats(db[key]);
+    const u = db[key];
+    if (days <= 0) {
+      u.premium.active = false;
+      u.premium.expiresAt = 0;
+    } else {
+      const now = Date.now();
+      const ms = days * 24 * 60 * 60 * 1000;
+      const base = (u.premium.expiresAt && u.premium.expiresAt > now) ? u.premium.expiresAt : now;
+      u.premium.expiresAt = base + ms;
+      u.premium.active = true;
+      if (!u.premium.since) u.premium.since = now;
+    }
+    write(db);
+    return { success: true, expiresAt: u.premium.expiresAt };
+  },
+
+  // Admin tarafından bağışçı permi ver / kaldır
+  adminSetDonor(username, isDonor) {
+    const db = read(), key = (username || '').toLowerCase().trim();
+    if (!db[key]) return { success: false, error: 'Kullanıcı yok.' };
+    ensureStats(db[key]);
+    const u = db[key];
+    if (isDonor) {
+      if (u.totalDonated <= 0) u.totalDonated = 1;
+    } else {
+      u.totalDonated = 0;
+      u.inventory = u.inventory.filter(it => (typeof it === 'string' ? it : it.id) !== 'frame_donor');
+    }
+    write(db);
+    return { success: true };
   }
 };
