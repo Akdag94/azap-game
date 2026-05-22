@@ -453,17 +453,25 @@ app.get('/admin/analytics', adminLimiter, (req, res) => {
   const reports = Reports.list();
   const openReports = reports.filter(r => r.status === 'open' || !r.status).length;
   const closedReports = reports.length - openReports;
+  const reportResolutionRate = reports.length > 0 ? Math.round(closedReports / reports.length * 100) : 0;
+
+  // ── EK İSTATİSTİKLER ──
+  const donorCount = users.filter(u => u.totalDonated > 0).length;
+  const playersEver = users.filter(u => (u.stats?.played || 0) > 0).length;
+  const retainedPlayers = users.filter(u => (u.stats?.played || 0) > 1).length;
+  const retentionRate = playersEver > 0 ? Math.round(retainedPlayers / playersEver * 100) : 0;
+  const avgItemsPerUser = usersWithItems > 0 ? (totalItemsOwned / usersWithItems).toFixed(1) : '0';
 
   res.json({
     ok: true,
     stats: {
       server: { uptime, totalConnections: siteStats.totalConnections, currentActive: siteStats.currentActive, peakConcurrent: siteStats.peakConcurrent, history: siteStats.history },
-      users: { total: totalUsers, admins: totalAdmins, premium: activePremium, today: usersToday, thisWeek: usersThisWeek, thisMonth: usersThisMonth, neverPlayed, withInventory: usersWithItems },
+      users: { total: totalUsers, admins: totalAdmins, premium: activePremium, today: usersToday, thisWeek: usersThisWeek, thisMonth: usersThisMonth, neverPlayed, withInventory: usersWithItems, donorCount, playersEver, retentionRate },
       finance: { totalDonations, totalCoins: totalCoinsHeld, avgCoins },
       games: { played: totalGamesPlayed, won: totalGamesWon, lost: totalGamesLost, mvps: totalMVPs, avgWinRate, avgGamesPerPlayer },
-      inventory: { totalItemsOwned, topItems },
+      inventory: { totalItemsOwned, topItems, avgItemsPerUser },
       live: { activeRooms, playersInRooms, rooms: liveRoomsData },
-      reports: { open: openReports, closed: closedReports, total: reports.length },
+      reports: { open: openReports, closed: closedReports, total: reports.length, resolutionRate: reportResolutionRate },
       topPlayers, topWinners, topWinRate, topMvps, topLosers, topDonors, topRichest, premiumUsers, registrationsByDay
     }
   });
