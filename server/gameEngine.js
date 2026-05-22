@@ -2250,13 +2250,28 @@ class GameEngine {
   isBot(pid) { return this.bots.has(pid); }
 
   // ── SESLİ SOHBET KURALLARI (Klasik Mafya) ──
-  // Bu oyuncu mikrofonunu açıp konuşabilir mi? (rol-mute kontrolü)
+  // Bu oyuncu mikrofonunu açıp konuşabilir mi?
   canSpeak(pid) {
     const p = this.players.get(pid);
     if (!p) return false;
     if (this.isBot(pid)) return false;
-    if (p.isSilenced) return false; // Gölge tarafından susturuldu
-    return true;
+    // Ölüler asla konuşamaz
+    if (!p.isAlive) return false;
+    // Lobi/post-game → herkes konuşabilir
+    const lobbyPhases = [PHASES.LOBBY, PHASES.POST_GAME, PHASES.GAME_OVER];
+    if (lobbyPhases.includes(this.phase)) return true;
+    // Gece → sadece hainler konuşabilir
+    if (this.phase === PHASES.NIGHT) {
+      return p.actualTeam === TEAMS.HAIN;
+    }
+    // Tartışma, oylama, başkan seçimi → canlılar konuşabilir
+    const speakPhases = [PHASES.DAY_DISCUSSION, PHASES.VOTING, PHASES.PRESIDENT_VOTE];
+    if (speakPhases.includes(this.phase)) {
+      if (p.isSilenced) return false; // Susturulmuş → gündüz konuşamaz
+      return true;
+    }
+    // Diğer fazlarda (sabah raporu, rol seçimi, vb.) konuşma kapalı
+    return false;
   }
   // Listener konuşmacıyı duyabilir mi?
   canHear(listenerId, speakerId) {
@@ -2265,21 +2280,22 @@ class GameEngine {
     const l = this.players.get(listenerId);
     const s = this.players.get(speakerId);
     if (!l || !s) return false;
-    if (s.isSilenced) return false; // Konuşmacı sustu → kimse duymaz
-    // Lobi/post-game/rol seçimi/rol açılışı → herkes
-    const lobbyLikePhases = [PHASES.LOBBY, PHASES.POST_GAME, PHASES.ROLE_SELECTION, PHASES.ROLE_REVEAL, PHASES.GAME_OVER];
-    if (lobbyLikePhases.includes(this.phase)) return true;
-    // Ölü/canlı ayrımı: aynı statüde olmayanlar duyamaz
-    if (l.isAlive !== s.isAlive) return false;
-    // İkisi de ölü → ölü kanalında konuşur
-    if (!l.isAlive && !s.isAlive) return true;
-    // İkisi de canlı:
+    // Konuşmacı konuşamıyorsa kimse duymaz
+    if (!this.canSpeak(speakerId)) return false;
+    // Lobi/post-game → herkes herkesi duyar
+    const lobbyPhases = [PHASES.LOBBY, PHASES.POST_GAME, PHASES.GAME_OVER];
+    if (lobbyPhases.includes(this.phase)) return true;
+    // Gece → sadece hainler birbirini duyar
     if (this.phase === PHASES.NIGHT) {
-      // Gece → sadece hainler kendi aralarında
       return l.actualTeam === TEAMS.HAIN && s.actualTeam === TEAMS.HAIN;
     }
-    // Gündüz/oylama/sabah raporu/MVP/sonuç/sabotaj → tüm canlılar
-    return true;
+    // Tartışma, oylama, başkan seçimi → ölüler duyabilir (konuşamaz), canlılar da duyar
+    const speakPhases = [PHASES.DAY_DISCUSSION, PHASES.VOTING, PHASES.PRESIDENT_VOTE];
+    if (speakPhases.includes(this.phase)) {
+      return true; // Ölüler de duyar ama konuşamaz (canSpeak=false garantili)
+    }
+    // Diğer fazlarda ses yok
+    return false;
   }
   // Bir oyuncunun ses olarak bağlanması gereken peer ID listesi
   getVoicePeers(pid) {
