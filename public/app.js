@@ -331,22 +331,30 @@ let _musicMuted=false,_musicEnabled=true;
 try{_musicMuted=localStorage.getItem('azap_music_muted')==='1';_musicEnabled=localStorage.getItem('azap_music_enabled')!=='0';}catch{}
 
 // Sync state
-let _radioRTT=0,_radioSyncInterval=null,_radioSyncing=false;
+let _radioRTT=0,_radioRTTSamples=[],_radioSyncInterval=null,_radioSyncing=false;
 
-// Server'dan anlık pozisyonu al, sadece seek yap (play() yok — gesture bağımsız)
+// ── SYNC MATEMATİĞİ ──
+// rate = 1 - drift/5  →  5 saniyede tam telafi
+// clamp [0.93, 1.07]  →  max %7 fark, kulak fark etmez
+// DEAD ZONE [0.12s, 0.28s]: dokunma — RTT jitterini absorbe eder, salınımı önler
+// rate aktifken 0.12s altına düşerse sıfırla; aksi hâlde bir sonraki sync'e bırak
+
 function _radioResync(){
-  if(_radioSyncing||!_musicAudio||!_musicAudio.src) return;
+  if(_radioSyncing||!_musicAudio||!_musicAudio.src||_musicAudio.paused||_musicMuted) return;
   _radioSyncing=true;
   const t0=Date.now();
   io2.emit('radio:now',null,d=>{
     _radioSyncing=false;
-    if(!d||!d.file||!_musicAudio) return;
+    if(!d||!d.file||!_musicAudio||_musicAudio.paused) return;
     const rtt2=Date.now()-t0;
-    _radioRTT=rtt2;
-    const srvPos=((d.position||0)+rtt2/2)/1000;
+    // RTT moving average (son 4 ölçüm) — jitter etkisini azaltır
+    _radioRTTSamples.push(rtt2);
+    if(_radioRTTSamples.length>4) _radioRTTSamples.shift();
+    const avgRTT=_radioRTTSamples.reduce((a,b)=>a+b,0)/_radioRTTSamples.length;
+    _radioRTT=avgRTT;
+    const srvPos=((d.position||0)+avgRTT/2)/1000;
     const same=decodeURIComponent(_musicAudio.src||'').endsWith(decodeURIComponent(d.file));
     if(!same){
-      // Yeni şarkı — src güncelle, play() yok (çalan hali koruyalım)
       _musicCurrentFile=d.file; _musicCurrentName=d.name||'';
       const lbl=document.querySelector('.music-radio-label');
       if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
@@ -356,9 +364,20 @@ function _radioResync(){
       });
       return;
     }
-    // Aynı şarkı: drift > 0.2s ise direkt seek (playbackRate yok — ses ritmi bozulmasın)
-    const drift=_musicAudio.currentTime-srvPos;
-    if(Math.abs(drift)>0.2) _musicAudio.currentTime=srvPos;
+    const drift=_musicAudio.currentTime-srvPos; // + = client ilerde, - = client geride
+    const absDrift=Math.abs(drift);
+    if(_musicAudio.playbackRate!==1&&absDrift<0.12){
+      // Düzeldi: rate'i sıfırla
+      _musicAudio.playbackRate=1;
+    } else if(absDrift>=0.28&&absDrift<=4){
+      // Anlamlı kayma: 5s'de telafi edecek rate (salınım önleme: dead zone 0.12-0.28)
+      _musicAudio.playbackRate=Math.max(0.93,Math.min(1.07,1-drift/5));
+    } else if(absDrift>4){
+      // Çok büyük kayma (>4s): tek seferlik seek
+      _musicAudio.playbackRate=1;
+      _musicAudio.currentTime=srvPos;
+    }
+    // 0.12 ≤ |drift| < 0.28: dead zone — RTT jitter bölgesi, dokunma
   });
 }
 
@@ -385,7 +404,7 @@ function _tryMobilePlay(){
   // iOS: src set ama load() çağrılmamış/engellenmiş olabilir, gesture'da yeniden dene
   if(_musicAudio.readyState<1) _musicAudio.load();
   _musicAudio.play()
-    .then(()=>{ setTimeout(_radioResync,150); }) // çaldıktan 150ms sonra doğru konuma seek
+    .then(()=>{ setTimeout(_radioResync,200); }) // çaldıktan 200ms sonra rate-sync başlat
     .catch(()=>{});
 }
 
@@ -433,11 +452,11 @@ function radioLoadTrack(data,rtt){
   if(!_musicMuted&&shouldPlayMusic()) _musicAudio.play().catch(()=>{});
   updateMusicUI();
   if(!_radioSyncInterval){
-    // 3 saniyede bir direkt seek sync (playbackRate yok)
+    // 5 saniyede bir rate-based sync
     _radioSyncInterval=setInterval(()=>{
       if(!shouldPlayMusic()||!_musicAudio||_musicAudio.paused||_musicMuted) return;
       _radioResync();
-    },3000);
+    },5000);
   }
 }
 
@@ -481,7 +500,7 @@ function toggleMusic(){
       _musicAudio.muted=false; _musicAudio.volume=0.3;
       if(_musicAudio.readyState<1) _musicAudio.load();
       _musicAudio.play()
-        .then(()=>{ setTimeout(_radioResync,150); })
+        .then(()=>{ setTimeout(_radioResync,200); })
         .catch(()=>{});
     }
   }
