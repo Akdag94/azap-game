@@ -128,6 +128,7 @@ const io2=io({
 });
 let me,gs,ps,sel1,sel2,selG,voted,nsent,isSpec=false,isDead=false,AM='login',user=null,deathOk=false,lastDead=new Set(),_lastSpec=null;
 let mvpVoted=null;
+let mks=null,mkps=null; // Matrix Krallığı public/private state
 const Q=id=>document.getElementById(id);
 // XSS koruması: HTML entity escape
 const esc = (s) => {
@@ -769,12 +770,15 @@ function cosmeticPreviewHTML(id, item){
   if(!item) return '<span>?</span>';
   if(item.cat==='frame'){
     const p=item.preview||{};
-    const durMap={legendaryShine:'3s linear',oceanWave:'4s ease',lightningStrike:'2.5s ease-in-out',cyberGlitch:'2s ease-in-out',natureBreath:'3s ease-in-out',laserDot:'3s linear',auroraPulse:'4s ease-in-out',matrixGlow:'2.5s ease-in-out',tickerPulse:'3s ease-in-out',donorCalm:'4s ease-in-out',obsidianSweep:'3.5s ease-in-out',smokeDrift:'4s ease-in-out',steelFlash:'5s ease-in-out',templarGlow:'3s ease-in-out',emperorRuby:'3.5s ease-in-out',crusadeShine:'4s linear'};
-    const aDur=p.animDur||(durMap[p.anim]||'1.5s ease-in-out');
-    const animStyle=p.anim?`animation:${p.anim} ${aDur} infinite;`:'';
+    const durMap={legendaryShine:'3s',oceanWave:'4s',lightningStrike:'2.5s',cyberGlitch:'2s',natureBreath:'3s',laserDot:'3s',auroraPulse:'4s',matrixGlow:'2.5s',tickerPulse:'3s',donorCalm:'4s',obsidianSweep:'3.5s',smokeDrift:'4s',steelFlash:'5s',templarGlow:'3s',emperorRuby:'3.5s',crusadeShine:'4s'};
+    const easeMap={legendaryShine:'linear',oceanWave:'ease',lightningStrike:'ease-in-out',cyberGlitch:'ease-in-out',natureBreath:'ease-in-out',laserDot:'linear',auroraPulse:'ease-in-out',matrixGlow:'ease-in-out',tickerPulse:'ease-in-out',donorCalm:'ease-in-out',obsidianSweep:'ease-in-out',smokeDrift:'ease-in-out',steelFlash:'ease-in-out',templarGlow:'ease-in-out',emperorRuby:'ease-in-out',crusadeShine:'linear'};
+    const aDur=p.animDur||durMap[p.anim]||'1.5s';
+    const aEase=p.animEase||easeMap[p.anim]||'ease-in-out';
+    const animStyle=p.anim?`animation:${p.anim} ${aDur} ${aEase} infinite;`:'';
     const bgSizeStyle=p.bgSize?`background-size:${p.bgSize};`:'';
     const clsStr=p.cls?` ${p.cls}`:'';
-    return `<div class="frame-preview-card${clsStr}" style="border:${p.border||'1px solid var(--brd)'};box-shadow:${p.shadow||'none'};background:${p.bg||'var(--bg3)'};position:relative;overflow:visible;${bgSizeStyle}${animStyle}"><span>Azat</span></div>`;
+    const ring=p.cls?frOverlaySVG(p.cls,user?.username||'Azat'):'';
+    return `<div class="frame-preview-card${clsStr}" style="border:${p.border||'1px solid var(--brd)'};box-shadow:${p.shadow||'none'};background:${p.bg||'var(--bg3)'};position:relative;overflow:visible;${bgSizeStyle}${animStyle}"><span>Azat</span>${ring}</div>`;
   }
   if(item.cat==='pet'){
     const p=item.preview||{};
@@ -900,7 +904,8 @@ function renderInventoryPreview(items){
   const fontFamily = fontPreview.family ? fontPreview.family.replace(/"/g,"'") : 'inherit';
   let avatar = avHTML(user?.avatar,'lg','👤');
   if(fw){
-    avatar = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatar}</div>`;
+    const dur=fw.animDur||'2s',ease=fw.animEase||'ease-in-out',cls=fw.cls?` ${fw.cls}`:'',ring=fw.cls?frOverlaySVG(fw.cls,user?.username):'';
+    avatar = `<div class="fr-wrap${cls}" style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;position:relative;overflow:visible;${fw.anim?`animation:${fw.anim} ${dur} ${ease} infinite`:''}">${avatar}${ring}</div>`;
   }
   const pet = petItem ? `<span class="inv-preview-pet" style="animation:${petPreview.anim||'catIdle'} 3s ease-in-out infinite">${petPreview.sprite||petItem.emoji}</span>` : '';
   const activeNames = ['frame','pet','font'].map(cat=>equipped[cat] ? _cosmeticCatalog?.[equipped[cat]]?.name : null).filter(Boolean);
@@ -1043,7 +1048,8 @@ function updateUserUI(){
   const fw = cosmeticFrameWrap(user.equipped, true);
   let avatarHtml = avHTML(user.avatar,'md','👤');
   if(fw){
-    avatarHtml = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:4px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${avatarHtml}</div>`;
+    const dur=fw.animDur||'2s',ease=fw.animEase||'ease-in-out',cls=fw.cls?` ${fw.cls}`:'',ring=fw.cls?frOverlaySVG(fw.cls,user.username):'';
+    avatarHtml = `<div class="fr-wrap${cls}" style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:4px;position:relative;overflow:visible;${fw.anim?`animation:${fw.anim} ${dur} ${ease} infinite`:''}">${avatarHtml}${ring}</div>`;
   }
   Q('WAV_SLOT').innerHTML=avatarHtml;
   // Coin göster
@@ -1066,7 +1072,8 @@ function openProfile(){
     if(avWrap){
       let profAvatar = avHTML(r.avatar,'lg','👤');
       if(fw){
-        profAvatar = `<div style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;${fw.anim?`animation:${fw.anim} 2s ease-in-out infinite`:''}">${profAvatar}</div>`;
+        const dur=fw.animDur||'2s',ease=fw.animEase||'ease-in-out',cls=fw.cls?` ${fw.cls}`:'',ring=fw.cls?frOverlaySVG(fw.cls,r.username):'';
+        profAvatar = `<div class="fr-wrap${cls}" style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:5px;position:relative;overflow:visible;${fw.anim?`animation:${fw.anim} ${dur} ${ease} infinite`:''}">${profAvatar}${ring}</div>`;
       }
       avWrap.innerHTML = `${profAvatar.replace('class="av av-lg"','class="av av-lg" id="PROF_AV"')}
 <div style="display:flex;gap:6px;margin-top:8px;justify-content:center;flex-wrap:wrap">
@@ -2122,6 +2129,49 @@ function cosmeticPetHTML(cosm, isMe){
   const sprite=p.sprite||item.emoji;
   return `<span style="display:inline-block;font-size:1.1rem;margin-left:4px;vertical-align:middle;animation:${anim} 3s ease-in-out infinite;line-height:1">${sprite}</span>`;
 }
+// SVG dönen yazı ring'i + lazer kuyruklu yıldız
+let _frRingId=0;
+const _frRingCfg={
+  'fr-ticker':{text:'AZAP \u2022 SYSTEM \u2022 ONLINE \u2022 SABOTAJ \u2022 OY \u2022 HA\u0130N \u2022 ',color:'#64ffda',speed:'12s',size:'7',shape:'rect'},
+  'fr-matrix':{text:'01 F3 A7 \u2022 10 B2 00 \u2022 FF 3E \u2022 C9 D1 \u2022 ',color:'#39ff14',speed:'12s',size:'7',shape:'rect'},
+  'fr-premium-txt':{label:'PREMIUM',color:'#bb8fce',speed:'12s',size:'7',nameAlt:true},
+  'fr-donor-ring':{label:'SUPPORT',color:'#e91e63',speed:'12s',size:'7',nameAlt:true}
+};
+const _frCirclePath='M50,50 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0';
+const _frRectPath='M16,6 H84 Q94,6 94,16 V84 Q94,94 84,94 H16 Q6,94 6,84 V16 Q6,6 16,6 Z';
+function _frTextRing(cls,name){
+  const cfg=_frRingCfg[cls];
+  if(!cfg) return '';
+  const id='ftr'+(++_frRingId);
+  const isRect=cfg.shape==='rect';
+  const d=isRect?_frRectPath:_frCirclePath;
+  let baseText=cfg.text||'';
+  if(cfg.nameAlt){
+    const n=name||'Player';
+    baseText=`${cfg.label} \u2726 ${n} \u2726 `;
+  }
+  const fs=parseFloat(cfg.size)||7;
+  if(isRect){
+    const txt=baseText.repeat(6);
+    return `<svg class="fr-text-ring ring-rect" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><path id="${id}" d="${d}" fill="none"/></defs><text fill="${cfg.color}" font-size="${fs}" font-family="'Courier New',monospace" font-weight="600" opacity=".9"><textPath href="#${id}">${txt}<animate attributeName="startOffset" from="0%" to="100%" dur="${cfg.speed}" repeatCount="indefinite"/></textPath></text><text fill="${cfg.color}" font-size="${fs}" font-family="'Courier New',monospace" font-weight="600" opacity=".9"><textPath href="#${id}">${txt}<animate attributeName="startOffset" from="-100%" to="0%" dur="${cfg.speed}" repeatCount="indefinite"/></textPath></text></svg>`;
+  }
+  const maxChars=Math.round(276/(fs*0.6));
+  const reps=Math.max(2,Math.ceil(maxChars/baseText.length));
+  const txt=baseText.repeat(reps);
+  return `<svg class="fr-text-ring ring-spin" style="--rd:${cfg.speed}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><path id="${id}" d="${d}" fill="none"/></defs><text fill="${cfg.color}" font-size="${fs}" font-family="'Courier New',monospace" font-weight="600" opacity=".9"><textPath href="#${id}">${txt}</textPath></text></svg>`;
+}
+function frLaserSVG(){
+  const id='flz'+(++_frRingId);
+  const d='M10,1 H90 Q99,1 99,10 V90 Q99,99 90,99 H10 Q1,99 1,90 V10 Q1,1 10,1 Z';
+  const peri=377,dashLen=35,gap=peri-dashLen;
+  return `<svg style="position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);pointer-events:none;overflow:visible;z-index:10" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="${id}a"><feGaussianBlur stdDeviation="4"/></filter><filter id="${id}b"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="${d}" fill="none" stroke="#0ff" stroke-width="7" stroke-dasharray="${dashLen} ${gap}" opacity=".25" stroke-linecap="round" filter="url(#${id}a)"><animate attributeName="stroke-dashoffset" from="0" to="-${peri}" dur="3s" repeatCount="indefinite"/></path><path d="${d}" fill="none" stroke="#0ff" stroke-width="2.5" stroke-dasharray="${dashLen-8} ${gap+8}" opacity=".9" stroke-linecap="round" filter="url(#${id}b)"><animate attributeName="stroke-dashoffset" from="0" to="-${peri}" dur="3s" repeatCount="indefinite"/></path></svg>`;
+}
+function frOverlaySVG(cls,name){
+  if(!cls) return '';
+  if(_frRingCfg[cls]) return _frTextRing(cls,name);
+  if(cls==='fr-laser') return frLaserSVG();
+  return '';
+}
 function cosmeticPlayerAvatarHTML(p, size, isMe, pad){
   const fw=cosmeticFrameWrap(p?.cosmetics,isMe);
   let avatar=avHTML(p?.avatar,size||'sm');
@@ -2129,7 +2179,8 @@ function cosmeticPlayerAvatarHTML(p, size, isMe, pad){
     const dur=fw.animDur||'2s';
     const ease=fw.animEase||'ease-in-out';
     const cls=fw.cls?` ${fw.cls}`:'';
-    avatar=`<div class="fr-wrap${cls}" style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:${pad||'3px'};margin:1px;position:relative;${fw.anim?`animation:${fw.anim} ${dur} ${ease} infinite`:''}">${avatar}</div>`;
+    const ring=fw.cls?frOverlaySVG(fw.cls,p?.name||p?.username):'';
+    avatar=`<div class="fr-wrap${cls}" style="display:inline-flex;border:${fw.border};box-shadow:${fw.shadow};background:${fw.bg};border-radius:13px;padding:${pad||'3px'};margin:1px;position:relative;${fw.anim?`animation:${fw.anim} ${dur} ${ease} infinite`:''}">${avatar}${ring}</div>`;
   }
   return avatar;
 }
@@ -2188,7 +2239,27 @@ function renderLobby(){
       if(info) info.textContent = botCount>0 ? `🤖 ${botCount} bot odada (${gs.players.length}/${20})` : `Henüz bot eklenmedi (${gs.players.length}/${20})`;
     }
   }
-  Q('BS').disabled=gs.players.length<4;
+  // MK mod paneli (sadece lider)
+  const mkPanel=Q('MK_MODE_PANEL');
+  const isMK=!!gs.mkMode;
+  if(mkPanel){
+    mkPanel.style.display=isLeader?'block':'none';
+    const mkBtn=Q('MK_MODE_BTN');
+    if(mkBtn){
+      mkBtn.innerHTML=isMK
+        ?'&#x2B21; Oyun Modu: MATRIX KRALLIĞI <span style="font-size:.6rem;background:rgba(255,150,0,.2);border:1px solid rgba(255,150,0,.5);color:#f39c12;padding:1px 5px;border-radius:3px;font-family:Fira Code,monospace;letter-spacing:1px;vertical-align:middle">DEMO</span>'
+        :'&#x2B21; Oyun Modu: Standart AZAP';
+      mkBtn.style.borderColor=isMK?'rgba(0,200,255,.7)':'rgba(0,200,255,.35)';
+      mkBtn.style.background=isMK?'rgba(0,200,255,.15)':'rgba(0,200,255,.06)';
+      mkBtn.style.color=isMK?'#00ffff':'rgba(0,200,255,.85)';
+    }
+  }
+  // Ayarlar paneli: standart AZAP vs Matrix Kralliği
+  const sp2Azap=Q('SP2_AZAP'), sp2Mk=Q('SP2_MK');
+  if(sp2Azap) sp2Azap.style.display=isMK?'none':'block';
+  if(sp2Mk)   sp2Mk.style.display=isMK?'block':'none';
+  // MK baslatma için min 5 oyuncu, standart 4
+  Q('BS').disabled=isMK?gs.players.length<5:gs.players.length<4;
   // Voice speaking class'larını hemen uygula (flash önleme)
   if(typeof _applyVoiceClassesToCards==='function') _applyVoiceClassesToCards();
   // Altın Havuzu paneli sadece login olmuş ve oyuncu olarak katılmış kişiye görünür
@@ -4033,6 +4104,15 @@ io2.on('state',s=>{
     }
     return;
   }
+  // ── MATRIX KRALLIĞI MODU ──
+  if(s.phase==='mk_active'){
+    mks=s;
+    if(phaseChanged)show('S_MK');
+    renderMK();
+    return;
+  }
+  mks=null;
+
   const m={lobby:'S2',role_selection:'S_RS',role_reveal:'S3',president_vote:'S_PV',night:'S4',morning_report:'S5',day_discussion:'S6',voting:'S7',vote_result:'S8',mvp_vote:'S_MV',mvp_result:'S_MVR',game_over:'S9',post_game:'S9'};
   // Sadece phase değiştiğinde ekranı değiştir (gereksiz redraw önler)
   if(phaseChanged && m[s.phase])show(m[s.phase]);
@@ -4098,6 +4178,12 @@ function updateDayPlayerList(){
 
 io2.on('priv',s=>{
   ps=s;
+  // Matrix Krallığı özel priv
+  if(gs?.phase==='mk_active'){
+    mkps=s;
+    renderMK();
+    return;
+  }
   // Ölü/izleyici ise normal render yapma — S10'da kalsın
   if(isSpec||isDead){
     if(!s.isAlive&&!deathOk){Q('DOV').classList.add('sh');deathOk=true;}
@@ -4841,6 +4927,326 @@ function _makeDraggable(el){
     }
   } catch {}
 }
+
+// ══════════════════════════════════════════════
+// MATRIX KRALLIĞI (MK) FRONTEND
+// ══════════════════════════════════════════════
+
+function toggleMKMode(){
+  const isMK=!!gs?.mkMode;
+  io2.emit('room:setMode',{mode:isMK?'standard':'matrix_kingdom'},r=>{
+    if(!r?.ok) toast(r?.err||'Hata',1);
+  });
+}
+
+function mkNominate(partnerId){
+  io2.emit('mk:nominate',{partnerId},r=>{
+    if(!r?.ok) toast(r?.err||'Hata',1);
+  });
+}
+
+function mkVote(vote){
+  io2.emit('mk:vote',{vote},r=>{
+    if(!r?.ok) toast(r?.err||'Hata',1);
+  });
+}
+
+function mkDiscardLeader(idx){
+  io2.emit('mk:discard_leader',{discardIndex:idx},r=>{
+    if(!r?.ok) toast(r?.err||'Hata',1);
+  });
+}
+
+function mkDeploy(idx){
+  io2.emit('mk:deploy',{deployIndex:idx},r=>{
+    if(!r?.ok) toast(r?.err||'Hata',1);
+  });
+}
+
+function mkUsePower(targetId){
+  io2.emit('mk:use_power',{targetId},r=>{
+    if(!r?.ok) toast(r?.err||'Hata',1);
+  });
+}
+
+function mkSkipPower(){
+  io2.emit('mk:skip_power',{},r=>{
+    if(!r?.ok) toast(r?.err||'Hata',1);
+  });
+}
+
+// ── MK State renderlama
+function renderMK(){
+  const box=Q('MK_CONTENT');
+  if(!box||!mks)return;
+  const s=mks.mkState;
+  if(!s){box.innerHTML='';return;}
+  box.innerHTML=mkBoardHTML(s)+mkRoleCardHTML()+mkPhaseHTML(s)+mkLogHTML(s)+mkPlayerListHTML(s);
+}
+
+function mkBoardHTML(s){
+  const m=s.board.matrix, r=s.board.rebel;
+  const bars=(count,max,cls)=>Array.from({length:max},(_, i)=>`<div class="mk-slot ${i<count?cls:''}"></div>`).join('');
+  return `<div class="mk-board">
+    <div class="mk-track">
+      <div class="mk-track-label">MATRIX</div>
+      <div class="mk-track-slots">${bars(m,5,'mk-slot-matrix')}</div>
+      <div class="mk-track-count" style="color:#00bfff">${m}/5</div>
+    </div>
+    <div class="mk-track">
+      <div class="mk-track-label">ASİ</div>
+      <div class="mk-track-slots">${bars(r,6,'mk-slot-rebel')}</div>
+      <div class="mk-track-count" style="color:#c0392b">${r}/6</div>
+    </div>
+    ${s.chaosCounter>0?`<div class="mk-chaos">KAOS SAYACI: ${s.chaosCounter}/3</div>`:''}
+    <div style="font-size:.68rem;color:var(--dim);text-align:right;margin-top:2px">Destede ${s.deckSize} kart</div>
+  </div>`;
+}
+
+function mkRoleCardHTML(){
+  if(!mkps)return '';
+  const r=mkps.role;
+  let roleLabel='',roleDesc='',roleColor='',roleBg='';
+  if(r==='knight'){
+    roleLabel='ŞÖVALYE';roleDesc='Sistemi ve krallığı koru.';
+    roleColor='#00bfff';roleBg='rgba(0,191,255,.08)';
+  } else if(r==='traitor'){
+    roleLabel='ASİ';roleDesc='Sistemi hackle! Müttefiklerini biliyorsun.';
+    roleColor='#c0392b';roleBg='rgba(192,57,43,.08)';
+    let allies='';
+    if(mkps.traitorAllies?.length) allies=mkps.traitorAllies.map(a=>`<span class="mk-ally">${esc(a.name)}</span>`).join(' ');
+    if(mkps.kingName) allies+=` <span class="mk-king-tag">KRAL: ${esc(mkps.kingName)}</span>`;
+    if(allies) roleDesc+=`<br><span style="font-size:.72rem">${allies}</span>`;
+  } else if(r==='king'){
+    roleLabel='KRAL';roleDesc='Sen asilerin gizli liderisin.';
+    roleColor='#8e44ad';roleBg='rgba(142,68,173,.08)';
+    if(mkps.traitorName) roleDesc+=`<br><span style="font-size:.72rem">Müttefikin: <span class="mk-ally">${esc(mkps.traitorName)}</span></span>`;
+  }
+  return `<div class="mk-role-card" style="border-color:${roleColor};background:${roleBg}">
+    <span class="mk-role-label" style="color:${roleColor}">${roleLabel}</span>
+    <span class="mk-role-desc">${roleDesc}</span>
+  </div>`;
+}
+
+function mkPhaseHTML(s){
+  const isLeader=mkps?.isLeader;
+  const isPartner=mkps?.isPartner;
+
+  if(s.mkPhase==='nomination') return mkNominationHTML(s,isLeader);
+  if(s.mkPhase==='vote') return mkVoteHTML(s);
+  if(s.mkPhase==='card_leader') return mkCardLeaderHTML(isLeader);
+  if(s.mkPhase==='card_partner') return mkCardPartnerHTML(isPartner);
+  if(s.mkPhase==='power') return mkPowerHTML(s,isLeader);
+  if(s.mkPhase==='game_over') return mkGameOverHTML(s);
+  return '';
+}
+
+function mkNominationHTML(s,isLeader){
+  const leader=s.currentLeader;
+  const lock=s.termLock||{};
+  let html=`<div class="mk-phase-box">
+    <div class="mk-phase-title">LİDER NOMİNASYONU</div>`;
+  if(isLeader){
+    html+=`<div style="margin-bottom:8px;font-size:.8rem;color:#00bfff">Sen lidersin! Bir yaver seç.</div>`;
+    html+=`<div class="mk-player-grid">`;
+    (s.players||[]).forEach(p=>{
+      if(!p.isAlive||p.id===me)return;
+      const locked=p.id===lock.leaderId||p.id===lock.partnerId;
+      html+=`<button class="mk-player-btn ${locked?'mk-player-locked':''}"
+        onclick="${locked?'':'mkNominate(\''+p.id+'\')'}"
+        ${locked?'disabled title="Geçen tur görevdeydi"':''}>${esc(p.name)}${locked?' 🔒':''}</button>`;
+    });
+    html+=`</div>`;
+  } else {
+    html+=`<div style="font-size:.85rem;color:var(--dim)">Lider: <strong style="color:#00bfff">${esc(leader?.name||'?')}</strong></div>`;
+    html+=`<div style="font-size:.8rem;color:var(--dim);margin-top:6px">Liderin yaver seçmesi bekleniyor...</div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+
+function mkVoteHTML(s){
+  const partner=s.nominatedPartner;
+  const leader=s.currentLeader;
+  const myVoted=false; // track via local state - server prevents double vote
+  return `<div class="mk-phase-box">
+    <div class="mk-phase-title">DİVAN OYLAMASI</div>
+    <div style="font-size:.82rem;margin-bottom:6px">
+      <strong style="color:#00bfff">${esc(leader?.name||'?')}</strong> + <strong style="color:#aaa">${esc(partner?.name||'?')}</strong> hükümeti kuruluyor
+    </div>
+    <div style="font-size:.75rem;color:var(--dim);margin-bottom:10px">Oy veren: ${s.votes?.total||0}/${(s.players||[]).filter(p=>p.isAlive).length}</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="mk-vote-btn mk-ja" onclick="mkVote('ja')">JA</button>
+      <button class="mk-vote-btn mk-nein" onclick="mkVote('nein')">NEIN</button>
+    </div>
+    <div style="margin-top:10px;font-size:.72rem;color:var(--dim);text-align:center">Oyun tamamen gizli — kimse kimin ne oy verdiğini göremez</div>
+  </div>`;
+}
+
+function mkCardLeaderHTML(isLeader){
+  if(!isLeader){
+    return `<div class="mk-phase-box"><div class="mk-phase-title">KART SEÇİMİ</div>
+      <div style="font-size:.8rem;color:var(--dim)">Lider kartlarını inceliyor...</div></div>`;
+  }
+  const cards=mkps?.pendingCards||[];
+  let html=`<div class="mk-phase-box"><div class="mk-phase-title">KART İMHA ET</div>
+    <div style="font-size:.78rem;color:var(--dim);margin-bottom:8px">3 karttan birini imha et. Kalan 2 yavere geçer.</div>
+    <div class="mk-cards">`;
+  cards.forEach((c,i)=>{
+    html+=`<button class="mk-card-btn ${c==='matrix'?'mk-card-matrix':'mk-card-rebel'}" onclick="mkDiscardLeader(${i})">
+      <span class="mk-card-name">${c==='matrix'?'MATRIX':'ASİ'}</span>
+      <span class="mk-card-action">İMHA ET</span>
+    </button>`;
+  });
+  html+=`</div></div>`;
+  return html;
+}
+
+function mkCardPartnerHTML(isPartner){
+  if(!isPartner){
+    return `<div class="mk-phase-box"><div class="mk-phase-title">KART YÜKLEMESİ</div>
+      <div style="font-size:.8rem;color:var(--dim)">Yaver son kartı seçiyor...</div></div>`;
+  }
+  const cards=mkps?.pendingCards||[];
+  let html=`<div class="mk-phase-box"><div class="mk-phase-title">KARTI MASAYA YÜKLE</div>
+    <div style="font-size:.78rem;color:var(--dim);margin-bottom:8px">2 karttan birini masaya yükle.</div>
+    <div class="mk-cards">`;
+  cards.forEach((c,i)=>{
+    html+=`<button class="mk-card-btn ${c==='matrix'?'mk-card-matrix':'mk-card-rebel'}" onclick="mkDeploy(${i})">
+      <span class="mk-card-name">${c==='matrix'?'MATRIX':'ASİ'}</span>
+      <span class="mk-card-action">YÜKLE</span>
+    </button>`;
+  });
+  html+=`</div></div>`;
+  return html;
+}
+
+function mkPowerHTML(s,isLeader){
+  const power=s.pendingPowerType;
+  const powerResult=mkps?.powerResult;
+  let html=`<div class="mk-phase-box">`;
+
+  // Power result (leader only)
+  if(powerResult){
+    if(powerResult.type==='role_spy'){
+      html+=`<div class="mk-power-result">
+        <div class="mk-power-result-title">SONUÇ</div>
+        <div>${esc(powerResult.targetName)}: <strong style="color:${powerResult.team==='ŞÖVALYE'?'#00bfff':'#c0392b'}">${powerResult.team}</strong></div>
+      </div>`;
+    } else if(powerResult.type==='deck_spy'){
+      html+=`<div class="mk-power-result">
+        <div class="mk-power-result-title">SONRAKI 3 KART</div>
+        <div>${powerResult.cards?.map(c=>`<span class="${c==='matrix'?'mk-inline-matrix':'mk-inline-rebel'}">${c==='matrix'?'MATRIX':'ASİ'}</span>`).join(' ')}</div>
+      </div>`;
+    } else if(powerResult.type==='execute'){
+      html+=`<div class="mk-power-result"><div class="mk-power-result-title">İDAM EDİLDİ</div><div>${esc(powerResult.targetName)}</div></div>`;
+    }
+  }
+
+  if(power==='role_spy'){
+    html+=`<div class="mk-phase-title">ROL DİKİZLEME GÜCÜ</div>`;
+    if(isLeader&&!powerResult){
+      html+=`<div style="font-size:.78rem;color:var(--dim);margin-bottom:8px">Bir oyuncunun takımını gizlice öğren.</div>
+        <div class="mk-player-grid">`;
+      (s.players||[]).forEach(p=>{
+        if(!p.isAlive||p.id===me)return;
+        html+=`<button class="mk-player-btn" onclick="mkUsePower('${p.id}')">${esc(p.name)}</button>`;
+      });
+      html+=`</div><button class="mk-skip-btn" onclick="mkSkipPower()">Gücü Kullanma</button>`;
+    } else if(!isLeader){
+      html+=`<div style="font-size:.8rem;color:var(--dim)">Lider gizlice bir oyuncunun rolünü inceliyor...</div>`;
+    }
+  } else if(power==='deck_spy'){
+    html+=`<div class="mk-phase-title">DESTE DİKİZLEME GÜCÜ</div>`;
+    if(isLeader&&!powerResult){
+      html+=`<button class="mk-action-btn" onclick="mkUsePower('')">Sonraki 3 Kartı Gör</button>
+        <button class="mk-skip-btn" onclick="mkSkipPower()">Gücü Kullanma</button>`;
+    } else if(!isLeader){
+      html+=`<div style="font-size:.8rem;color:var(--dim)">Lider destenin üstüne bakıyor...</div>`;
+    } else if(powerResult){
+      html+=`<button class="mk-action-btn" onclick="mkSkipPower()">Devam Et</button>`;
+    }
+  } else if(power==='execute'){
+    html+=`<div class="mk-phase-title">İDAM GÜCÜ</div>`;
+    if(isLeader&&!powerResult){
+      html+=`<div style="font-size:.78rem;color:#c0392b;margin-bottom:8px">Sistemden bir oyuncuyu sil. Kalıcı!</div>
+        <div class="mk-player-grid">`;
+      (s.players||[]).forEach(p=>{
+        if(!p.isAlive||p.id===me)return;
+        html+=`<button class="mk-player-btn mk-execute-btn" onclick="if(confirm('${esc(p.name)} idam edilsin?'))mkUsePower('${p.id}')">${esc(p.name)}</button>`;
+      });
+      html+=`</div><button class="mk-skip-btn" onclick="mkSkipPower()">Gücü Kullanma</button>`;
+    } else if(!isLeader){
+      html+=`<div style="font-size:.8rem;color:var(--dim)">Lider idam kararı veriyor...</div>`;
+    } else if(powerResult){
+      html+=`<button class="mk-action-btn" onclick="mkSkipPower()">Devam Et</button>`;
+    }
+  }
+
+  html+=`</div>`;
+  return html;
+}
+
+function mkGameOverHTML(s){
+  const isKnights=s.winner==='knights';
+  const color=isKnights?'#00bfff':'#c0392b';
+  let html=`<div class="mk-phase-box" style="border-color:${color}">
+    <div class="mk-phase-title" style="color:${color}">${isKnights?'ŞÖVALYELER KAZANDI!':'ASİLER KAZANDI!'}</div>
+    <div style="font-size:.82rem;color:var(--dim);margin-bottom:12px">${esc(s.winReason||'')}</div>
+    <div class="mk-role-reveal">`;
+  (s.rolesRevealed||[]).forEach(p=>{
+    const rc=p.role==='knight'?'#00bfff':p.role==='king'?'#8e44ad':'#c0392b';
+    const rl=p.role==='knight'?'ŞÖVALYE':p.role==='king'?'KRAL':'ASİ';
+    html+=`<div class="mk-reveal-row" style="${!p.isAlive?'opacity:.5':''}">
+      <span style="color:${rc};font-weight:700">${rl}</span>
+      <span>${esc(p.name)}${!p.isAlive?' (eliminated)':''}</span>
+    </div>`;
+  });
+  html+=`</div>
+    <button class="b b2 bs" style="width:100%;margin-top:12px" onclick="leaveAfterGame()">Çıkış</button>
+  </div>`;
+  return html;
+}
+
+function mkPlayerListHTML(s){
+  const lock=s.termLock||{};
+  let html=`<div class="mk-playerlist">`;
+  (s.players||[]).forEach(p=>{
+    const isLeaderP=p.id===s.currentLeader?.id;
+    const isPartnerP=p.id===s.nominatedPartner?.id;
+    const isMe=p.id===me;
+    html+=`<div class="mk-prow ${!p.isAlive?'mk-prow-dead':''}">
+      ${avHTML(p.avatar,'sm')}
+      <span class="mk-pname ${isMe?'mk-pname-me':''}">${esc(p.name)}</span>
+      ${isLeaderP?'<span class="mk-badge mk-badge-leader">LİDER</span>':''}
+      ${isPartnerP?'<span class="mk-badge mk-badge-partner">YAVER</span>':''}
+      ${!p.isAlive?'<span class="mk-badge mk-badge-dead">ELİMİNE</span>':''}
+    </div>`;
+  });
+  html+=`</div>`;
+  return html;
+}
+
+function mkLogHTML(s){
+  if(!s.eventLog?.length)return'';
+  return `<div class="mk-log">${s.eventLog.map(e=>`<div class="mk-log-row">${esc(e)}</div>`).join('')}</div>`;
+}
+
+// MK event listeners
+io2.on('mk:vote_result',(d)=>{
+  const msg=d.approved?`Hükümet ONAYLANDI (${d.ja}JA/${d.nein}NEIN)`:`Hükümet REDDEDİLDİ (${d.ja}JA/${d.nein}NEIN)`;
+  toast(msg,d.approved?0:1);
+});
+io2.on('mk:card_played',(d)=>{
+  const name=d.card==='matrix'?'MATRIX':'ASİ';
+  toast(`${d.chaos?'KAOS: ':''}${name} kartı masaya yüklendi!`,d.card==='rebel'?1:0);
+});
+io2.on('mk:executed',(d)=>{
+  toast(`${d.targetName} sistemden elendi!`,1);
+});
+io2.on('mk:game_over',(d)=>{
+  toast(d.winner==='knights'?'Şövalyeler kazandı!':'Asiler kazandı!',0);
+});
 
 // Oyuncu odaya girince/çıkınca voice durumunu güncelle
 const _origShow = show;

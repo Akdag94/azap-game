@@ -152,19 +152,17 @@ const COSMETIC_CATALOG = {
   frame_fire:   { cat:'frame', name:'Alev Çerçeve',   emoji:'🔥', price:1500, rarity:'legendary', desc:'Gerçek ateş efektiyle yanan çerçeve.',          preview:{border:'2px solid #ff6600',shadow:'0 0 20px rgba(255,100,0,.6), inset 0 0 10px rgba(255,150,0,.3)',bg:'linear-gradient(180deg,rgba(255,100,0,.2),rgba(255,50,0,.1))',anim:'realFire'} },
   frame_lightning:{ cat:'frame', name:'Yıldırım Çerçeve',emoji:'⚡', price:900, rarity:'epic',      desc:'Gök gürültüsü gibi ani flaşlar çakan çerçeve.',  preview:{border:'2px solid #002288',shadow:'0 0 5px #0055ff, inset 0 0 5px #0055ff',bg:'linear-gradient(135deg,rgba(0,85,255,.08),rgba(0,34,136,.1))',anim:'lightningStrike'} },
   frame_ocean:  { cat:'frame', name:'Okyanus Çerçeve', emoji:'🌊', price:850,  rarity:'epic',      desc:'Dalga efektli mavi-cyan gradient çerçeve.',     preview:{border:'2px solid #0072ff',shadow:'0 0 12px rgba(0,114,255,.4)',bg:'linear-gradient(270deg,#00c6ff33,#0072ff33,#00c6ff33)',bgSize:'400% 400%',anim:'oceanWave'} },
-  frame_void:   { cat:'frame', name:'Hiçlik Çerçeve',  emoji:'🕳️', price:1200, rarity:'epic',      desc:'Kara deliğ gibi içe çöken lanetli çerçeve.',    preview:{border:'2px solid #4b0082',shadow:'0 0 5px #4b0082, inset 0 0 10px #4b0082',bg:'linear-gradient(135deg,rgba(75,0,130,.15),rgba(0,0,0,.2))',anim:'voidCollapse'} },
+  frame_void:   { cat:'frame', name:'Hiçlik Çerçeve',  emoji:'🕳️', price:1200, rarity:'epic',      desc:'Kara deliğ gibi içe çöken lanetli çerçeve.',    preview:{border:'2px solid #4b0082',shadow:'0 0 5px #4b0082, inset 0 0 10px #4b0082',bg:'linear-gradient(135deg,rgba(75,0,130,.15),rgba(0,0,0,.2))',anim:'voidCollapse',animDur:'5s',animEase:'ease-in-out'} },
   frame_glitch: { cat:'frame', name:'Neon Buz Çerçeve', emoji:'💻', price:1500, rarity:'legendary', desc:'Siber mavi-beyaz neon ışıltısı, sarsılma yok.', preview:{border:'2px solid #00ffff',shadow:'0 0 10px rgba(0,255,255,.5)',bg:'linear-gradient(135deg,rgba(0,255,255,.06),rgba(0,200,255,.04))',anim:'cyberGlitch',animDur:'2s',animEase:'ease-in-out'} },
   frame_nature: { cat:'frame', name:'Doğa Çerçeve',  emoji:'🌿', price:700,  rarity:'rare',      desc:'Yeşil enerjiyle nefes alan organik çerçeve.', preview:{border:'2px solid #228b22',shadow:'0 0 10px #228b22',bg:'linear-gradient(135deg,rgba(34,139,34,.1),rgba(50,205,50,.05))',anim:'natureBreath'} },
-  frame_laser:  { cat:'frame', name:'Lazer Çerçeve',  emoji:'🔵', price:1200, rarity:'epic',      desc:'İnce siber halka + etrafında dönen neon ışık noktası.', preview:{border:'1px solid rgba(0,255,255,.28)',shadow:'0 0 4px rgba(0,255,255,.12)',bg:'transparent',anim:'laserDot',animDur:'3s',animEase:'linear'} },
+  frame_laser:  { cat:'frame', name:'Lazer Çerçeve',  emoji:'🔵', price:1200, rarity:'epic',      desc:'İnce siber çizgi çerçeve + kuyruklu yıldız gibi dönen ışık süzmesi.', preview:{border:'1.5px solid rgba(0,255,255,.3)',shadow:'0 0 6px rgba(0,255,255,.1)',bg:'transparent',cls:'fr-laser'} },
   frame_aurora: { cat:'frame', name:'Aurora Nabız',   emoji:'🌌', price:900,  rarity:'epic',      desc:'Derin mor mistik enerji, yavaş nefes alan glow.', preview:{border:'2px solid #4a0082',shadow:'0 0 10px rgba(75,0,130,.4)',bg:'linear-gradient(135deg,rgba(75,0,130,.12),rgba(50,0,90,.08))',anim:'auroraPulse',animDur:'4s',animEase:'ease-in-out'} },
   frame_matrix: { cat:'frame', name:'Matrix Çerçeve', emoji:'🖥️', price:1100, rarity:'epic',      desc:'Kenarlardan akan dijital kod akışı.', preview:{border:'1px solid rgba(57,255,20,.45)',shadow:'0 0 10px rgba(57,255,20,.3)',bg:'linear-gradient(135deg,rgba(0,25,0,.3),rgba(0,18,0,.2))',anim:'matrixGlow',animDur:'2.5s',cls:'fr-matrix'} },
   frame_ticker: { cat:'frame', name:'Ticker Çerçeve', emoji:'📡', price:1300, rarity:'epic',      desc:'Etrafında dönen canlı sistem mesajları.', preview:{border:'1px solid rgba(100,255,218,.45)',shadow:'0 0 8px rgba(100,255,218,.25)',bg:'linear-gradient(135deg,rgba(0,20,20,.25),transparent)',anim:'tickerPulse',animDur:'3s',cls:'fr-ticker'} },
-  frame_obsidian:{ cat:'frame', name:'Obsidyen Çerçeve',emoji:'🖤', price:2000, rarity:'legendary', desc:'Siyah cam + yavaş ışık kırılması, son derece lüks.', preview:{border:'2px solid #1a1a2e',shadow:'0 0 4px rgba(200,200,220,.1)',bg:'linear-gradient(135deg,rgba(10,10,22,.55),rgba(28,28,48,.3))',anim:'obsidianSweep',animDur:'3.5s',animEase:'ease-in-out'} },
-  frame_smoke:  { cat:'frame', name:'Kara Duman',     emoji:'🌫️', price:1800, rarity:'legendary', desc:'Kenarlarda dönen gizemli kara duman efekti.', preview:{border:'2px solid #28283a',shadow:'0 0 14px rgba(30,30,38,.85)',bg:'linear-gradient(135deg,rgba(15,15,22,.4),rgba(18,18,28,.3))',anim:'smokeDrift',animDur:'4s',animEase:'ease-in-out'} },
   frame_steel:  { cat:'frame', name:'Kara Şövalye',   emoji:'⚔️', price:2200, rarity:'legendary', desc:'Karartılmış şövalye çeliği, nadiren parlayan metalik flaş.', preview:{border:'2px solid #3a3a48',shadow:'0 0 6px rgba(80,80,92,.4)',bg:'linear-gradient(135deg,rgba(30,30,42,.4),rgba(20,20,32,.3))',anim:'steelFlash',animDur:'5s',animEase:'ease-in-out'} },
   frame_templar:{ cat:'frame', name:'Kraliyet Tapınakçısı',emoji:'🛡️', price:2500, rarity:'legendary', desc:'Fırçalanmış platin + altın detaylar, dönen ışık süzmesi.', preview:{border:'2px solid #c8c8c8',shadow:'0 0 8px rgba(192,192,192,.28)',bg:'linear-gradient(135deg,rgba(192,192,192,.08),rgba(255,215,0,.05))',anim:'templarGlow',animDur:'3s',animEase:'ease-in-out'} },
-  frame_emperor:{ cat:'frame', name:'İmparatorluk Çeliği',emoji:'💎', price:3000, rarity:'legendary', desc:'Koyu çelik gövde + tepe köşede parıldayan yakut taşı.', preview:{border:'2px solid #3a3a4a',shadow:'0 0 5px rgba(70,70,82,.5),0 -12px 10px rgba(180,0,0,.38)',bg:'linear-gradient(135deg,rgba(25,25,38,.4),rgba(38,10,18,.3))',anim:'emperorRuby',animDur:'3.5s',animEase:'ease-in-out'} },
-  frame_crusade:{ cat:'frame', name:'Altın Haçlı',    emoji:'🏅', price:2800, rarity:'legendary', desc:'Antik altın kaplama zırh + metalik yansıma şeridi.', preview:{border:'2px solid #b8860b',shadow:'0 0 10px rgba(180,140,0,.4)',bg:'linear-gradient(135deg,rgba(180,140,0,.1),rgba(140,100,0,.08))',anim:'crusadeShine',animDur:'4s',animEase:'linear'} },
+  frame_emperor:{ cat:'frame', name:'İmparatorluk Çeliği',emoji:'💎', price:3000, rarity:'legendary', desc:'Koyu çelik gövde + köşelerde parıldayan yakut taşları.', preview:{border:'2px solid #3a3a4a',shadow:'0 0 5px rgba(70,70,82,.5),0 0 12px rgba(180,0,0,.38)',bg:'linear-gradient(135deg,rgba(25,25,38,.4),rgba(38,10,18,.3))',anim:'emperorRuby',animDur:'3.5s',animEase:'ease-in-out'} },
+  frame_crusade:{ cat:'frame', name:'Altın Haçlı',    emoji:'🏅', price:2800, rarity:'legendary', desc:'Antik altın kaplama zırh + metalik yansıma şeridi.', preview:{border:'2px solid #8b6914',shadow:'0 0 12px rgba(139,105,20,.55)',bg:'linear-gradient(135deg,rgba(139,105,20,.14),rgba(100,70,0,.1))',anim:'crusadeShine',animDur:'4.5s',animEase:'linear'} },
   // ── ÖZEL ÇERÇEVELER (satın alınamaz, otomatik tanımlanır) ──
   frame_donor:  { cat:'frame', name:'Destekçi Çerçeve', emoji:'💝', price:0, rarity:'legendary', exclusive:true, desc:'AZAP destekçilerine özel zarif çerçeve, 💝 ile sarılı.', preview:{border:'2px solid #e91e63',shadow:'0 0 10px rgba(233,30,99,.3)',bg:'linear-gradient(135deg,rgba(233,30,99,.08),rgba(156,39,176,.06))',anim:'donorCalm',animDur:'4s',animEase:'ease-in-out',cls:'fr-donor-ring'} },
   frame_premium:{ cat:'frame', name:'Premium Çerçeve',  emoji:'👑', price:0, rarity:'legendary', exclusive:true, desc:'Premium üyelere özel taç çerçevesi + dönen PREMIUM yazısı.', preview:{border:'2px solid #bb8fce',shadow:'0 0 18px rgba(187,143,206,.5),0 0 40px rgba(94,58,135,.2)',bg:'linear-gradient(135deg,rgba(187,143,206,.15),rgba(94,58,135,.1))',anim:'crownGlow',cls:'fr-premium-txt'} },
@@ -1068,6 +1066,8 @@ app.get('*', (req, res) => {
 });
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
 const disconnectTimers = new Map(); // socketId -> timeoutId (3dk sonra oyundan otomatik çıkar)
+const mkStates = new Map(); // rc -> MK game state (Matrix Krallığı modu)
+const MK = require('./matrixKingdom');
 
 // ── ÖDEME SİSTEMİ BAŞLAT (authed tanımlandıktan sonra) ──
 const { setupPayment } = require('./payment');
@@ -1332,6 +1332,7 @@ function clearTimer(rc) {
   // Emit throttle timer'ı da temizle (oda silinirken)
   if (_emitTimers.has(rc)) { clearTimeout(_emitTimers.get(rc)); _emitTimers.delete(rc); }
   _emitPending.delete(rc);
+  mkStates.delete(rc); // MK state temizle
 }
 function eligibleVotingCount(g) {
   return g.alive().filter(p => !g.frozen.has(p.id) && io.sockets.sockets.has(p.id)).length;
@@ -1725,8 +1726,22 @@ function watchSabotage(rc) {
 
 function _emitImmediate(rc) {
   const g = rooms.get(rc); if (!g) return;
+  const mk = mkStates.get(rc);
   try {
+    // ── MATRIX KRALLIĞI MODU ──
+    if (mk) {
+      const pub = { phase: 'mk_active', mkState: MK.getPublicState(mk, g.players) };
+      io.to(rc).emit('state', pub);
+      mk.players.forEach((_, pid) => {
+        const sock = io.sockets.sockets.get(pid);
+        if (!sock) return;
+        try { sock.emit('priv', MK.getPrivateState(mk, pid)); } catch(e) {}
+      });
+      return;
+    }
+
     const pub = g.publicState();
+    if (g.mkMode) pub.mkMode = true; // lobiyi bilgilendir
     io.to(rc).emit('state', pub);
     // Sadece odadaki canlı/ölü oyunculara priv gönder (not: spec data sadece ölülere gönderiliyor)
     let spec = null;
@@ -1752,6 +1767,78 @@ function _emitImmediate(rc) {
   } catch(err) {
     console.error('[emit] Kritik hata, oda:', rc, err.message, err.stack?.split('\n')[1]);
   }
+}
+
+// ── MATRIX KRALLIĞI YARDIMCI FONKSİYONLARI ──
+function resolveMKVote(rc) {
+  const g = rooms.get(rc), mk = mkStates.get(rc);
+  if (!g || !mk || mk.phase !== 'vote') return;
+  let ja = 0, nein = 0;
+  mk.votes.forEach(v => { if (v === 'ja') ja++; else nein++; });
+  const approved = ja > nein;
+  const leaderName = mk.players.get(mk.currentLeaderId)?.name || '?';
+  const partnerName = mk.players.get(mk.nominatedPartnerId)?.name || '?';
+  mk.eventLog.push(`Oylama: ${leaderName}+${partnerName} → ${approved ? 'ONAYLANDI' : 'REDDEDİLDİ'} (${ja}JA/${nein}NEIN)`);
+  io.to(rc).emit('mk:vote_result', { approved, ja, nein, leaderName, partnerName });
+
+  if (approved) {
+    // Kral+Yaver kazanma koşulu kontrol
+    const kingWin = MK.checkKingPartnerApproved(mk);
+    if (kingWin.over) { endMKGame(rc, kingWin); return; }
+    mk.chaosCounter = 0;
+    mk.phase = 'card_leader';
+    mk.pendingCards = mk.deck.splice(0, 3);
+  } else {
+    mk.chaosCounter++;
+    mk.nominatedPartnerId = null;
+    if (mk.chaosCounter >= 3) {
+      // Kaos: destenin üstünden otomatik kart çek
+      const card = mk.deck.shift();
+      if (card) {
+        mk.board[card]++;
+        mk.lastCard = card;
+        mk.chaosCounter = 0;
+        mk.eventLog.push(`KAOS: Kart otomatik çekildi → ${card === 'matrix' ? 'MATRIX' : 'ASİ'}`);
+        io.to(rc).emit('mk:card_played', { card, board: { ...mk.board }, chaos: true });
+        const wc = MK.checkWin(mk);
+        if (wc.over) { endMKGame(rc, wc); return; }
+        if (card === 'rebel') {
+          const power = MK.powerForRebel(mk.board.rebel, mk.smallGame);
+          if (power) { mk.pendingPower = { type: power }; mk.phase = 'power'; emit(rc); return; }
+        }
+      }
+    }
+    MK.advanceLeader(mk);
+    mk.phase = 'nomination';
+  }
+  emit(rc);
+}
+
+function endMKGame(rc, result) {
+  const g = rooms.get(rc), mk = mkStates.get(rc);
+  if (!g || !mk) return;
+  mk.winner = result.winner;
+  mk.winReason = result.reason;
+  mk.phase = 'game_over';
+  mk.rolesRevealed = [...mk.players.values()].map(p => ({ id: p.id, name: p.name, role: p.role, isAlive: p.isAlive }));
+  // Kayıt: kazanan/kaybeden
+  mk.players.forEach(p => {
+    if (!p.username) return;
+    const isWinner = (result.winner === 'knights' && p.role === 'knight') ||
+                     (result.winner === 'rebels' && (p.role === 'traitor' || p.role === 'king'));
+    Accounts.record(p.username, isWinner);
+    if (isWinner) Accounts.addCoins(p.username, 20);
+    else Accounts.addCoins(p.username, 5);
+  });
+  emit(rc);
+  io.to(rc).emit('mk:game_over', { winner: result.winner, reason: result.reason, roles: mk.rolesRevealed });
+  // 15 saniye sonra lobiye dön
+  setTimeout(() => {
+    if (!rooms.has(rc)) return;
+    g.phase = PHASES.POST_GAME;
+    mkStates.delete(rc);
+    emit(rc);
+  }, 15000);
 }
 
 function emitVoteTally(rc) {
@@ -2307,9 +2394,33 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('room:setMode', ({ mode } = {}, cb) => {
+    const rc = prooms.get(socket.id), g = rooms.get(rc);
+    if (!g || g.leaderId !== socket.id) return cb?.({ ok: false, err: 'Yetki yok!' });
+    if (g.phase !== PHASES.LOBBY) return cb?.({ ok: false, err: 'Lobi dışında mod değiştirilemez!' });
+    g.mkMode = (mode === 'matrix_kingdom');
+    cb?.({ ok: true, mode: g.mkMode ? 'matrix_kingdom' : 'standard' });
+    emit(rc);
+  });
+
   socket.on('start', (_, cb) => {
     const rc = prooms.get(socket.id), g = rooms.get(rc);
     if (!g || g.leaderId !== socket.id) return cb?.({ ok: false, err: 'Yetki yok!' });
+
+    // ── MATRIX KRALLIĞI BAŞLANGIÇ ──
+    if (g.mkMode) {
+      const n = g.players.size;
+      if (n < 5 || n > 10) return cb?.({ ok: false, err: 'Matrix Krallığı: 5-10 oyuncu gerekli!' });
+      const playersArr = [...g.players.values()].map(p => ({ id: p.id, name: p.name, username: p.username, avatar: p.avatar }));
+      const mk = MK.createMKState(playersArr);
+      if (!mk) return cb?.({ ok: false, err: 'Rol dağıtımı başarısız!' });
+      mkStates.set(rc, mk);
+      g.phase = 'mk_active';
+      cb?.({ ok: true });
+      emit(rc);
+      return;
+    }
+
     if (g.players.size < g.config.MIN_PLAYERS) return cb?.({ ok: false, err: `En az ${g.config.MIN_PLAYERS} oyuncu!` });
     if (!g.startGame()) return cb?.({ ok: false, err: 'Dağıtım başarısız!' });
     cb?.({ ok: true });
@@ -2544,6 +2655,147 @@ io.on('connection', (socket) => {
         }
       }
     }
+  });
+
+  // ── MATRIX KRALLIĞI SOCKET EVENTLARI ──
+  function getMK() {
+    const rc = prooms.get(socket.id); if (!rc) return null;
+    return mkStates.get(rc);
+  }
+
+  socket.on('mk:nominate', ({ partnerId } = {}, cb) => {
+    const rc = prooms.get(socket.id), mk = mkStates.get(rc);
+    if (!mk) return cb?.({ ok: false, err: 'MK oyunu yok' });
+    if (mk.phase !== 'nomination') return cb?.({ ok: false, err: 'Yanlış faz' });
+    if (socket.id !== mk.currentLeaderId) return cb?.({ ok: false, err: 'Sen lider değilsin' });
+    const partner = mk.players.get(partnerId);
+    if (!partner || !partner.isAlive) return cb?.({ ok: false, err: 'Geçersiz hedef' });
+    if (partnerId === socket.id) return cb?.({ ok: false, err: 'Kendini seçemezsin' });
+    if (partnerId === mk.termLock.leaderId || partnerId === mk.termLock.partnerId) {
+      return cb?.({ ok: false, err: 'Bu oyuncu geçen tur görevdeydi' });
+    }
+    mk.nominatedPartnerId = partnerId;
+    mk.phase = 'vote';
+    mk.votes = new Map();
+    const leaderName = mk.players.get(socket.id)?.name || '?';
+    mk.eventLog.push(`${leaderName} yaverini ${partner.name} olarak seçti`);
+    cb?.({ ok: true });
+    emit(rc);
+  });
+
+  socket.on('mk:vote', ({ vote } = {}, cb) => {
+    const rc = prooms.get(socket.id), mk = mkStates.get(rc);
+    if (!mk) return cb?.({ ok: false, err: 'MK oyunu yok' });
+    if (mk.phase !== 'vote') return cb?.({ ok: false, err: 'Yanlış faz' });
+    const p = mk.players.get(socket.id);
+    if (!p || !p.isAlive) return cb?.({ ok: false, err: 'Oy kullanamazsın' });
+    if (mk.votes.has(socket.id)) return cb?.({ ok: false, err: 'Zaten oy kullandın' });
+    if (vote !== 'ja' && vote !== 'nein') return cb?.({ ok: false, err: 'Geçersiz oy' });
+    mk.votes.set(socket.id, vote);
+    cb?.({ ok: true });
+    emit(rc);
+    // Tüm canlı oyuncular oy verdiyse çöz
+    const aliveCnt = MK.getAlive(mk).length;
+    if (mk.votes.size >= aliveCnt) setTimeout(() => resolveMKVote(rc), 600);
+  });
+
+  socket.on('mk:discard_leader', ({ discardIndex } = {}, cb) => {
+    const rc = prooms.get(socket.id), mk = mkStates.get(rc);
+    if (!mk) return cb?.({ ok: false, err: 'MK oyunu yok' });
+    if (mk.phase !== 'card_leader') return cb?.({ ok: false, err: 'Yanlış faz' });
+    if (socket.id !== mk.currentLeaderId) return cb?.({ ok: false, err: 'Sen lider değilsin' });
+    if (discardIndex < 0 || discardIndex >= mk.pendingCards.length) return cb?.({ ok: false, err: 'Geçersiz index' });
+    mk.pendingCards.splice(discardIndex, 1);
+    mk.phase = 'card_partner';
+    cb?.({ ok: true });
+    emit(rc);
+  });
+
+  socket.on('mk:deploy', ({ deployIndex } = {}, cb) => {
+    const rc = prooms.get(socket.id), mk = mkStates.get(rc);
+    if (!mk) return cb?.({ ok: false, err: 'MK oyunu yok' });
+    if (mk.phase !== 'card_partner') return cb?.({ ok: false, err: 'Yanlış faz' });
+    if (socket.id !== mk.nominatedPartnerId) return cb?.({ ok: false, err: 'Sen yaver değilsin' });
+    if (deployIndex < 0 || deployIndex >= mk.pendingCards.length) return cb?.({ ok: false, err: 'Geçersiz index' });
+    const card = mk.pendingCards[deployIndex];
+    mk.termLock = { leaderId: mk.currentLeaderId, partnerId: mk.nominatedPartnerId };
+    mk.board[card]++;
+    mk.lastCard = card;
+    mk.pendingCards = [];
+    const leaderName = mk.players.get(mk.currentLeaderId)?.name || '?';
+    const partnerName = mk.players.get(mk.nominatedPartnerId)?.name || '?';
+    mk.eventLog.push(`${leaderName} + ${partnerName} → ${card === 'matrix' ? 'MATRIX' : 'ASİ'} kartı`);
+    cb?.({ ok: true });
+    io.to(rc).emit('mk:card_played', { card, board: { ...mk.board } });
+    const wc = MK.checkWin(mk);
+    if (wc.over) { endMKGame(rc, wc); return; }
+    const power = MK.powerForRebel(mk.board.rebel, mk.smallGame);
+    if (card === 'rebel' && power) {
+      mk.pendingPower = { type: power };
+      mk.phase = 'power';
+      mk.powerResult = null;
+    } else {
+      MK.advanceLeader(mk);
+      mk.nominatedPartnerId = null;
+      mk.phase = 'nomination';
+    }
+    emit(rc);
+  });
+
+  socket.on('mk:use_power', ({ targetId } = {}, cb) => {
+    const rc = prooms.get(socket.id), mk = mkStates.get(rc);
+    if (!mk) return cb?.({ ok: false, err: 'MK oyunu yok' });
+    if (mk.phase !== 'power') return cb?.({ ok: false, err: 'Yanlış faz' });
+    if (socket.id !== mk.currentLeaderId) return cb?.({ ok: false, err: 'Sen lider değilsin' });
+    if (!mk.pendingPower) return cb?.({ ok: false, err: 'Güç yok' });
+    const power = mk.pendingPower.type;
+    const leaderName = mk.players.get(socket.id)?.name || '?';
+
+    if (power === 'role_spy') {
+      const target = mk.players.get(targetId);
+      if (!target || !target.isAlive) return cb?.({ ok: false, err: 'Geçersiz hedef' });
+      const team = (target.role === 'knight') ? 'ŞÖVALYE' : 'ASİ';
+      mk.powerResult = { type: 'role_spy', targetName: target.name, team };
+      mk.eventLog.push(`${leaderName} gizlice bir oyuncunun rolünü öğrendi`);
+    } else if (power === 'deck_spy') {
+      mk.powerResult = { type: 'deck_spy', cards: mk.deck.slice(0, Math.min(3, mk.deck.length)) };
+      mk.eventLog.push(`${leaderName} desteden gelecek kartlara baktı`);
+    } else if (power === 'execute') {
+      const target = mk.players.get(targetId);
+      if (!target || !target.isAlive) return cb?.({ ok: false, err: 'Geçersiz hedef' });
+      target.isAlive = false;
+      mk.powerResult = { type: 'execute', targetName: target.name };
+      mk.eventLog.push(`${leaderName} ${target.name}'i sistemden eledi`);
+      io.to(rc).emit('mk:executed', { targetName: target.name });
+      const kingWin = MK.checkKingExecuted(mk, targetId);
+      if (kingWin.over) {
+        mk.pendingPower = null;
+        cb?.({ ok: true });
+        emit(rc);
+        setTimeout(() => endMKGame(rc, kingWin), 1500);
+        return;
+      }
+    }
+    mk.pendingPower = null;
+    MK.advanceLeader(mk);
+    mk.nominatedPartnerId = null;
+    mk.phase = 'nomination';
+    cb?.({ ok: true });
+    emit(rc);
+  });
+
+  socket.on('mk:skip_power', (_, cb) => {
+    const rc = prooms.get(socket.id), mk = mkStates.get(rc);
+    if (!mk) return cb?.({ ok: false, err: 'MK oyunu yok' });
+    if (mk.phase !== 'power') return cb?.({ ok: false, err: 'Yanlış faz' });
+    if (socket.id !== mk.currentLeaderId) return cb?.({ ok: false, err: 'Sen lider değilsin' });
+    mk.pendingPower = null;
+    mk.powerResult = null;
+    MK.advanceLeader(mk);
+    mk.nominatedPartnerId = null;
+    mk.phase = 'nomination';
+    cb?.({ ok: true });
+    emit(rc);
   });
 
   // ── BUG RAPOR (tüm kullanıcılar) ──

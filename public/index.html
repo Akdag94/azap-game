@@ -702,33 +702,61 @@ Hoş geldin, <strong id="WN"></strong>
 <div id="BOT_INFO" style="margin-top:6px;font-size:.72rem;color:#bb8fce"></div>
 </div>
 
+<!-- MK MOD SEÇİCİ (sadece lider görür) -->
+<div id="MK_MODE_PANEL" style="display:none;margin-top:8px">
+  <button id="MK_MODE_BTN" onclick="toggleMKMode()" class="b bs" style="width:100%;font-size:.78rem;border:1px solid rgba(0,200,255,.35);color:rgba(0,200,255,.85);background:rgba(0,200,255,.06)">
+    ⬡ Oyun Modu: Standart AZAP
+  </button>
+</div>
+
 <div class="sbox" id="SP2" style="display:none">
 <div class="st">⚙️ Ayarlar</div>
+
+<!-- STANDART AZAP AYARLARI -->
+<div id="SP2_AZAP">
 <div class="srow"><span>🧠 Delilik</span><input type="range" min="0" max="50" value="15" id="SI" oninput="uSet()"><span class="sval" id="VI">%15</span></div>
 <div class="srow"><span>🌙 Gece</span><input type="range" min="10" max="120" value="20" step="5" id="SN" oninput="uSet()"><span class="sval" id="VN">20s</span></div>
 <div class="srow"><span>☀️ Tartışma</span><input type="range" min="10" max="120" value="20" step="5" id="SD" oninput="uSet()"><span class="sval" id="VD">20s</span></div>
 <div class="srow"><span>🗳️ Oylama</span><input type="range" min="30" max="240" value="90" step="10" id="SV" oninput="uSet()"><span class="sval" id="VV">90s</span></div>
-
 <div class="st mt8">Takım Sayıları</div>
 <div id="MCA">
 <div class="srow"><span>🧛 Hain</span><input type="range" min="1" max="4" value="1" id="HC2" oninput="uSet()"><span class="sval" id="VH">1</span></div>
 <div class="srow"><span>⚖️ Tarafsız</span><input type="range" min="0" max="4" value="0" id="TC2" oninput="uSet()"><span class="sval" id="VT">0</span></div>
 </div>
-
 <div class="st mt8">Hain Öldürme</div>
 <div class="srow" style="gap:10px">
 <label style="font-size:.78rem;cursor:pointer"><input type="radio" name="hkm" value="multi" checked onchange="uSet()"> Çoklu</label>
 <label style="font-size:.78rem;cursor:pointer"><input type="radio" name="hkm" value="single" onchange="uSet()"> Tek kill</label>
 </div>
-
 <div class="st mt8">Rol Atama</div>
 <div class="srow" style="gap:10px">
 <label style="font-size:.78rem;cursor:pointer"><input type="radio" name="rsm" value="auto" checked onchange="uSet()"> Otomatik</label>
 <label style="font-size:.78rem;cursor:pointer"><input type="radio" name="rsm" value="pick" onchange="uSet()"> Oyuncular seçsin</label>
 </div>
-
 <div class="st mt8" style="display:flex;align-items:center;justify-content:space-between">Roller<label style="font-size:.68rem;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:400"><input type="checkbox" id="DEMO_TOGGLE" onchange="demoRolesEnabled=this.checked;buildRG();uSet()"> Demo roller</label></div>
 <div class="rgrid" id="RG"></div>
+</div>
+
+<!-- MATRIX KRALLIĞI BİLGİ PANELİ -->
+<div id="SP2_MK" style="display:none">
+<div style="background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.2);border-radius:8px;padding:10px;margin-bottom:10px">
+  <div style="font-family:'Fira Code',monospace;font-size:.65rem;letter-spacing:2px;color:rgba(0,200,255,.7);margin-bottom:6px">MATRIX KRALLIĞI</div>
+  <div style="font-size:.72rem;color:var(--dim);line-height:1.6">
+    Kart bazlı sosyal dedüksiyon. Oyun başladığında roller gizlice telefona düşer.<br>
+    <strong style="color:var(--txt)">Şövalyeler</strong> — 5 Matrix kartı veya Kral'ı idam etmek için<br>
+    <strong style="color:#c0392b">Asiler</strong> — 6 Asi kartı veya Kral'ı Yaver olarak onaylatmak için
+  </div>
+</div>
+<div style="font-size:.72rem;color:var(--dim);line-height:1.7">
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>5 kişi</span><span>3 Şövalye · 1 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>6 kişi</span><span>4 Şövalye · 1 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>7 kişi</span><span>4 Şövalye · 2 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>8 kişi</span><span>5 Şövalye · 2 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>9 kişi</span><span>5 Şövalye · 3 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0"><span>10 kişi</span><span>6 Şövalye · 3 Asi · 1 Kral</span></div>
+</div>
+<div style="margin-top:8px;font-size:.68rem;color:rgba(0,200,255,.5);font-family:'Fira Code',monospace;text-align:center;letter-spacing:1px">Min 5 · Max 10 oyuncu</div>
+</div>
 
 <button class="b b1 bw mt12" id="BS" onclick="startGame()">Oyunu Başlat</button>
 </div>
@@ -810,6 +838,11 @@ Hoş geldin, <strong id="WN"></strong>
 <!-- Vote Result -->
 <div class="scr" id="S8"><div class="scroll">
 <div class="goc"><div class="gem" id="VRE">⚖️</div><div class="gt" id="VRT"></div><div class="gm" id="VRM"></div></div>
+</div></div>
+
+<!-- Matrix Krallığı Oyun Ekranı -->
+<div class="scr" id="S_MK"><div class="scroll" style="padding:10px 10px 60px">
+<div id="MK_CONTENT"></div>
 </div></div>
 
 <!-- Game Over -->
