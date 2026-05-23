@@ -755,6 +755,8 @@ async function openShopModal(){
 let _cosmeticCatalog = null;
 let _cosmeticCatalogPromise = null;
 let _shopItemCat = 'all';
+let _shopPetSub = 'all';
+let _invPetSub = 'all';
 
 async function loadCosmeticCatalog(){
   if(_cosmeticCatalog) return;
@@ -797,49 +799,101 @@ function cosmeticPreviewHTML(id, item){
   return `<span>${item.emoji}</span>`;
 }
 
+function _shopItemCard(id, item, owned, isExclusive){
+  const canBuy = !isExclusive && !owned && (user?.coins||0) >= item.price;
+  let actionBtn;
+  if(owned){
+    actionBtn='<button class="ci-buy owned-btn">✓ Envanterinde</button>';
+  } else if(isExclusive){
+    actionBtn='<button class="ci-buy disabled" disabled style="opacity:.6;cursor:not-allowed;background:linear-gradient(135deg,rgba(233,30,99,.15),rgba(187,143,206,.15));border:1px solid rgba(233,30,99,.3);color:#ffb3d9">🔒 Özel</button>';
+  } else {
+    actionBtn=`<button class="ci-buy buy${canBuy?'':' disabled'}" ${canBuy?`onclick="shopBuyCosmetic('${id}')"`:'disabled style="opacity:.5;cursor:not-allowed"'}>Satın Al</button>`;
+  }
+  return `<div class="ci-card${owned?' owned':''}${isExclusive?' exclusive':''}">
+    <div class="ci-preview">${cosmeticPreviewHTML(id,item)}</div>
+    <div class="ci-info">
+      <div class="ci-name">${item.emoji} ${esc(item.name)}</div>
+      <div class="ci-desc">${esc(item.desc)}</div>
+      <div class="ci-meta">
+        <span class="ci-rarity ${item.rarity}">${item.rarity}</span>
+        ${isExclusive?'<span class="ci-price" style="color:#e91e63">⭐ Otomatik</span>':`<span class="ci-price">💰 ${item.price}</span>`}
+      </div>
+    </div>
+    <div class="ci-actions">${actionBtn}</div>
+  </div>`;
+}
+
+const PET_SUBCATS = [
+  {key:'farm', label:'🐾 Evcil & Çiftlik'},
+  {key:'wild', label:'🦁 Vahşi & Büyük'},
+  {key:'bird', label:'🦅 Kuşlar'},
+  {key:'sea',  label:'🐬 Deniz & Su'},
+  {key:'reptile', label:'🐊 Sürüngenler'},
+  {key:'insect',  label:'🐝 Böcekler'},
+  {key:'special', label:'🌟 Özel'},
+];
+
 async function renderShopItems(){
   await loadCosmeticCatalog();
   if(!_cosmeticCatalog) return;
   const grid = Q('SHOP_ITEM_GRID');
   if(!grid) return;
   const cat = _shopItemCat || 'all';
+  const sub = _shopPetSub || 'all';
   const search = (Q('SHOP_ITEM_SEARCH')?.value||'').toLowerCase();
+  const hideOwned = Q('SHOP_HIDE_OWNED')?.checked;
   const ownedIds = new Set((user?.inventory||[]).map(it=>typeof it==='string'?it:it.id));
-  let html = '';
+
+  const petSubEl = Q('SHOP_PET_SUBFILTER');
+  if(petSubEl) petSubEl.style.display = cat==='pet' ? 'flex' : 'none';
+
+  // Pet kategorisi + alt kategori → gruplu gösterim
+  if(cat==='pet' && sub==='all' && !search){
+    let html='';
+    PET_SUBCATS.forEach(sc=>{
+      const items = Object.entries(_cosmeticCatalog).filter(([id,item])=>{
+        if(item.cat!=='pet' || (item.subcat||'special')!==sc.key) return false;
+        if(hideOwned && ownedIds.has(id)) return false;
+        return true;
+      });
+      if(!items.length) return;
+      html+=`<div class="ci-subcat-title">${sc.label}</div><div class="ci-grid ci-subgrid">`;
+      items.forEach(([id,item])=>{
+        html+=_shopItemCard(id,item,ownedIds.has(id),!!item.exclusive);
+      });
+      html+='</div>';
+    });
+    grid.innerHTML = html || '<div style="text-align:center;color:var(--dim);padding:20px;font-size:.82rem">Eşya bulunamadı.</div>';
+    return;
+  }
+
+  let html='';
   Object.entries(_cosmeticCatalog).forEach(([id,item])=>{
     if(cat!=='all' && item.cat!==cat) return;
+    if(cat==='pet' && sub!=='all' && (item.subcat||'special')!==sub) return;
     if(search && !item.name.toLowerCase().includes(search) && !item.desc.toLowerCase().includes(search)) return;
     const owned = ownedIds.has(id);
-    const isExclusive = !!item.exclusive;
-    const canBuy = !isExclusive && !owned && (user?.coins||0) >= item.price;
-    let actionBtn;
-    if(owned){
-      actionBtn='<button class="ci-buy owned-btn">✓ Envanterinde</button>';
-    } else if(isExclusive){
-      actionBtn='<button class="ci-buy disabled" disabled style="opacity:.6;cursor:not-allowed;background:linear-gradient(135deg,rgba(233,30,99,.15),rgba(187,143,206,.15));border:1px solid rgba(233,30,99,.3);color:#ffb3d9">🔒 Özel</button>';
-    } else {
-      actionBtn=`<button class="ci-buy buy${canBuy?'':' disabled'}" ${canBuy?`onclick="shopBuyCosmetic('${id}')"`:'disabled style="opacity:.5;cursor:not-allowed"'}>Satın Al</button>`;
-    }
-    html += `<div class="ci-card${owned?' owned':''}${isExclusive?' exclusive':''}">
-      <div class="ci-preview">${cosmeticPreviewHTML(id,item)}</div>
-      <div class="ci-info">
-        <div class="ci-name">${item.emoji} ${esc(item.name)}</div>
-        <div class="ci-desc">${esc(item.desc)}</div>
-        <div class="ci-meta">
-          <span class="ci-rarity ${item.rarity}">${item.rarity}</span>
-          ${isExclusive?'<span class="ci-price" style="color:#e91e63">⭐ Otomatik</span>':`<span class="ci-price">💰 ${item.price}</span>`}
-        </div>
-      </div>
-      <div class="ci-actions">${actionBtn}</div>
-    </div>`;
+    if(hideOwned && owned) return;
+    html+=_shopItemCard(id,item,owned,!!item.exclusive);
   });
   grid.innerHTML = html || '<div style="text-align:center;color:var(--dim);padding:20px;font-size:.82rem">Eşya bulunamadı.</div>';
 }
 
 function shopFilterItems(cat){
-  if(cat) _shopItemCat = cat;
+  if(cat) { _shopItemCat = cat; _shopPetSub = 'all'; }
   document.querySelectorAll('#SHOP_ITEM_FILTER .ci-filter-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.cat===(_shopItemCat||'all'));
+  });
+  document.querySelectorAll('#SHOP_PET_SUBFILTER .ci-subfilter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.sub===(_shopPetSub||'all'));
+  });
+  renderShopItems();
+}
+
+function shopFilterPetSub(sub){
+  _shopPetSub = sub || 'all';
+  document.querySelectorAll('#SHOP_PET_SUBFILTER .ci-subfilter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.sub===_shopPetSub);
   });
   renderShopItems();
 }
@@ -877,9 +931,22 @@ function openInventoryModal(){
 }
 
 function invFilter(cat){
-  if(cat) _invCat = cat;
+  if(cat) { _invCat = cat; _invPetSub = 'all'; }
   document.querySelectorAll('#INV_FILTER .ci-filter-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.cat===(_invCat||'all'));
+  });
+  const petSubEl = Q('INV_PET_SUBFILTER');
+  if(petSubEl) petSubEl.style.display = _invCat==='pet' ? 'flex' : 'none';
+  document.querySelectorAll('#INV_PET_SUBFILTER .ci-subfilter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.sub===(_invPetSub||'all'));
+  });
+  renderInventory();
+}
+
+function invFilterPetSub(sub){
+  _invPetSub = sub || 'all';
+  document.querySelectorAll('#INV_PET_SUBFILTER .ci-subfilter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.sub===_invPetSub);
   });
   renderInventory();
 }
@@ -920,20 +987,40 @@ function renderInventoryPreview(items){
     </div>`;
 }
 
+function _invItemCard(it, info){
+  const eq = !!it.equipped;
+  return `<div class="ci-card${eq?' owned':''}">
+    <div class="ci-preview">${cosmeticPreviewHTML(it.id,info)}</div>
+    <div class="ci-info">
+      <div class="ci-name">${info.emoji} ${esc(info.name)}</div>
+      <div class="ci-desc">${esc(info.desc)}</div>
+      <div class="ci-meta"><span class="ci-rarity ${info.rarity}">${info.rarity}</span>${eq?'<span style="color:var(--safe);font-size:.68rem;font-weight:600">AKTİF</span>':''}</div>
+    </div>
+    <div class="ci-actions">
+      <button class="ci-buy ${eq?'unequip':'equip'}" onclick="toggleEquipItem('${esc(it.id)}',${!eq})">${eq?'Kaldır':'Kullan'}</button>
+    </div>
+  </div>`;
+}
+
 async function renderInventory(){
   await loadCosmeticCatalog();
   const inv = Q('PROF_INVENTORY');
   if(!inv) return;
-  // Önceki içeriği temizle (üst üste binme sorununu önlemek için)
   inv.innerHTML = '';
   const items = (user?.inventory||[]).map(it=>typeof it==='string'?{id:it,equipped:false}:it);
   renderInventoryPreview(items);
   const cat = _invCat || 'all';
+  const sub = _invPetSub || 'all';
   const search = (Q('INV_SEARCH')?.value||'').toLowerCase();
+  // Pet subfilter bar visibility
+  const petSubEl = Q('INV_PET_SUBFILTER');
+  if(petSubEl) petSubEl.style.display = cat==='pet' ? 'flex' : 'none';
+
   const filtered = items.filter(it=>{
     const info = _cosmeticCatalog?.[it.id];
     if(!info) return false;
     if(cat!=='all' && info.cat!==cat) return false;
+    if(cat==='pet' && sub!=='all' && (info.subcat||'special')!==sub) return false;
     if(search && !info.name.toLowerCase().includes(search) && !info.desc.toLowerCase().includes(search)) return false;
     return true;
   });
@@ -942,20 +1029,25 @@ async function renderInventory(){
       (items.length===0?'Henüz eşyan yok. Mağazadan satın alabilirsin.':'Bu filtrede eşya yok.')+'</div>';
     return;
   }
+  // Pet tümü → gruplu göster
+  if(cat==='pet' && sub==='all' && !search){
+    let html='';
+    PET_SUBCATS.forEach(sc=>{
+      const sc_items = filtered.filter(it=>(_cosmeticCatalog?.[it.id]?.subcat||'special')===sc.key);
+      if(!sc_items.length) return;
+      html+=`<div class="ci-subcat-title">${sc.label}</div><div class="ci-grid ci-subgrid">`;
+      sc_items.forEach(it=>{
+        const info = _cosmeticCatalog?.[it.id] || {emoji:'📦',name:it.id,desc:'',cat:'?',rarity:'rare'};
+        html+=_invItemCard(it,info);
+      });
+      html+='</div>';
+    });
+    inv.innerHTML = html || '<div style="color:var(--dim);text-align:center;padding:12px;font-size:.78rem">Bu filtrede eşya yok.</div>';
+    return;
+  }
   inv.innerHTML = filtered.map(it=>{
     const info = _cosmeticCatalog?.[it.id] || {emoji:'📦',name:it.id,desc:'',cat:'?',rarity:'rare'};
-    const eq = !!it.equipped;
-    return `<div class="ci-card${eq?' owned':''}">
-      <div class="ci-preview">${cosmeticPreviewHTML(it.id,info)}</div>
-      <div class="ci-info">
-        <div class="ci-name">${info.emoji} ${esc(info.name)}</div>
-        <div class="ci-desc">${esc(info.desc)}</div>
-        <div class="ci-meta"><span class="ci-rarity ${info.rarity}">${info.rarity}</span>${eq?'<span style="color:var(--safe);font-size:.68rem;font-weight:600">AKTİF</span>':''}</div>
-      </div>
-      <div class="ci-actions">
-        <button class="ci-buy ${eq?'unequip':'equip'}" onclick="toggleEquipItem('${esc(it.id)}',${!eq})">${eq?'Kaldır':'Kullan'}</button>
-      </div>
-    </div>`;
+    return _invItemCard(it,info);
   }).join('');
 }
 

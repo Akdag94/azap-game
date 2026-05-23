@@ -19,9 +19,9 @@
 
 <link rel="apple-touch-icon" href="/favicon.png?v=2">
 <link rel="manifest" href="/manifest.json">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Sacramento&family=Caveat:wght@400;700&family=Pacifico&family=Kaushan+Script&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="/style.css?v=20260523h">
+<link rel="stylesheet" href="/style.css?v=20260523i">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -180,7 +180,22 @@
       <button class="ci-filter-btn" data-cat="pet" onclick="shopFilterItems('pet')">🐾 Pet</button>
       <button class="ci-filter-btn" data-cat="font" onclick="shopFilterItems('font')">✒️ Yazı Tipi</button>
     </div>
-    <input class="ci-search" id="SHOP_ITEM_SEARCH" placeholder="Eşya ara..." oninput="shopFilterItems()">
+    <div id="SHOP_PET_SUBFILTER" style="display:none" class="ci-subfilter">
+      <button class="ci-subfilter-btn active" data-sub="all" onclick="shopFilterPetSub('all')">Tümü</button>
+      <button class="ci-subfilter-btn" data-sub="farm" onclick="shopFilterPetSub('farm')">🐾 Evcil</button>
+      <button class="ci-subfilter-btn" data-sub="wild" onclick="shopFilterPetSub('wild')">🦁 Vahşi</button>
+      <button class="ci-subfilter-btn" data-sub="bird" onclick="shopFilterPetSub('bird')">🦅 Kuşlar</button>
+      <button class="ci-subfilter-btn" data-sub="sea" onclick="shopFilterPetSub('sea')">🐬 Deniz</button>
+      <button class="ci-subfilter-btn" data-sub="reptile" onclick="shopFilterPetSub('reptile')">🐊 Sürüngenler</button>
+      <button class="ci-subfilter-btn" data-sub="insect" onclick="shopFilterPetSub('insect')">🐝 Böcekler</button>
+      <button class="ci-subfilter-btn" data-sub="special" onclick="shopFilterPetSub('special')">🌟 Özel</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+      <input class="ci-search" id="SHOP_ITEM_SEARCH" placeholder="Eşya ara..." oninput="shopFilterItems()" style="flex:1;margin:0">
+      <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--dim);white-space:nowrap;cursor:pointer">
+        <input type="checkbox" id="SHOP_HIDE_OWNED" onchange="shopFilterItems()"> Alınanları Gizle
+      </label>
+    </div>
     <div class="ci-grid" id="SHOP_ITEM_GRID"></div>
     <div style="font-size:.62rem;color:var(--dim);margin-top:8px;line-height:1.4;text-align:center">
       Satın alma işlemi ile <a href="/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a>'ni kabul etmiş olursunuz.
@@ -226,6 +241,16 @@
   <button class="ci-filter-btn" data-cat="frame" onclick="invFilter('frame')">🖼️ Kartlık</button>
   <button class="ci-filter-btn" data-cat="pet" onclick="invFilter('pet')">🐾 Pet</button>
   <button class="ci-filter-btn" data-cat="font" onclick="invFilter('font')">✒️ Yazı Tipi</button>
+</div>
+<div id="INV_PET_SUBFILTER" style="display:none" class="ci-subfilter">
+  <button class="ci-subfilter-btn active" data-sub="all" onclick="invFilterPetSub('all')">Tümü</button>
+  <button class="ci-subfilter-btn" data-sub="farm" onclick="invFilterPetSub('farm')">🐾 Evcil</button>
+  <button class="ci-subfilter-btn" data-sub="wild" onclick="invFilterPetSub('wild')">🦁 Vahşi</button>
+  <button class="ci-subfilter-btn" data-sub="bird" onclick="invFilterPetSub('bird')">🦅 Kuşlar</button>
+  <button class="ci-subfilter-btn" data-sub="sea" onclick="invFilterPetSub('sea')">🐬 Deniz</button>
+  <button class="ci-subfilter-btn" data-sub="reptile" onclick="invFilterPetSub('reptile')">🐊 Sürüngenler</button>
+  <button class="ci-subfilter-btn" data-sub="insect" onclick="invFilterPetSub('insect')">🐝 Böcekler</button>
+  <button class="ci-subfilter-btn" data-sub="special" onclick="invFilterPetSub('special')">🌟 Özel</button>
 </div>
 <input class="ci-search" id="INV_SEARCH" placeholder="Eşya ara..." oninput="invFilter()">
 <div id="PROF_INVENTORY" class="ci-grid" style="max-height:340px"></div>
@@ -1076,6 +1101,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="/app.js?v=20260523h"></script>
+<script src="/app.js?v=20260523i"></script>
 </body>
 </html>
