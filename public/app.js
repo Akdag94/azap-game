@@ -331,8 +331,47 @@ let _musicMuted=false,_musicEnabled=true;
 try{_musicMuted=localStorage.getItem('azap_music_muted')==='1';_musicEnabled=localStorage.getItem('azap_music_enabled')!=='0';}catch{}
 
 // Sync state
-let _radioRTT=0,_radioSyncInterval=null;
+let _radioRTT=0,_radioSyncInterval=null,_radioSyncing=false;
 let _lastSrvPos=null,_lastSrvPosTime=null,_driftSign=0;
+
+// Server pozisyonunu al ve gerekirse seek yap (async-safe — sadece seek yapar, play() yok)
+function _radioResync(){
+  if(_radioSyncing||!_musicAudio||!_musicAudio.src) return;
+  _radioSyncing=true;
+  const t0=Date.now();
+  io2.emit('radio:now',null,d=>{
+    _radioSyncing=false;
+    if(!d||!d.file||!_musicAudio) return;
+    const rtt2=Date.now()-t0;
+    _radioRTT=rtt2;
+    const srvPos=((d.position||0)+rtt2/2)/1000;
+    _lastSrvPos=srvPos; _lastSrvPosTime=Date.now();
+    const same=decodeURIComponent(_musicAudio.src||'').endsWith(decodeURIComponent(d.file));
+    if(!same){
+      // Farklı şarkı: src güncelle ama play() çağırma (çalan olabilir)
+      _musicCurrentFile=d.file; _musicCurrentName=d.name||'';
+      const lbl=document.querySelector('.music-radio-label');
+      if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
+      _musicAudio.src=d.file; _musicAudio.load();
+      _musicAudio.addEventListener('loadedmetadata',function sk(){
+        _musicAudio.currentTime=srvPos;
+        _musicAudio.removeEventListener('loadedmetadata',sk);
+      });
+      return;
+    }
+    // Aynı şarkı: anlık seek (zaten çalıyorsa kesilme olmaz)
+    const drift=_musicAudio.currentTime-srvPos;
+    if(Math.abs(drift)<0.2){
+      _musicAudio.playbackRate=1; _driftSign=0;
+    } else if(Math.abs(drift)<3){
+      const rate=Math.max(0.88,Math.min(1.12,1-drift/5));
+      _driftSign=Math.sign(drift); _musicAudio.playbackRate=rate;
+    } else {
+      _musicAudio.playbackRate=1; _driftSign=0;
+      _musicAudio.currentTime=srvPos;
+    }
+  });
+}
 
 function _initRadio(){
   if(_musicAudio) return;
@@ -343,8 +382,6 @@ function _initRadio(){
   a.addEventListener('ended',()=>{ io2.emit('radio:ended'); });
   a.addEventListener('playing',()=>{_musicPlaying=true;updateMusicUI();});
   a.addEventListener('pause',()=>{_musicPlaying=false;updateMusicUI();});
-  // Timeupdate: drift düzelince ya da aşılınca playback rate'i sıfırla
-  // _lastSrvPos + geçen gerçek süre = tahmini sunucu konumu
   a.addEventListener('timeupdate',()=>{
     if(a.playbackRate===1||_lastSrvPos===null) return;
     const estSrv=_lastSrvPos+(Date.now()-_lastSrvPosTime)/1000;
@@ -353,18 +390,20 @@ function _initRadio(){
       a.playbackRate=1; _driftSign=0;
     }
   });
-  // Mobil autoplay: gesture flag'e gerek yok, doğrudan dene
+  // iOS gesture listener: herhangi dokunuşta duruyorsa başlat
   document.addEventListener('click',_tryMobilePlay,{passive:true});
   document.addEventListener('touchstart',_tryMobilePlay,{passive:true});
 }
 
-// Her dokunuşta: ses çalınması gerekiyorsa ve duruyorsa başlat
+// iOS: play() bu fonksiyon click/touchstart'tan sync çağrıldığı için gesture context var
+// Başlatınca anlık server pos'a seek yapar (1 dk bekleme yok)
 function _tryMobilePlay(){
   if(!shouldPlayMusic()||!_musicAudio||_musicMuted) return;
-  if(_musicAudio.paused&&_musicAudio.src){
-    _musicAudio.volume=0.3;
-    _musicAudio.play().catch(()=>{});
-  }
+  if(!_musicAudio.paused||!_musicAudio.src) return;
+  _musicAudio.volume=0.3;
+  _musicAudio.play()
+    .then(()=>{ _radioResync(); }) // play() başarılı → anında server'la hizala
+    .catch(()=>{});
 }
 
 function radioLoadTrack(data,rtt){
@@ -389,38 +428,13 @@ function radioLoadTrack(data,rtt){
     });
   }
   _musicAudio.volume=0.3;
-  // Muted ise play() çağırmıyoruz; toggleMusic() ile açılınca re-seek yapacak
+  // Muted ise play() yok; gesture ile açılınca _tryMobilePlay çalıştıracak
   if(!_musicMuted&&shouldPlayMusic()) _musicAudio.play().catch(()=>{});
   updateMusicUI();
-  // Periyodik resync: 5 saniyede bir, playback rate hesaplamalı düzeltme
   if(!_radioSyncInterval){
     _radioSyncInterval=setInterval(()=>{
       if(!shouldPlayMusic()||!_musicAudio||_musicAudio.paused) return;
-      const t0=Date.now();
-      io2.emit('radio:now',null,d=>{
-        if(!d||!d.file) return;
-        const rtt2=Date.now()-t0;
-        _radioRTT=rtt2;
-        const srvPos=((d.position||0)+rtt2/2)/1000;
-        // Sunucu konumunu timestamp ile sakla (timeupdate tahmin için kullanır)
-        _lastSrvPos=srvPos; _lastSrvPosTime=Date.now();
-        const same=decodeURIComponent(_musicAudio.src||'').endsWith(decodeURIComponent(d.file));
-        if(!same){radioLoadTrack(d,rtt2);return;}
-        const drift=_musicAudio.currentTime-srvPos;
-        if(Math.abs(drift)<0.2){
-          _musicAudio.playbackRate=1; _driftSign=0; // tolerans içinde
-        } else if(Math.abs(drift)<3){
-          // Bir sonraki sync periyoduna (5s) kadar tam düzeltecek rate hesapla
-          // rate = 1 - drift/5 → 5 saniyede sıfırlanır
-          const rate=Math.max(0.88,Math.min(1.12,1-drift/5));
-          _driftSign=Math.sign(drift);
-          _musicAudio.playbackRate=rate;
-        } else {
-          // Büyük kayma: direkt seek
-          _musicAudio.playbackRate=1; _driftSign=0;
-          _musicAudio.currentTime=srvPos;
-        }
-      });
+      _radioResync();
     },5000);
   }
 }
@@ -438,13 +452,12 @@ function applyMusicForCurrentScreen(){
   if(bar) bar.style.display=canPlay?'flex':'none';
   if(canPlay){
     if(!_musicAudio||!_musicAudio.src){
-      // Şarkı yüklenmemiş → sunucudan al
       if(typeof io2!=='undefined'&&io2.connected){
         const t0=Date.now();
         io2.emit('radio:now',null,d=>{if(d){_radioRTT=Date.now()-t0;radioLoadTrack(d,_radioRTT);}});
       }
     } else if(!_musicMuted&&_musicAudio.paused){
-      // Yüklü ama duruyor (ekran geçişi sonrası) → devam et
+      // Ekran geçişi sonrası yeniden başlat
       _musicAudio.play().catch(()=>{});
     }
   } else if(_musicAudio&&!_musicAudio.paused){
@@ -461,17 +474,13 @@ function toggleMusic(){
   try{localStorage.setItem('azap_music_muted',_musicMuted?'1':'0');}catch{}
   if(_musicAudio){
     if(_musicMuted){
-      // iOS dahil her platformda kesin sustur: pause et
-      _musicAudio.pause();
+      _musicAudio.pause(); // iOS dahil kesin sustur
     } else if(shouldPlayMusic()&&_musicAudio.src){
-      // Ses açılınca sunucuyla re-sync yap, play tetikle
+      // iOS critical: play() bu click handler'dan sync çağrılmalı
       _musicAudio.volume=0.3;
-      const t0=Date.now();
-      io2.emit('radio:now',null,d=>{
-        if(!d) return;
-        _radioRTT=Date.now()-t0;
-        radioLoadTrack(d,_radioRTT);
-      });
+      _musicAudio.play()
+        .then(()=>{ _radioResync(); }) // başarılı → server pos'a hizala
+        .catch(()=>{});
     }
   }
   updateMusicUI();
