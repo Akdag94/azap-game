@@ -1804,7 +1804,7 @@ function resolveMKVote(rc) {
         if (wc.over) { endMKGame(rc, wc); return; }
         if (card === 'rebel') {
           const power = MK.powerForRebel(mk.board.rebel, mk.smallGame);
-          if (power) { mk.pendingPower = { type: power }; mk.phase = 'power'; emit(rc); return; }
+          if (power) { mk.pendingPower = { type: power }; mk.phase = 'power'; emit(rc); setTimeout(() => runMKBots(rc), 800); return; }
         }
       }
     }
@@ -1812,6 +1812,7 @@ function resolveMKVote(rc) {
     mk.phase = 'nomination';
   }
   emit(rc);
+  setTimeout(() => runMKBots(rc), 800);
 }
 
 function endMKGame(rc, result) {
@@ -1839,6 +1840,151 @@ function endMKGame(rc, result) {
     mkStates.delete(rc);
     emit(rc);
   }, 15000);
+}
+
+function runMKBots(rc) {
+  const g = rooms.get(rc), mk = mkStates.get(rc);
+  if (!g || !mk || mk.winner) return;
+
+  const isBotId = id => g.isBot(id);
+  const alive = MK.getAlive(mk);
+  const rebelSide = new Set(['traitor', 'king']);
+
+  if (mk.phase === 'nomination') {
+    if (!isBotId(mk.currentLeaderId)) return;
+    const eligible = alive.filter(p =>
+      p.id !== mk.currentLeaderId &&
+      p.id !== mk.termLock.leaderId &&
+      p.id !== mk.termLock.partnerId
+    );
+    if (!eligible.length) return;
+    const partner = eligible[crypto.randomInt(0, eligible.length)];
+    mk.nominatedPartnerId = partner.id;
+    mk.phase = 'vote';
+    mk.votes = new Map();
+    const leaderName = mk.players.get(mk.currentLeaderId)?.name || '?';
+    mk.eventLog.push(`${leaderName} yaverini ${partner.name} olarak seçti`);
+    emit(rc);
+    setTimeout(() => runMKBots(rc), 600);
+    return;
+  }
+
+  if (mk.phase === 'vote') {
+    const leaderId = mk.currentLeaderId;
+    const partnerId = mk.nominatedPartnerId;
+    const leaderRole = mk.players.get(leaderId)?.role;
+    const partnerRole = mk.players.get(partnerId)?.role;
+    let anyVoted = false;
+    alive.forEach(p => {
+      if (!isBotId(p.id) || mk.votes.has(p.id)) return;
+      let vote;
+      if (rebelSide.has(p.role)) {
+        vote = (rebelSide.has(leaderRole) || rebelSide.has(partnerRole)) ? 'ja' : 'nein';
+      } else {
+        vote = mk.board.rebel >= 3 ? (crypto.randomInt(0, 2) === 0 ? 'nein' : 'ja') : 'ja';
+      }
+      mk.votes.set(p.id, vote);
+      anyVoted = true;
+    });
+    if (anyVoted) {
+      emit(rc);
+      if (mk.votes.size >= alive.length) setTimeout(() => resolveMKVote(rc), 600);
+    }
+    return;
+  }
+
+  if (mk.phase === 'card_leader') {
+    if (!isBotId(mk.currentLeaderId)) return;
+    const leaderRole = mk.players.get(mk.currentLeaderId)?.role;
+    let discardIndex = rebelSide.has(leaderRole)
+      ? mk.pendingCards.findIndex(c => c === 'matrix')
+      : mk.pendingCards.findIndex(c => c === 'rebel');
+    if (discardIndex === -1) discardIndex = 0;
+    mk.pendingCards.splice(discardIndex, 1);
+    mk.phase = 'card_partner';
+    emit(rc);
+    setTimeout(() => runMKBots(rc), 600);
+    return;
+  }
+
+  if (mk.phase === 'card_partner') {
+    if (!isBotId(mk.nominatedPartnerId)) return;
+    const partnerRole = mk.players.get(mk.nominatedPartnerId)?.role;
+    let deployIndex = rebelSide.has(partnerRole)
+      ? mk.pendingCards.findIndex(c => c === 'rebel')
+      : mk.pendingCards.findIndex(c => c === 'matrix');
+    if (deployIndex === -1) deployIndex = 0;
+    const card = mk.pendingCards[deployIndex];
+    mk.termLock = { leaderId: mk.currentLeaderId, partnerId: mk.nominatedPartnerId };
+    mk.board[card]++;
+    mk.lastCard = card;
+    mk.pendingCards = [];
+    const leaderName = mk.players.get(mk.currentLeaderId)?.name || '?';
+    const partnerName = mk.players.get(mk.nominatedPartnerId)?.name || '?';
+    mk.eventLog.push(`${leaderName} + ${partnerName} → ${card === 'matrix' ? 'MATRIX' : 'ASİ'} kartı`);
+    io.to(rc).emit('mk:card_played', { card, board: { ...mk.board } });
+    const wc = MK.checkWin(mk);
+    if (wc.over) { endMKGame(rc, wc); return; }
+    const power = MK.powerForRebel(mk.board.rebel, mk.smallGame);
+    if (card === 'rebel' && power) {
+      mk.pendingPower = { type: power };
+      mk.phase = 'power';
+      mk.powerResult = null;
+    } else {
+      MK.advanceLeader(mk);
+      mk.nominatedPartnerId = null;
+      mk.phase = 'nomination';
+    }
+    emit(rc);
+    setTimeout(() => runMKBots(rc), 600);
+    return;
+  }
+
+  if (mk.phase === 'power') {
+    if (!isBotId(mk.currentLeaderId)) return;
+    const leader = mk.players.get(mk.currentLeaderId);
+    const power = mk.pendingPower?.type;
+    const leaderName = leader?.name || '?';
+
+    if (power === 'role_spy') {
+      const targets = alive.filter(p => p.id !== mk.currentLeaderId);
+      if (targets.length) {
+        const target = targets[crypto.randomInt(0, targets.length)];
+        const team = rebelSide.has(target.role) ? 'ASİ' : 'ŞÖVALYE';
+        mk.powerResult = { type: 'role_spy', targetName: target.name, team };
+        mk.eventLog.push(`${leaderName} gizlice bir oyuncunun rolünü öğrendi`);
+      }
+    } else if (power === 'deck_spy') {
+      mk.powerResult = { type: 'deck_spy', cards: mk.deck.slice(0, Math.min(3, mk.deck.length)) };
+      mk.eventLog.push(`${leaderName} desteden gelecek kartlara baktı`);
+    } else if (power === 'execute') {
+      let targets = rebelSide.has(leader?.role)
+        ? alive.filter(p => p.id !== mk.currentLeaderId && !rebelSide.has(p.role))
+        : alive.filter(p => p.id !== mk.currentLeaderId);
+      if (!targets.length) targets = alive.filter(p => p.id !== mk.currentLeaderId);
+      if (targets.length) {
+        const target = targets[crypto.randomInt(0, targets.length)];
+        target.isAlive = false;
+        mk.powerResult = { type: 'execute', targetName: target.name };
+        mk.eventLog.push(`${leaderName} ${target.name}'i sistemden eledi`);
+        io.to(rc).emit('mk:executed', { targetName: target.name });
+        const kingWin = MK.checkKingExecuted(mk, target.id);
+        if (kingWin.over) {
+          mk.pendingPower = null;
+          emit(rc);
+          setTimeout(() => endMKGame(rc, kingWin), 1500);
+          return;
+        }
+      }
+    }
+
+    mk.pendingPower = null;
+    MK.advanceLeader(mk);
+    mk.nominatedPartnerId = null;
+    mk.phase = 'nomination';
+    emit(rc);
+    setTimeout(() => runMKBots(rc), 600);
+  }
 }
 
 function emitVoteTally(rc) {
@@ -2418,6 +2564,7 @@ io.on('connection', (socket) => {
       g.phase = 'mk_active';
       cb?.({ ok: true });
       emit(rc);
+      setTimeout(() => runMKBots(rc), 1000);
       return;
     }
 
@@ -2681,6 +2828,7 @@ io.on('connection', (socket) => {
     mk.eventLog.push(`${leaderName} yaverini ${partner.name} olarak seçti`);
     cb?.({ ok: true });
     emit(rc);
+    setTimeout(() => runMKBots(rc), 800);
   });
 
   socket.on('mk:vote', ({ vote } = {}, cb) => {
@@ -2694,6 +2842,7 @@ io.on('connection', (socket) => {
     mk.votes.set(socket.id, vote);
     cb?.({ ok: true });
     emit(rc);
+    setTimeout(() => runMKBots(rc), 800);
     // Tüm canlı oyuncular oy verdiyse çöz
     const aliveCnt = MK.getAlive(mk).length;
     if (mk.votes.size >= aliveCnt) setTimeout(() => resolveMKVote(rc), 600);
@@ -2709,6 +2858,7 @@ io.on('connection', (socket) => {
     mk.phase = 'card_partner';
     cb?.({ ok: true });
     emit(rc);
+    setTimeout(() => runMKBots(rc), 800);
   });
 
   socket.on('mk:deploy', ({ deployIndex } = {}, cb) => {
@@ -2740,6 +2890,7 @@ io.on('connection', (socket) => {
       mk.phase = 'nomination';
     }
     emit(rc);
+    setTimeout(() => runMKBots(rc), 800);
   });
 
   socket.on('mk:use_power', ({ targetId } = {}, cb) => {
@@ -2782,6 +2933,7 @@ io.on('connection', (socket) => {
     mk.phase = 'nomination';
     cb?.({ ok: true });
     emit(rc);
+    setTimeout(() => runMKBots(rc), 800);
   });
 
   socket.on('mk:skip_power', (_, cb) => {
@@ -2796,6 +2948,7 @@ io.on('connection', (socket) => {
     mk.phase = 'nomination';
     cb?.({ ok: true });
     emit(rc);
+    setTimeout(() => runMKBots(rc), 800);
   });
 
   // ── BUG RAPOR (tüm kullanıcılar) ──
