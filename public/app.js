@@ -130,6 +130,7 @@ let me,gs,ps,sel1,sel2,selG,voted,nsent,isSpec=false,isDead=false,AM='login',use
 let mvpVoted=null;
 let mks=null,mkps=null; // Matrix Krallığı public/private state
 let mkReadyDone=false,prevMkLeaderId=null,prevMkPhase=null;
+let _mkAQ=[],_mkABusy=false; // animasyon kuyruğu
 const Q=id=>document.getElementById(id);
 // XSS koruması: HTML entity escape
 const esc = (s) => {
@@ -4189,7 +4190,7 @@ io2.on('state',s=>{
     renderMK();
     return;
   }
-  mks=null; mkReadyDone=false; prevMkLeaderId=null; prevMkPhase=null;
+  mks=null; mkReadyDone=false; prevMkLeaderId=null; prevMkPhase=null; _mkAQ=[]; _mkABusy=false;
 
   const m={lobby:'S2',role_selection:'S_RS',role_reveal:'S3',president_vote:'S_PV',night:'S4',morning_report:'S5',day_discussion:'S6',voting:'S7',vote_result:'S8',mvp_vote:'S_MV',mvp_result:'S_MVR',game_over:'S9',post_game:'S9'};
   // Sadece phase değiştiğinde ekranı değiştir (gereksiz redraw önler)
@@ -5059,15 +5060,25 @@ function renderMK(){
   if(!box||!mks)return;
   const s=mks.mkState;
   if(!s){box.innerHTML='';return;}
-  // Nomination fazına ilk girildiğinde lider animasyonu göster
-  if(s.mkPhase==='nomination' && prevMkPhase!=='nomination'){
-    const lid=s.currentLeader?.id;
-    if(lid && lid!==prevMkLeaderId){
-      showMkLeaderAnim(s.currentLeader.name);
-      prevMkLeaderId=lid;
+  const ph=s.mkPhase;
+  if(ph!==prevMkPhase){
+    if(ph==='nomination'){
+      const lid=s.currentLeader;
+      qMkAnn({icon:'👑',title:'BU TURUN LİDERİ',sub:lid?.name||'?',color:'blue',dur:2800});
+      prevMkLeaderId=lid?.id;
+    } else if(ph==='vote'){
+      qMkAnn({icon:'🗳️',title:'YAVER SEÇİLDİ',sub:`${s.currentLeader?.name||'?'} → Yaver: ${s.nominatedPartner?.name||'?'}`,color:'yellow',dur:2000});
+      setTimeout(()=>qMkAnn({icon:'🎲',title:'OYLAMA BAŞLIYOR',sub:'Gizli oy — kimse kimin ne oyladığını göremez',color:'yellow',dur:2200}),2200);
+    } else if(ph==='card_leader'){
+      qMkAnn({icon:'🃏',title:'KART SEÇİMİ',sub:'Lider 3 kart çekiyor, birini gizlice atacak...',color:'blue',dur:2200});
+    } else if(ph==='card_partner'){
+      qMkAnn({icon:'🃏',title:'YAVER KARTI SEÇİYOR',sub:'Son karar Yavere kaldı',color:'purple',dur:2200});
+    } else if(ph==='power'){
+      const pn={role_spy:'⚡ ROL DİKİZLEME',deck_spy:'⚡ DESTE DİKİZLEME',execute:'⚡ İDAM GÜCÜ'};
+      qMkAnn({icon:'🔮',title:'ÖZEL GÜÇ AKTİVE!',sub:pn[s.pendingPowerType]||'',color:'orange',dur:2500});
     }
+    prevMkPhase=ph;
   }
-  prevMkPhase=s.mkPhase;
   box.innerHTML=mkBoardHTML(s)+mkRoleCardHTML()+mkPhaseHTML(s)+mkLogHTML(s)+mkPlayerListHTML(s);
 }
 
@@ -5129,6 +5140,29 @@ function mkPhaseHTML(s){
   return '';
 }
 
+function qMkAnn(cfg){
+  _mkAQ.push(cfg);
+  if(!_mkABusy)_nextMkAnn();
+}
+function _nextMkAnn(){
+  if(!_mkAQ.length){_mkABusy=false;return;}
+  _mkABusy=true;
+  const{icon='',title='',sub='',color='blue',dur=2500}=_mkAQ.shift();
+  const el=document.createElement('div');
+  el.className='mk-ann';
+  el.innerHTML=`<div class="mk-ann-inner mk-ann-${color}">
+    <div class="mk-ann-icon">${icon}</div>
+    <div class="mk-ann-title">${esc(title)}</div>
+    ${sub?`<div class="mk-ann-sub">${esc(sub)}</div>`:''}
+  </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('mk-ann-show')));
+  setTimeout(()=>{
+    el.classList.add('mk-ann-out');
+    setTimeout(()=>{el.remove();_nextMkAnn();},500);
+  },dur);
+}
+
 function mkReady(){
   if(mkReadyDone)return;
   mkReadyDone=true;
@@ -5139,21 +5173,6 @@ function mkReady(){
   if(btn){btn.disabled=true;btn.textContent='Bekleniyor...';}
 }
 
-function showMkLeaderAnim(name){
-  const el=document.createElement('div');
-  el.className='mk-leader-anim';
-  el.innerHTML=`<div class="mk-leader-anim-inner">
-    <div class="mk-leader-anim-crown">👑</div>
-    <div class="mk-leader-anim-label">BU TURUN LİDERİ</div>
-    <div class="mk-leader-anim-name">${esc(name||'?')}</div>
-  </div>`;
-  document.body.appendChild(el);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('mk-leader-anim-show')));
-  setTimeout(()=>{
-    el.classList.remove('mk-leader-anim-show');
-    setTimeout(()=>el.remove(),700);
-  },3200);
-}
 
 function mkIntroHTML(s){
   const total=(s.players||[]).length;
@@ -5404,18 +5423,29 @@ function mkLogHTML(s){
 
 // MK event listeners
 io2.on('mk:vote_result',(d)=>{
-  const msg=d.approved?`Hükümet ONAYLANDI (${d.ja} EVET / ${d.nein} HAYIR)`:`Hükümet REDDEDİLDİ (${d.ja} EVET / ${d.nein} HAYIR)`;
-  toast(msg,d.approved?0:1);
+  if(d.approved){
+    qMkAnn({icon:'✅',title:'HÜKÜMET ONAYLANDI',sub:`${d.ja} EVET  ·  ${d.nein} HAYIR`,color:'green',dur:3000});
+  } else {
+    qMkAnn({icon:'❌',title:'HÜKÜMET REDDEDİLDİ',sub:`${d.ja} EVET  ·  ${d.nein} HAYIR`,color:'red',dur:3000});
+  }
 });
 io2.on('mk:card_played',(d)=>{
-  const name=d.card==='matrix'?'MATRIX':'ASİ';
-  toast(`${d.chaos?'KAOS: ':''}${name} kartı masaya yüklendi!`,d.card==='rebel'?1:0);
+  if(d.chaos){
+    qMkAnn({icon:'💥',title:'K A O S !',sub:`3 ardışık red — ${d.card==='matrix'?'MATRIX':'ASİ'} kartı otomatik çekildi`,color:'chaos',dur:3500});
+  } else {
+    const isM=d.card==='matrix';
+    qMkAnn({icon:isM?'🟦':'🟥',title:isM?'MATRIX KARTI YÜKLENDI':'ASİ KARTI YÜKLENDI',
+      sub:`Matrix: ${d.board?.matrix||0} / 5   ·   Asi: ${d.board?.rebel||0} / 6`,
+      color:isM?'matrix':'rebel',dur:2800});
+  }
 });
 io2.on('mk:executed',(d)=>{
-  toast(`${d.targetName} sistemden elendi!`,1);
+  qMkAnn({icon:'💀',title:'SİSTEMDEN ELENDİ!',sub:d.targetName,color:'red',dur:3200});
 });
 io2.on('mk:game_over',(d)=>{
-  toast(d.winner==='knights'?'Şövalyeler kazandı!':'Asiler kazandı!',0);
+  const k=d.winner==='knights';
+  qMkAnn({icon:k?'🏆':'🔴',title:k?'ŞÖVALYELER KAZANDI!':'ASİLER KAZANDI!',
+    sub:d.reason,color:k?'blue':'rebel',dur:4500});
 });
 
 // Oyuncu odaya girince/çıkınca voice durumunu güncelle

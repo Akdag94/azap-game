@@ -919,15 +919,37 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 .mk-intro-ready-btn:hover:not(:disabled){background:linear-gradient(135deg,rgba(0,191,255,.25),rgba(123,104,238,.25));box-shadow:0 0 16px rgba(0,200,255,.25)}
 .mk-intro-ready-btn:disabled{opacity:.5;cursor:not-allowed}
 
-/* MK Lider Animasyonu */
-.mk-leader-anim{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .4s ease}
-.mk-leader-anim.mk-leader-anim-show{opacity:1}
-.mk-leader-anim-inner{background:rgba(6,4,14,.92);border:1px solid rgba(0,191,255,.5);border-radius:16px;padding:28px 40px;text-align:center;backdrop-filter:blur(12px);box-shadow:0 0 60px rgba(0,191,255,.2),0 20px 60px rgba(0,0,0,.7);transform:scale(.85) translateY(20px);transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
-.mk-leader-anim.mk-leader-anim-show .mk-leader-anim-inner{transform:scale(1) translateY(0)}
-.mk-leader-anim-crown{font-size:2.4rem;margin-bottom:8px;animation:mkCrownBounce .6s .3s ease both}
-@keyframes mkCrownBounce{0%{transform:translateY(-20px);opacity:0}100%{transform:translateY(0);opacity:1}}
-.mk-leader-anim-label{font-family:'Fira Code',monospace;font-size:.62rem;letter-spacing:4px;color:rgba(0,200,255,.6);margin-bottom:6px;text-transform:uppercase}
-.mk-leader-anim-name{font-family:'Cinzel Decorative',serif;font-size:1.5rem;font-weight:700;color:#fff;text-shadow:0 0 20px rgba(0,191,255,.5);letter-spacing:2px}
+/* MK Animasyon Bildirimi (evrensel kuyruk sistemi) */
+.mk-ann{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(6,4,14,.55);opacity:0;transition:opacity .35s ease}
+.mk-ann.mk-ann-show{opacity:1}
+.mk-ann.mk-ann-out{opacity:0}
+.mk-ann-inner{text-align:center;border-radius:18px;padding:28px 36px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transform:scale(.82) translateY(18px);transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .35s ease;max-width:280px;width:85%}
+.mk-ann.mk-ann-show .mk-ann-inner{transform:scale(1) translateY(0)}
+.mk-ann.mk-ann-out .mk-ann-inner{transform:scale(.9) translateY(-10px)}
+.mk-ann-icon{font-size:2.6rem;margin-bottom:8px;animation:mkAnnIcon .5s .15s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes mkAnnIcon{0%{transform:scale(0) rotate(-20deg);opacity:0}100%{transform:scale(1) rotate(0deg);opacity:1}}
+.mk-ann-title{font-family:'Fira Code',monospace;font-size:.9rem;font-weight:700;letter-spacing:2px;margin-bottom:5px;line-height:1.3}
+.mk-ann-sub{font-size:.75rem;opacity:.75;line-height:1.4;margin-top:4px}
+/* Renk teması */
+.mk-ann-blue{background:rgba(0,15,30,.9);border:1px solid rgba(0,191,255,.55);box-shadow:0 0 50px rgba(0,191,255,.18),0 20px 60px rgba(0,0,0,.7)}
+.mk-ann-blue .mk-ann-title{color:#00bfff}
+.mk-ann-yellow{background:rgba(20,15,0,.9);border:1px solid rgba(243,156,18,.5);box-shadow:0 0 50px rgba(243,156,18,.12),0 20px 60px rgba(0,0,0,.7)}
+.mk-ann-yellow .mk-ann-title{color:#f39c12}
+.mk-ann-green{background:rgba(0,20,10,.9);border:1px solid rgba(46,204,113,.5);box-shadow:0 0 50px rgba(46,204,113,.15),0 20px 60px rgba(0,0,0,.7)}
+.mk-ann-green .mk-ann-title{color:#2ecc71}
+.mk-ann-red{background:rgba(20,0,0,.9);border:1px solid rgba(231,76,60,.5);box-shadow:0 0 50px rgba(231,76,60,.15),0 20px 60px rgba(0,0,0,.7)}
+.mk-ann-red .mk-ann-title{color:#e74c3c}
+.mk-ann-purple{background:rgba(15,0,25,.9);border:1px solid rgba(155,89,182,.5);box-shadow:0 0 50px rgba(155,89,182,.14),0 20px 60px rgba(0,0,0,.7)}
+.mk-ann-purple .mk-ann-title{color:#9b59b6}
+.mk-ann-orange{background:rgba(20,10,0,.9);border:1px solid rgba(230,126,34,.5);box-shadow:0 0 50px rgba(230,126,34,.14),0 20px 60px rgba(0,0,0,.7)}
+.mk-ann-orange .mk-ann-title{color:#e67e22}
+.mk-ann-matrix{background:rgba(0,10,25,.9);border:1px solid rgba(0,191,255,.6);box-shadow:0 0 60px rgba(0,191,255,.25),0 20px 60px rgba(0,0,0,.7)}
+.mk-ann-matrix .mk-ann-title{color:#00bfff;text-shadow:0 0 20px rgba(0,191,255,.6)}
+.mk-ann-rebel{background:rgba(25,0,0,.9);border:1px solid rgba(192,57,43,.6);box-shadow:0 0 60px rgba(192,57,43,.25),0 20px 60px rgba(0,0,0,.7)}
+.mk-ann-rebel .mk-ann-title{color:#e74c3c;text-shadow:0 0 20px rgba(231,76,60,.5)}
+.mk-ann-chaos{background:rgba(25,8,0,.9);border:1px solid rgba(255,107,53,.6);box-shadow:0 0 70px rgba(255,107,53,.3),0 20px 60px rgba(0,0,0,.7);animation:mkChaosPulse 1s ease infinite alternate}
+@keyframes mkChaosPulse{0%{box-shadow:0 0 70px rgba(255,107,53,.3),0 20px 60px rgba(0,0,0,.7)}100%{box-shadow:0 0 90px rgba(255,107,53,.5),0 20px 60px rgba(0,0,0,.7)}}
+.mk-ann-chaos .mk-ann-title{color:#ff6b35;letter-spacing:6px;text-shadow:0 0 20px rgba(255,107,53,.6)}
 
 /* Rehber - Demo mod kartı */
 .guide-demo-card{border-color:rgba(0,200,255,.25)!important;position:relative}
