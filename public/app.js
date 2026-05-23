@@ -330,55 +330,56 @@ let _musicAudio=null,_musicPlaying=false,_musicCurrentFile='',_musicCurrentName=
 let _musicMuted=false,_musicEnabled=true;
 try{_musicMuted=localStorage.getItem('azap_music_muted')==='1';_musicEnabled=localStorage.getItem('azap_music_enabled')!=='0';}catch{}
 
-// Sync state
-let _radioRTT=0,_radioRTTSamples=[],_radioSyncInterval=null,_radioSyncing=false;
+// Sync state — NTP-style clock calibration, no per-sync network round-trips
+let _clockOffset=0,_trackStartTime=null,_radioSyncInterval=null,_clockCalibrated=false;
 
-// ── SYNC MATEMATİĞİ ──
-// rate = 1 - drift/5  →  5 saniyede tam telafi
-// clamp [0.93, 1.07]  →  max %7 fark, kulak fark etmez
-// DEAD ZONE [0.12s, 0.28s]: dokunma — RTT jitterini absorbe eder, salınımı önler
-// rate aktifken 0.12s altına düşerse sıfırla; aksi hâlde bir sonraki sync'e bırak
+// Sunucu saatiyle farkı hesapla (3 ping, medyan al) — sadece bir kere yapılır
+function _calibrateClock(done){
+  const samples=[];
+  let n=0;
+  const next=()=>{
+    const t0=Date.now();
+    io2.emit('time:ping',null,res=>{
+      if(!res) return;
+      const t1=Date.now();
+      samples.push(res.t+(t1-t0)/2-t1);
+      if(++n<3){ setTimeout(next,150); }
+      else{
+        samples.sort((a,b)=>a-b);
+        _clockOffset=samples[1]; // medyan
+        _clockCalibrated=true;
+        if(done) done();
+      }
+    });
+  };
+  next();
+}
 
-function _radioResync(){
-  if(_radioSyncing||!_musicAudio||!_musicAudio.src||_musicAudio.paused||_musicMuted) return;
-  _radioSyncing=true;
-  const t0=Date.now();
-  io2.emit('radio:now',null,d=>{
-    _radioSyncing=false;
-    if(!d||!d.file||!_musicAudio||_musicAudio.paused) return;
-    const rtt2=Date.now()-t0;
-    // RTT moving average (son 4 ölçüm) — jitter etkisini azaltır
-    _radioRTTSamples.push(rtt2);
-    if(_radioRTTSamples.length>4) _radioRTTSamples.shift();
-    const avgRTT=_radioRTTSamples.reduce((a,b)=>a+b,0)/_radioRTTSamples.length;
-    _radioRTT=avgRTT;
-    const srvPos=((d.position||0)+avgRTT/2)/1000;
-    const same=decodeURIComponent(_musicAudio.src||'').endsWith(decodeURIComponent(d.file));
-    if(!same){
-      _musicCurrentFile=d.file; _musicCurrentName=d.name||'';
-      const lbl=document.querySelector('.music-radio-label');
-      if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
-      _musicAudio.src=d.file; _musicAudio.load();
-      _musicAudio.addEventListener('loadedmetadata',function sk(){
-        _musicAudio.currentTime=srvPos; _musicAudio.removeEventListener('loadedmetadata',sk);
-      });
-      return;
-    }
-    const drift=_musicAudio.currentTime-srvPos; // + = client ilerde, - = client geride
-    const absDrift=Math.abs(drift);
-    if(_musicAudio.playbackRate!==1&&absDrift<0.12){
-      // Düzeldi: rate'i sıfırla
-      _musicAudio.playbackRate=1;
-    } else if(absDrift>=0.28&&absDrift<=4){
-      // Anlamlı kayma: 5s'de telafi edecek rate (salınım önleme: dead zone 0.12-0.28)
-      _musicAudio.playbackRate=Math.max(0.93,Math.min(1.07,1-drift/5));
-    } else if(absDrift>4){
-      // Çok büyük kayma (>4s): tek seferlik seek
-      _musicAudio.playbackRate=1;
-      _musicAudio.currentTime=srvPos;
-    }
-    // 0.12 ≤ |drift| < 0.28: dead zone — RTT jitter bölgesi, dokunma
-  });
+function _serverNow(){ return Date.now()+_clockOffset; }
+
+function _expectedMusicPos(){
+  if(!_trackStartTime) return null;
+  return (_serverNow()-_trackStartTime)/1000;
+}
+
+// Saf lokal matematik — ağ yok, RTT jitter yok, salınım imkansız
+function _radioCheckSync(){
+  if(!_musicAudio||!_trackStartTime||_musicAudio.paused||_musicMuted) return;
+  const ep=_expectedMusicPos();
+  if(ep===null||ep<0) return;
+  const drift=_musicAudio.currentTime-ep; // + = client ilerde, - = client geride
+  const abs=Math.abs(drift);
+  if(_musicAudio.playbackRate!==1&&abs<0.1){
+    _musicAudio.playbackRate=1; // düzeldi
+  } else if(abs>=0.3&&abs<=5){
+    // rate-based smooth correction: 10s'de telafi
+    _musicAudio.playbackRate=Math.max(0.95,Math.min(1.05,1-drift/10));
+  } else if(abs>5){
+    // çok büyük fark: tek seferlik seek (şarkı atladıysa vb.)
+    _musicAudio.playbackRate=1;
+    _musicAudio.currentTime=ep;
+  }
+  // dead zone [0.1, 0.3]: dokunma
 }
 
 function _initRadio(){
@@ -396,67 +397,68 @@ function _initRadio(){
 }
 
 // iOS critical: bu fonksiyon click/touchstart gesture context'inden çağrılır
-// iOS'ta load() + play() ikisi de gesture context'te çalışmalı
 function _tryMobilePlay(){
   if(!shouldPlayMusic()||!_musicAudio||_musicMuted) return;
   if(!_musicAudio.paused||!_musicAudio.src) return;
   _musicAudio.muted=false; _musicAudio.volume=0.3;
-  // iOS: src set ama load() çağrılmamış/engellenmiş olabilir, gesture'da yeniden dene
   if(_musicAudio.readyState<1) _musicAudio.load();
-  _musicAudio.play()
-    .then(()=>{ setTimeout(_radioResync,200); }) // çaldıktan 200ms sonra rate-sync başlat
-    .catch(()=>{});
+  // Çalmadan önce doğru konuma getir (saat kalibre edildiyse)
+  const ep=_expectedMusicPos();
+  if(ep!==null&&ep>0) _musicAudio.currentTime=ep;
+  _musicAudio.play().catch(()=>{});
 }
 
 function _radioPreload(){
-  // Track bilgisini yükle ama play() yok (iOS gesture bekleniyor)
   _initRadio();
   if(!io2||!io2.connected) return;
-  const t0=Date.now();
   io2.emit('radio:now',null,d=>{
     if(!d||!d.file||!_musicAudio) return;
-    _radioRTT=Date.now()-t0;
+    if(d.trackStartTime) _trackStartTime=d.trackStartTime;
     const same=decodeURIComponent(_musicAudio.src||'').endsWith(decodeURIComponent(d.file));
-    if(same) return;
-    _musicCurrentFile=d.file; _musicCurrentName=d.name||'';
-    const lbl=document.querySelector('.music-radio-label');
-    if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
-    const pos=((d.position||0)+_radioRTT/2)/1000;
-    _musicAudio.src=d.file;
-    _musicAudio.load(); // Desktop/Android için preload; iOS bu noktada engelleyebilir
+    if(!same){
+      _musicCurrentFile=d.file; _musicCurrentName=d.name||'';
+      const lbl=document.querySelector('.music-radio-label');
+      if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
+      _musicAudio.src=d.file;
+      _musicAudio.load();
+    }
+    // konumu loadedmetadata'da set et (src değişsin ya da değişmesin)
     _musicAudio.addEventListener('loadedmetadata',function sk(){
-      _musicAudio.currentTime=pos; _musicAudio.removeEventListener('loadedmetadata',sk);
+      _musicAudio.removeEventListener('loadedmetadata',sk);
+      const ep=_expectedMusicPos();
+      if(ep!==null&&ep>0) _musicAudio.currentTime=ep;
     });
   });
 }
 
-function radioLoadTrack(data,rtt){
+function radioLoadTrack(data){
   if(!data||!data.file) return;
   _initRadio();
   if(!_musicAudio) return;
   _musicCurrentFile=data.file; _musicCurrentName=data.name||'';
-  const latency=rtt?rtt/2:_radioRTT/2;
-  const pos=((data.position||0)+latency)/1000;
+  if(data.trackStartTime) _trackStartTime=data.trackStartTime;
   const lbl=document.querySelector('.music-radio-label');
   if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
   const sameTrack=decodeURIComponent(_musicAudio.src||'').endsWith(decodeURIComponent(data.file));
+  const seekToPos=()=>{
+    const ep=_expectedMusicPos();
+    if(ep!==null&&ep>0) _musicAudio.currentTime=ep;
+  };
   if(sameTrack){
-    if(Math.abs(_musicAudio.currentTime-pos)>0.5) _musicAudio.currentTime=pos;
+    seekToPos();
   } else {
     _musicAudio.src=data.file; _musicAudio.load();
     _musicAudio.addEventListener('loadedmetadata',function seekOnce(){
-      _musicAudio.currentTime=pos; _musicAudio.removeEventListener('loadedmetadata',seekOnce);
+      _musicAudio.removeEventListener('loadedmetadata',seekOnce);
+      seekToPos();
     });
   }
   _musicAudio.muted=false; _musicAudio.volume=0.3;
   if(!_musicMuted&&shouldPlayMusic()) _musicAudio.play().catch(()=>{});
   updateMusicUI();
   if(!_radioSyncInterval){
-    // 5 saniyede bir rate-based sync
-    _radioSyncInterval=setInterval(()=>{
-      if(!shouldPlayMusic()||!_musicAudio||_musicAudio.paused||_musicMuted) return;
-      _radioResync();
-    },5000);
+    // 2 saniyede bir lokal matematik — ağ yok, jitter yok
+    _radioSyncInterval=setInterval(_radioCheckSync,2000);
   }
 }
 
@@ -499,9 +501,9 @@ function toggleMusic(){
       // iOS critical: play() mutlaka bu click handler'dan sync çağrılmalı
       _musicAudio.muted=false; _musicAudio.volume=0.3;
       if(_musicAudio.readyState<1) _musicAudio.load();
-      _musicAudio.play()
-        .then(()=>{ setTimeout(_radioResync,200); })
-        .catch(()=>{});
+      const ep=_expectedMusicPos();
+      if(ep!==null&&ep>0) _musicAudio.currentTime=ep;
+      _musicAudio.play().catch(()=>{});
     }
   }
   updateMusicUI();
@@ -4362,6 +4364,7 @@ io2.on('connect',()=>{
   me=io2.id;
   Q('CONN_BANNER').style.display='none';
   console.log('[connect] Socket bağlandı, id:',me);
+  _calibrateClock(); // saat kalibrasyonu — bir kere, bağlantıda
   // HER bağlantıda (ilk + reconnect) token varsa server'da authed map'e kayıt ettir
   // Aksi halde room:create gibi auth gerektiren işlemler başarısız olur
   let token = null;

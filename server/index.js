@@ -2112,7 +2112,7 @@ function radioGetNow() {
   const track = radio.playlist[radio.currentIndex] || '';
   // Dosya adından şarkı ismini çıkar (bracket'ları ve uzantıyı temizle)
   const name = track.replace(/\s*\[.*?\]/g, '').replace(/\s*\(Official.*?\)/gi, '').replace(/\.mp3$/i, '').trim();
-  return { file: track ? '/radio/' + encodeURIComponent(track) : '', name, position: elapsed, index: radio.currentIndex, total: radio.playlist.length };
+  return { file: track ? '/radio/' + encodeURIComponent(track) : '', name, position: elapsed, trackStartTime: radio.trackStartTime, index: radio.currentIndex, total: radio.playlist.length };
 }
 
 function radioSkip() {
@@ -2138,6 +2138,7 @@ io.on('connection', (socket) => {
   // ── MÜZİK RADYO ──
   socket.emit('radio:track', radioGetNow());
   socket.on('radio:now', (_, cb) => { cb?.(radioGetNow()); });
+  socket.on('time:ping', (_, cb) => { cb?.({ t: Date.now() }); });
   socket.on('radio:ended', () => { radioTrackEnded(); });
   socket.on('radio:skip', (_, cb) => {
     const u = authed.get(socket.id);
