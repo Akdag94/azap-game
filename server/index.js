@@ -1730,7 +1730,7 @@ function _emitImmediate(rc) {
   try {
     // ── MATRIX KRALLIĞI MODU ──
     if (mk) {
-      const pub = { phase: 'mk_active', mkState: MK.getPublicState(mk, g.players) };
+      const pub = { phase: 'mk_active', mkState: MK.getPublicState(mk, g.players), leaderId: g.leaderId };
       io.to(rc).emit('state', pub);
       mk.players.forEach((_, pid) => {
         const sock = io.sockets.sockets.get(pid);
@@ -1831,25 +1831,9 @@ function endMKGame(rc, result) {
   mk.winReason = result.reason;
   mk.phase = 'game_over';
   mk.rolesRevealed = [...mk.players.values()].map(p => ({ id: p.id, name: p.name, role: p.role, isAlive: p.isAlive }));
-  // Kayıt: kazanan/kaybeden
-  mk.players.forEach(p => {
-    if (!p.username) return;
-    if (result.winner === 'draw') { Accounts.addCoins(p.username, 5); return; }
-    const isWinner = (result.winner === 'knights' && p.role === 'knight') ||
-                     (result.winner === 'rebels' && (p.role === 'traitor' || p.role === 'king'));
-    Accounts.record(p.username, isWinner);
-    if (isWinner) Accounts.addCoins(p.username, 20);
-    else Accounts.addCoins(p.username, 5);
-  });
+  // MK modunda istatistik ve coin değişikliği yok — lider yeni oyun başlatana kadar bekle
   emit(rc);
   io.to(rc).emit('mk:game_over', { winner: result.winner, reason: result.reason, roles: mk.rolesRevealed });
-  // 15 saniye sonra lobiye dön
-  setTimeout(() => {
-    if (!rooms.has(rc)) return;
-    g.phase = PHASES.POST_GAME;
-    mkStates.delete(rc);
-    emit(rc);
-  }, 15000);
 }
 
 function runMKBots(rc) {
@@ -2490,7 +2474,10 @@ io.on('connection', (socket) => {
     const g = rooms.get(rc);
     if (!g) return;
     if (g.leaderId !== socket.id) return;
-    if (g.phase !== PHASES.GAME_OVER && g.phase !== PHASES.POST_GAME && g.phase !== 'mvp_result') return;
+    const mk = mkStates.get(rc);
+    const mkDone = mk && mk.winner;
+    if (!mkDone && g.phase !== PHASES.GAME_OVER && g.phase !== PHASES.POST_GAME && g.phase !== 'mvp_result') return;
+    if (mk) mkStates.delete(rc);
     g.resetForNewGame();
     clearTimer(rc);
     emit(rc);
@@ -2525,10 +2512,11 @@ io.on('connection', (socket) => {
     const rc = prooms.get(socket.id), g = rooms.get(rc);
     if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
     if (g.phase !== PHASES.LOBBY) return cb?.({ ok: false, err: 'Oyun başladı, bahis yapılamaz!' });
+    if (g.mkMode) return cb?.({ ok: false, err: 'Matrix Krallığı modunda bahis yapılamaz!' });
     const u = authed.get(socket.id);
     if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
     const amt = parseInt(amount);
-    if (!amt || amt < 5 || amt > 1000) return cb?.({ ok: false, err: 'Bahis 5-1000 arası olmalı!' });
+    if (!amt || amt < 5) return cb?.({ ok: false, err: 'Bahis en az 5 olmalı!' });
     // Önce eski bahsi geri ver (varsa)
     if (!g.bets) g.bets = new Map();
     const oldBet = g.bets.get(u) || 0;

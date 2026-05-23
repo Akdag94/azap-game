@@ -977,23 +977,30 @@ function toggleEquipItem(itemId, equipped){
 }
 
 // ── BAHİS ──
-function placeBet(){
-  const amt = parseInt(Q('BET_AMOUNT').value);
-  if(!amt || amt < 5){toast('Min 5 coin!',1);return;}
-  if(amt > 1000){toast('Max 1000 coin!',1);return;}
+function _doBet(amt){
   io2.emit('bet:place', {amount: amt}, r => {
     if(r?.ok){
-      toast(`💰 ${amt} altın bahis yatırıldı!`);
+      toast(`💰 ${amt} altın yatırıldı!`);
       Q('MY_BET').textContent = amt;
       Q('BET_AMOUNT').value = '';
       Q('BET_CANCEL_BTN').style.display = 'block';
-      // user'ın coinlerini güncelle
       if(user) user.coins = r.coins;
       const bmc=Q('BET_MY_COINS'); if(bmc && user) bmc.textContent='💰 ' + (user.coins||0);
     } else {
       toast(r?.err || 'Bahis başarısız.',1);
     }
   });
+}
+function placeBet(){
+  const amt = parseInt(Q('BET_AMOUNT').value);
+  if(!amt || amt < 5){toast('Min 5 coin!',1);return;}
+  _doBet(amt);
+}
+function allIn(){
+  const coins = user?.coins || 0;
+  if(coins < 5){toast('Yetersiz altın!',1);return;}
+  if(!confirm(`Tüm ${coins} altınını yatırmak istediğine emin misin?`))return;
+  _doBet(coins);
 }
 
 function cancelBet(){
@@ -2347,7 +2354,7 @@ function renderLobby(){
   const bp=Q('BET_PANEL');
   if(bp){
     const isPlayer = gs.players.some(p=>p.id===me);
-    bp.style.display = (user && isPlayer) ? 'block' : 'none';
+    bp.style.display = (user && isPlayer && !gs.mkMode) ? 'block' : 'none';
     const bmc=Q('BET_MY_COINS');
     if(bmc && user) bmc.textContent='💰 ' + (user.coins||0);
   }
@@ -5445,6 +5452,7 @@ function mkPowerHTML(s,isLeader){
 function mkGameOverHTML(s){
   const isDraw=s.winner==='draw';
   const isKnights=s.winner==='knights';
+  const isLeader=gs?.leaderId===me;
   const color=isDraw?'#f39c12':isKnights?'#00bfff':'#c0392b';
   let html=`<div class="mk-phase-box" style="border-color:${color}">
     <div class="mk-phase-title" style="color:${color}">${isDraw?'BERABERLİK':isKnights?'ŞÖVALYELER KAZANDI!':'ASİLER KAZANDI!'}</div>
@@ -5455,12 +5463,17 @@ function mkGameOverHTML(s){
     const rl=p.role==='knight'?'ŞÖVALYE':p.role==='king'?'KRAL':'ASİ';
     html+=`<div class="mk-reveal-row" style="${!p.isAlive?'opacity:.5':''}">
       <span style="color:${rc};font-weight:700">${rl}</span>
-      <span>${esc(p.name)}${!p.isAlive?' (eliminated)':''}</span>
+      <span>${esc(p.name)}${!p.isAlive?' 💀':''}</span>
     </div>`;
   });
-  html+=`</div>
-    <button class="b b2 bs" style="width:100%;margin-top:12px" onclick="leaveAfterGame()">Çıkış</button>
-  </div>`;
+  html+=`</div>`;
+  if(isLeader){
+    html+=`<button class="b b1" style="width:100%;margin-top:12px" onclick="newGame()">🔄 YENİ OYUN</button>`;
+  } else {
+    html+=`<div style="margin-top:10px;padding:8px 10px;background:rgba(255,200,50,.08);border:1px solid rgba(255,200,50,.3);border-radius:8px;color:#f5c842;font-size:.8rem;text-align:center;letter-spacing:.3px">⏳ Lider yeni oyunu bekliyor...</div>
+    <button class="b b2" style="width:100%;margin-top:8px" onclick="leaveAfterGame()">Lobiden Çık</button>`;
+  }
+  html+=`</div>`;
   return html;
 }
 

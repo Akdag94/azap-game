@@ -21,7 +21,7 @@
 <link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="/style.css?v=20260523g">
+<link rel="stylesheet" href="/style.css?v=20260523h">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -676,11 +676,12 @@ Hoş geldin, <strong id="WN"></strong>
     <span style="font-size:.74rem;color:var(--gold);font-weight:600" id="BET_MY_COINS">💰 0</span>
   </div>
   <div style="font-size:.74rem;color:var(--dim);margin-bottom:6px;line-height:1.4">
-    Altın yatır. Oyunu kazanırsan tüm havuzu kazananlarla paylaşırsın (yatırdığın oran kadar pay alırsın). Kaybedersen kaybolur. Min 5, max 1000.
+    Altın yatır. Oyunu kazanırsan tüm havuzu kazananlarla paylaşırsın (yatırdığın oran kadar pay alırsın). Kaybedersen kaybolur. Min 5.
   </div>
   <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-    <input class="inp" id="BET_AMOUNT" type="number" min="5" max="1000" placeholder="Miktar" style="flex:1;padding:6px 8px;font-size:.85rem">
+    <input class="inp" id="BET_AMOUNT" type="number" min="5" placeholder="Miktar" style="flex:1;padding:6px 8px;font-size:.85rem">
     <button class="b bs" style="background:var(--gold);color:#000;border:none;font-weight:600" onclick="placeBet()">💰 Yatır</button>
+    <button class="b bs" style="background:#c0392b;color:#fff;border:none;font-weight:700;white-space:nowrap" onclick="allIn()">ALL-IN</button>
   </div>
   <div style="display:flex;justify-content:space-between;font-size:.78rem">
     <span>Yatırdığım: <strong id="MY_BET" style="color:var(--gold)">0</strong></span>
@@ -1075,6 +1076,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="/app.js?v=20260523g"></script>
+<script src="/app.js?v=20260523h"></script>
 </body>
 </html>
