@@ -7,9 +7,9 @@ data/users.json
 data/reports.json
 data/screenshots/
 data/avatars/
+public/radio/
 *.log
 .DS_Store
 .vscode/
 .idea/
 dist/
-data/users.json

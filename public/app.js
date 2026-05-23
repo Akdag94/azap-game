@@ -304,6 +304,8 @@ function show(id){
   var aiBg=document.getElementById('AI_AUTH_BG');
   if(aiBg) aiBg.classList.toggle('on', id==='S0');
   if(id==='S0') startAiAuthBg(); else stopAiAuthBg();
+  // Müzik: S1/S2'de çal, oyun ekranlarında sustur
+  applyMusicForCurrentScreen();
 }
 function toast(m,e){const t=Q('T');t.textContent=m;t.className='toast'+(e?' er':'');t.classList.add('sh');setTimeout(()=>t.classList.remove('sh'),3e3)}
 
@@ -323,15 +325,143 @@ function avHTML(avatar, size, fallbackEmoji, extraStyle){
   return '<div class="av ' + cls + '"' + styleAttr + '>' + (fallbackEmoji||'👤') + '</div>';
 }
 
-// ── MUSIC (kaldırıldı — fonksiyonlar no-op stub olarak duruyor, geri kalan kod hata vermesin) ──
-function loadYouTubeAPI(){}
-function tryStartMusicNow(){}
-function applyMusicForCurrentScreen(){}
-function shouldPlayMusic(){return false;}
-function startMusic(){}
-function stopMusic(){}
-function toggleMusic(){}
-function updateMusicUI(){}
+// ── MÜZİK RADYO (Sunucu Senkronize MP3) ──
+let _musicAudio=null,_musicPlaying=false,_musicCurrentFile='',_musicCurrentName='';
+let _musicMuted=false,_musicEnabled=true;
+try{_musicMuted=localStorage.getItem('azap_music_muted')==='1';_musicEnabled=localStorage.getItem('azap_music_enabled')!=='0';}catch{}
+
+function _initRadio(){
+  if(_musicAudio) return;
+  const a=Q('MUSIC_AUDIO');
+  if(!a) return;
+  _musicAudio=a;
+  a.volume=0.3;
+  a.addEventListener('ended',()=>{ io2.emit('radio:ended'); });
+  a.addEventListener('playing',()=>{_musicPlaying=true;updateMusicUI();});
+  a.addEventListener('pause',()=>{_musicPlaying=false;updateMusicUI();});
+}
+
+let _radioRTT=0,_radioSyncInterval=null;
+
+function radioLoadTrack(data,rtt){
+  if(!data||!data.file) return;
+  _initRadio();
+  if(!_musicAudio) return;
+  _musicCurrentFile=data.file;
+  _musicCurrentName=data.name||'';
+  // Latency kompanzasyonu: pozisyona yarım RTT ekle
+  const latency=rtt?rtt/2:_radioRTT/2;
+  const pos=((data.position||0)+latency)/1000;
+  // Label güncelle
+  const lbl=document.querySelector('.music-radio-label');
+  if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
+  // Aynı şarkıysa sadece seek, değilse yükle
+  const currentSrc=_musicAudio.src||'';
+  const newFile=data.file;
+  if(currentSrc.includes(encodeURIComponent(decodeURIComponent(newFile).split('/radio/')[1]||'__NONE__'))){
+    // Aynı şarkı, pozisyon farkı 0.5sn'den büyükse düzelt
+    if(Math.abs(_musicAudio.currentTime-pos)>0.5) _musicAudio.currentTime=pos;
+  } else {
+    _musicAudio.src=newFile;
+    _musicAudio.load();
+    _musicAudio.addEventListener('loadedmetadata',function seekOnce(){
+      _musicAudio.currentTime=pos;
+      _musicAudio.removeEventListener('loadedmetadata',seekOnce);
+    });
+  }
+  _musicAudio.volume=_musicMuted?0:0.3;
+  if(shouldPlayMusic()) _musicAudio.play().catch(()=>{});
+  updateMusicUI();
+  // Periyodik resync başlat
+  if(!_radioSyncInterval){
+    _radioSyncInterval=setInterval(()=>{
+      if(!shouldPlayMusic()||!_musicAudio||_musicAudio.paused) return;
+      const t0=Date.now();
+      io2.emit('radio:now',null,d=>{
+        if(!d||!d.file) return;
+        const rtt2=Date.now()-t0;
+        _radioRTT=rtt2;
+        const srvPos=((d.position||0)+rtt2/2)/1000;
+        // Aynı şarkıysa ve fark 1sn'den büyükse düzelt
+        if(_musicAudio.src&&_musicAudio.src.includes(encodeURIComponent(decodeURIComponent(d.file).split('/radio/')[1]||''))){
+          if(Math.abs(_musicAudio.currentTime-srvPos)>0.5) _musicAudio.currentTime=srvPos;
+        } else {
+          radioLoadTrack(d,rtt2);
+        }
+      });
+    },15000);
+  }
+}
+
+function shouldPlayMusic(){
+  if(!_musicEnabled) return false;
+  const s1=Q('S1'),s2=Q('S2');
+  return (s1&&s1.classList.contains('on'))||(s2&&s2.classList.contains('on'));
+}
+
+function applyMusicForCurrentScreen(){
+  const bar=Q('MUSIC_BAR');
+  _initRadio();
+  const s1=Q('S1'),s2=Q('S2');
+  const onS1=s1&&s1.classList.contains('on');
+  const onS2=s2&&s2.classList.contains('on');
+  const canPlay=(onS1||onS2)&&_musicEnabled;
+  // Bar: ana menü (S1) ve lobi (S2) ekranlarında göster
+  if(bar) bar.style.display=(canPlay)?'flex':'none';
+  if(canPlay){
+    // Henüz şarkı yüklenmemişse server'dan iste
+    if(!_musicAudio||!_musicAudio.src){
+      if(typeof io2!=='undefined'&&io2.connected){const t0=Date.now();io2.emit('radio:now',null,d=>{if(d){_radioRTT=Date.now()-t0;radioLoadTrack(d,_radioRTT);}});}
+    } else {
+      // Zaten çalıyorsa dokunma (S1→S2 geçişinde bozulmasın)
+      _musicAudio.volume=_musicMuted?0:0.3;
+      if(_musicAudio.paused) _musicAudio.play().catch(()=>{});
+    }
+  } else if(_musicAudio&&!_musicAudio.paused){
+    _musicAudio.pause(); // Oyun ekranında durdur (geri dönünce resync olur)
+  }
+  updateMusicUI();
+}
+
+function startMusic(){if(_musicAudio&&!_musicMuted&&_musicAudio.src){_musicAudio.play().catch(()=>{});}}
+function stopMusic(){if(_musicAudio) _musicAudio.pause();}
+function toggleMusic(){
+  _musicMuted=!_musicMuted;
+  try{localStorage.setItem('azap_music_muted',_musicMuted?'1':'0');}catch{}
+  if(_musicAudio){
+    _musicAudio.volume=_musicMuted?0:0.3;
+    // Muted olsa bile çalmaya devam et (sync için)
+    if(!_musicMuted&&shouldPlayMusic()&&_musicAudio.src&&_musicAudio.paused) _musicAudio.play().catch(()=>{});
+  }
+  updateMusicUI();
+}
+function toggleMusicCollapse(){} // compat stub
+function toggleMusicEnabled(on){
+  _musicEnabled=!!on;
+  try{localStorage.setItem('azap_music_enabled',on?'1':'0');}catch{}
+  const cb=Q('MUSIC_ENABLED');if(cb) cb.checked=_musicEnabled;
+  if(!_musicEnabled){stopMusic();const bar=Q('MUSIC_BAR');if(bar)bar.style.display='none';}
+  else applyMusicForCurrentScreen();
+}
+function updateMusicUI(){
+  const icoOn=Q('MUSIC_ICO_ON'),icoOff=Q('MUSIC_ICO_OFF');
+  if(icoOn) icoOn.style.display=_musicMuted?'none':'block';
+  if(icoOff) icoOff.style.display=_musicMuted?'block':'none';
+  const bar=Q('MUSIC_BAR');
+  if(bar) bar.classList.toggle('muted',_musicMuted);
+  const dot=document.querySelector('.music-radio-live');
+  if(dot) dot.classList.toggle('paused',_musicMuted);
+  // Voice panel radyo butonu
+  const vrb=Q('VOICE_RADIO_BTN');
+  if(vrb){vrb.style.opacity=_musicMuted?'.4':'1';vrb.textContent=_musicMuted?'🔇':'🎵';}
+  // Admin skip butonları
+  const skip=Q('MUSIC_SKIP');
+  if(skip) skip.style.display=(user&&user.isAdmin)?'flex':'none';
+  const vskip=Q('VOICE_RADIO_SKIP');
+  if(vskip) vskip.style.display=(user&&user.isAdmin)?'flex':'none';
+}
+function loadYouTubeAPI(){} // compat stub
+function tryStartMusicNow(){ applyMusicForCurrentScreen(); }
 
 // ── AUTH ──
 function setAM(m){
@@ -4145,6 +4275,18 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// Radio track: server'dan gelen şarkı bilgisini her zaman sakla, uygunsa çal
+io2.on('radio:track',(data)=>{
+  const cb=Q('MUSIC_ENABLED');if(cb) cb.checked=_musicEnabled;
+  if(shouldPlayMusic()&&_musicEnabled) radioLoadTrack(data);
+});
+
+function radioSkipAdmin(){
+  io2.emit('radio:skip',null,r=>{
+    if(r&&!r.ok) toast(r.err||'Yetkin yok',1);
+  });
+}
+
 io2.on('connect',()=>{
   me=io2.id;
   Q('CONN_BANNER').style.display='none';
@@ -4161,8 +4303,7 @@ io2.on('connect',()=>{
           user = r.user;
           updateUserUI();
           userMusicPref = true;
-          loadYouTubeAPI();
-          setTimeout(()=>{ show('S1'); applyMusicForCurrentScreen(); setupDraggableButtons(); }, 300);
+          setTimeout(()=>{ show('S1'); io2.emit('radio:now',null,d=>{if(d)radioLoadTrack(d);}); setupDraggableButtons(); }, 300);
           updateRoleInfoBtn();
         } else {
           user = { ...user, ...r.user };

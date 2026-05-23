@@ -2081,7 +2081,71 @@ function emitHainKillVotes(rc) {
   });
 }
 
+// ── MÜZİK RADYO SİSTEMİ (MP3, tam senkronize) ──
+const radioDir = path.join(__dirname, '..', 'public', 'radio');
+let radioFiles = [];
+try {
+  radioFiles = fs.readdirSync(radioDir).filter(f => f.endsWith('.mp3'));
+} catch(e) { console.log('[Radio] /public/radio/ klasörü okunamadı'); }
+
+// Shuffle with seed (sunucu her restart'ta yeni sıra)
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Radio state
+const radio = {
+  playlist: shuffleArray(radioFiles),
+  currentIndex: 0,
+  trackStartTime: Date.now(), // bu şarkı ne zaman başladı
+  trackDuration: 210000, // default 3.5dk (client gerçek süreyi bildirir)
+  durations: {} // dosya adı -> ms cinsinden süre (client bildirir)
+};
+
+function radioGetNow() {
+  const elapsed = Date.now() - radio.trackStartTime;
+  const track = radio.playlist[radio.currentIndex] || '';
+  // Dosya adından şarkı ismini çıkar (bracket'ları ve uzantıyı temizle)
+  const name = track.replace(/\s*\[.*?\]/g, '').replace(/\s*\(Official.*?\)/gi, '').replace(/\.mp3$/i, '').trim();
+  return { file: track ? '/radio/' + encodeURIComponent(track) : '', name, position: elapsed, index: radio.currentIndex, total: radio.playlist.length };
+}
+
+function radioSkip() {
+  radio.currentIndex = (radio.currentIndex + 1) % radio.playlist.length;
+  radio.trackStartTime = Date.now();
+  // Playlist bitince yeniden karıştır
+  if (radio.currentIndex === 0) radio.playlist = shuffleArray(radioFiles);
+  io.emit('radio:track', radioGetNow());
+}
+
+// Client şarkı bittiğini bildirdiğinde (ilk bildiren tetikler)
+let _radioSkipLock = false;
+function radioTrackEnded() {
+  if (_radioSkipLock) return;
+  _radioSkipLock = true;
+  radioSkip();
+  setTimeout(() => { _radioSkipLock = false; }, 2000);
+}
+
+console.log(`[Radio] ${radioFiles.length} şarkı yüklendi`);
+
 io.on('connection', (socket) => {
+  // ── MÜZİK RADYO ──
+  socket.emit('radio:track', radioGetNow());
+  socket.on('radio:now', (_, cb) => { cb?.(radioGetNow()); });
+  socket.on('radio:ended', () => { radioTrackEnded(); });
+  socket.on('radio:skip', (_, cb) => {
+    const u = authed.get(socket.id);
+    if (!u || !Accounts.isAdmin(u)) return cb?.({ ok: false, err: 'Yetkin yok' });
+    radioSkip();
+    cb?.({ ok: true });
+  });
+
   // ── ZİYARETÇİ İSTATİSTİKLERİ (güvenli sayaçlar) ──
   siteStats.totalConnections++;
   siteStats.currentActive++;
