@@ -46,6 +46,7 @@ function createMKState(playersArray) {
     phase: 'intro',
     players,
     deck: buildDeck(),
+    discardPile: [],
     board: { matrix: 0, rebel: 0 },
     chaosCounter: 0,
     termLock: { leaderId: null, partnerId: null },
@@ -130,6 +131,7 @@ function getPublicState(state, roomPlayers) {
     chaosCounter: state.chaosCounter,
     termLock: { ...state.termLock },
     deckSize: state.deck.length,
+    discardSize: state.discardPile ? state.discardPile.length : 0,
     currentLeader: leader ? { id: leader.id, name: leader.name } : null,
     nominatedPartner: partner ? { id: partner.id, name: partner.name } : null,
     votes: { ja: jaCount, nein: neinCount, total: state.votes.size },
@@ -183,8 +185,46 @@ function getPrivateState(state, playerId) {
   return priv;
 }
 
+// Deste < 3 karta düşünce discard pile'ı karıştırıp geri ekle
+function reshuffleIfNeeded(state, needed = 3) {
+  if (state.deck.length < needed && state.discardPile.length > 0) {
+    state.deck = shuffle([...state.deck, ...state.discardPile]);
+    state.discardPile = [];
+    state.eventLog.push(`Deste yenilendi (${state.deck.length} kart)`);
+    return true;
+  }
+  return false;
+}
+
+// İmha edilen kartı discard pile'a ekle
+function discardCard(state, card) {
+  if (card) state.discardPile.push(card);
+}
+
+// Term lock kontrolü — az oyuncu kaldığında gevşet
+function isTermLocked(state, candidateId) {
+  const alive = getAlive(state);
+  // 5 veya daha az canlı oyuncuda term lock tamamen kalkar
+  if (alive.length <= 5) return false;
+  return candidateId === state.termLock.leaderId || candidateId === state.termLock.partnerId;
+}
+
+// Geçerli yaver adaylarını döndür; hiç yoksa term lock'u yok say
+function getEligiblePartners(state) {
+  const alive = getAlive(state);
+  const eligible = alive.filter(p =>
+    p.id !== state.currentLeaderId && !isTermLocked(state, p.id)
+  );
+  // Hiç aday kalmadıysa kilidi kaldır
+  if (!eligible.length) {
+    return alive.filter(p => p.id !== state.currentLeaderId);
+  }
+  return eligible;
+}
+
 module.exports = {
   createMKState, getPublicState, getPrivateState,
   checkWin, checkKingExecuted, checkKingPartnerApproved,
   powerForRebel, advanceLeader, getAlive,
+  reshuffleIfNeeded, discardCard, isTermLocked, getEligiblePartners,
 };

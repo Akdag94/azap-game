@@ -1786,18 +1786,25 @@ function resolveMKVote(rc) {
     const kingWin = MK.checkKingPartnerApproved(mk);
     if (kingWin.over) { endMKGame(rc, kingWin); return; }
     mk.chaosCounter = 0;
+    MK.reshuffleIfNeeded(mk, 3);
     mk.phase = 'card_leader';
     mk.pendingCards = mk.deck.splice(0, 3);
+    if (mk.pendingCards.length === 0) {
+      // Deste tamamen bitti ve discard pile da boş → oyun beraberliğiyle biter
+      endMKGame(rc, { winner: 'draw', reason: 'Deste ve discard pile tükendi!' });
+      return;
+    }
   } else {
     mk.chaosCounter++;
     mk.nominatedPartnerId = null;
     if (mk.chaosCounter >= 3) {
       // Kaos: destenin üstünden otomatik kart çek
+      MK.reshuffleIfNeeded(mk, 1);
       const card = mk.deck.shift();
+      mk.chaosCounter = 0; // her durumda sıfırla
       if (card) {
         mk.board[card]++;
         mk.lastCard = card;
-        mk.chaosCounter = 0;
         mk.eventLog.push(`KAOS: Kart otomatik çekildi → ${card === 'matrix' ? 'MATRIX' : 'ASİ'}`);
         io.to(rc).emit('mk:card_played', { card, board: { ...mk.board }, chaos: true });
         const wc = MK.checkWin(mk);
@@ -1806,6 +1813,8 @@ function resolveMKVote(rc) {
           const power = MK.powerForRebel(mk.board.rebel, mk.smallGame);
           if (power) { mk.pendingPower = { type: power }; mk.phase = 'power'; emit(rc); setTimeout(() => runMKBots(rc), 800); return; }
         }
+      } else {
+        mk.eventLog.push('Kaos: Deste boş, kart çekilemedi');
       }
     }
     MK.advanceLeader(mk);
@@ -1825,6 +1834,7 @@ function endMKGame(rc, result) {
   // Kayıt: kazanan/kaybeden
   mk.players.forEach(p => {
     if (!p.username) return;
+    if (result.winner === 'draw') { Accounts.addCoins(p.username, 5); return; }
     const isWinner = (result.winner === 'knights' && p.role === 'knight') ||
                      (result.winner === 'rebels' && (p.role === 'traitor' || p.role === 'king'));
     Accounts.record(p.username, isWinner);
@@ -1864,11 +1874,7 @@ function runMKBots(rc) {
 
   if (mk.phase === 'nomination') {
     if (!isBotId(mk.currentLeaderId)) return;
-    const eligible = alive.filter(p =>
-      p.id !== mk.currentLeaderId &&
-      p.id !== mk.termLock.leaderId &&
-      p.id !== mk.termLock.partnerId
-    );
+    const eligible = MK.getEligiblePartners(mk);
     if (!eligible.length) return;
     const partner = eligible[crypto.randomInt(0, eligible.length)];
     mk.nominatedPartnerId = partner.id;
@@ -1907,12 +1913,14 @@ function runMKBots(rc) {
 
   if (mk.phase === 'card_leader') {
     if (!isBotId(mk.currentLeaderId)) return;
+    if (!mk.pendingCards.length) return; // boş deste güvencesi
     const leaderRole = mk.players.get(mk.currentLeaderId)?.role;
     let discardIndex = rebelSide.has(leaderRole)
       ? mk.pendingCards.findIndex(c => c === 'matrix')
       : mk.pendingCards.findIndex(c => c === 'rebel');
     if (discardIndex === -1) discardIndex = 0;
-    mk.pendingCards.splice(discardIndex, 1);
+    const botDiscarded = mk.pendingCards.splice(discardIndex, 1)[0];
+    MK.discardCard(mk, botDiscarded);
     mk.phase = 'card_partner';
     emit(rc);
     setTimeout(() => runMKBots(rc), 600);
@@ -1921,6 +1929,7 @@ function runMKBots(rc) {
 
   if (mk.phase === 'card_partner') {
     if (!isBotId(mk.nominatedPartnerId)) return;
+    if (!mk.pendingCards.length) return; // boş deste güvencesi
     const partnerRole = mk.players.get(mk.nominatedPartnerId)?.role;
     let deployIndex = rebelSide.has(partnerRole)
       ? mk.pendingCards.findIndex(c => c === 'rebel')
@@ -1963,7 +1972,7 @@ function runMKBots(rc) {
       if (targets.length) {
         const target = targets[crypto.randomInt(0, targets.length)];
         const team = rebelSide.has(target.role) ? 'ASİ' : 'ŞÖVALYE';
-        mk.powerResult = { type: 'role_spy', targetName: target.name, team };
+        mk.powerResult = { type: 'role_spy', targetId: target.id, targetName: target.name, team };
         mk.eventLog.push(`${leaderName} gizlice bir oyuncunun rolünü öğrendi`);
       }
     } else if (power === 'deck_spy') {
@@ -2844,7 +2853,7 @@ io.on('connection', (socket) => {
     const partner = mk.players.get(partnerId);
     if (!partner || !partner.isAlive) return cb?.({ ok: false, err: 'Geçersiz hedef' });
     if (partnerId === socket.id) return cb?.({ ok: false, err: 'Kendini seçemezsin' });
-    if (partnerId === mk.termLock.leaderId || partnerId === mk.termLock.partnerId) {
+    if (MK.isTermLocked(mk, partnerId) && MK.getEligiblePartners(mk).length > 0) {
       return cb?.({ ok: false, err: 'Bu oyuncu geçen tur görevdeydi' });
     }
     mk.nominatedPartnerId = partnerId;
@@ -2880,7 +2889,8 @@ io.on('connection', (socket) => {
     if (mk.phase !== 'card_leader') return cb?.({ ok: false, err: 'Yanlış faz' });
     if (socket.id !== mk.currentLeaderId) return cb?.({ ok: false, err: 'Sen lider değilsin' });
     if (discardIndex < 0 || discardIndex >= mk.pendingCards.length) return cb?.({ ok: false, err: 'Geçersiz index' });
-    mk.pendingCards.splice(discardIndex, 1);
+    const discarded = mk.pendingCards.splice(discardIndex, 1)[0];
+    MK.discardCard(mk, discarded);
     mk.phase = 'card_partner';
     cb?.({ ok: true });
     emit(rc);
@@ -2932,7 +2942,7 @@ io.on('connection', (socket) => {
       const target = mk.players.get(targetId);
       if (!target || !target.isAlive) return cb?.({ ok: false, err: 'Geçersiz hedef' });
       const team = (target.role === 'knight') ? 'ŞÖVALYE' : 'ASİ';
-      mk.powerResult = { type: 'role_spy', targetName: target.name, team };
+      mk.powerResult = { type: 'role_spy', targetId: targetId, targetName: target.name, team };
       mk.eventLog.push(`${leaderName} gizlice bir oyuncunun rolünü öğrendi`);
     } else if (power === 'deck_spy') {
       mk.powerResult = { type: 'deck_spy', cards: mk.deck.slice(0, Math.min(3, mk.deck.length)) };

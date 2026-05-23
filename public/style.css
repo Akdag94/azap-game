@@ -951,6 +951,23 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 @keyframes mkChaosPulse{0%{box-shadow:0 0 70px rgba(255,107,53,.3),0 20px 60px rgba(0,0,0,.7)}100%{box-shadow:0 0 90px rgba(255,107,53,.5),0 20px 60px rgba(0,0,0,.7)}}
 .mk-ann-chaos .mk-ann-title{color:#ff6b35;letter-spacing:6px;text-shadow:0 0 20px rgba(255,107,53,.6)}
 
+/* MK Oyuncu Kartları (2 sütun) */
+.mk-pcards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.mk-pcard{background:var(--bg2);border:1px solid var(--brd);border-radius:10px;padding:10px 8px 8px;text-align:center;transition:border-color .2s;position:relative}
+.mk-pcard-dead{opacity:.35;filter:grayscale(.8)}
+.mk-pcard-me{border-color:rgba(0,191,255,.45)!important}
+.mk-pcard-leader{border-color:rgba(0,191,255,.55)!important;box-shadow:0 0 10px rgba(0,191,255,.12)}
+.mk-pcard-partner{border-color:rgba(155,89,182,.55)!important;box-shadow:0 0 10px rgba(155,89,182,.12)}
+.mk-pcard-av{margin-bottom:5px;display:flex;justify-content:center}
+.mk-pcard-name{font-size:.72rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.mk-pcard-badges{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;min-height:16px}
+
+/* MK Güç Günlüğü */
+.mk-plog{background:rgba(255,200,0,.04);border:1px solid rgba(255,200,0,.18);border-radius:7px;padding:7px 10px;margin-bottom:10px}
+.mk-plog-title{font-family:'Fira Code',monospace;font-size:.58rem;letter-spacing:2px;color:rgba(255,200,0,.55);font-weight:700;margin-bottom:5px}
+.mk-plog-row{font-size:.73rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);color:var(--txt)}
+.mk-plog-row:last-child{border-bottom:none}
+
 /* Rehber - Demo mod kartı */
 .guide-demo-card{border-color:rgba(0,200,255,.25)!important;position:relative}
 .guide-demo-label{display:inline-block;background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.4);border-radius:4px;color:#ffa500;font-size:.58rem;font-family:'Fira Code',monospace;font-weight:700;letter-spacing:2px;padding:2px 7px;margin-bottom:8px}
