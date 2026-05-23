@@ -5254,15 +5254,16 @@ function mkIntroHTML(s){
 function mkPowerLogHTML(){
   if(!mkPowerLog.length)return'';
   const rows=mkPowerLog.map(r=>{
+    const ctx=r.round!=null?`<span class="mk-plog-ctx">Tur ${r.round} · ${esc(r.leaderName||'?')} lider${r.partnerName?' · '+esc(r.partnerName)+' yaver':''}</span>`:'';
     if(r.type==='role_spy'){
       const c=r.team==='ŞÖVALYE'?'#00bfff':'#e74c3c';
-      return `<div class="mk-plog-row">🔍 <strong>${esc(r.targetName)}</strong>: <span style="color:${c};font-weight:700">${r.team}</span></div>`;
+      return `<div class="mk-plog-row">🔍 <strong>${esc(r.targetName)}</strong>: <span style="color:${c};font-weight:700">${r.team}</span>${ctx}</div>`;
     }
     if(r.type==='deck_spy'){
-      const cards=(r.cards||[]).map(c=>c==='matrix'?'<span class="mk-inline-matrix">M</span>':'<span class="mk-inline-rebel">A</span>').join('');
-      return `<div class="mk-plog-row">🃏 Sıradaki: ${cards}</div>`;
+      const cards=(r.cards||[]).map(c=>c==='matrix'?'<span class="mk-inline-matrix">M</span>':'<span class="mk-inline-rebel">A</span>').join(' ');
+      return `<div class="mk-plog-row">🃏 Sıradaki: ${cards}${ctx}</div>`;
     }
-    if(r.type==='execute')return`<div class="mk-plog-row">💀 İdam: <strong>${esc(r.targetName)}</strong></div>`;
+    if(r.type==='execute')return`<div class="mk-plog-row">💀 İdam: <strong>${esc(r.targetName)}</strong>${ctx}</div>`;
     return'';
   }).join('');
   return`<div class="mk-plog"><div class="mk-plog-title">ÖĞRENDIKLERIN</div>${rows}</div>`;
@@ -5277,15 +5278,18 @@ function mkPlayerCardsHTML(s){
     const dead=!p.isAlive;
     const known=mkKnownRoles[p.id];
     const knownColor=known?.team==='ŞÖVALYE'?'#00bfff':'#e74c3c';
-    html+=`<div class="mk-pcard${dead?' mk-pcard-dead':''}${isMe?' mk-pcard-me':''}${isLeaderP?' mk-pcard-leader':''}${isPartnerP?' mk-pcard-partner':''}">
-      <div class="mk-pcard-av">${avHTML(p.avatar,'sm')}</div>
-      <div class="mk-pcard-name">${esc(p.name)}</div>
-      <div class="mk-pcard-badges">
-        ${isLeaderP?'<span class="mk-badge mk-badge-leader">LİDER</span>':''}
-        ${isPartnerP?'<span class="mk-badge mk-badge-partner">YAVER</span>':''}
-        ${dead?'<span class="mk-badge mk-badge-dead">💀</span>':''}
-        ${known&&!dead?`<span class="mk-badge" style="background:rgba(0,0,0,.3);border-color:${knownColor};color:${knownColor}">${known.team==='ŞÖVALYE'?'ŞÖV':'ASİ'}</span>`:''}
-      </div>
+    const avatarHtml=cosmeticPlayerAvatarHTML(p,'sm',isMe,'4px');
+    const nameHtml=cosmeticPlayerNameHTML(p,isMe,isMe?' <span style="color:var(--hi);font-size:.62rem">(SEN)</span>':'');
+    let cls='pi';
+    if(dead)cls+=' dead';
+    if(isLeaderP)cls+=' mk-leader';
+    if(isPartnerP)cls+=' mk-partner';
+    const knownBadge=known&&!dead?`<span class="badge" style="background:rgba(0,0,0,.3);border:1px solid ${knownColor};color:${knownColor};font-size:.55rem;padding:1px 5px">${known.team==='ŞÖVALYE'?'ŞÖV':'ASİ'}</span>`:'';
+    const roleAbv=isLeaderP?`<span class="badge badge-l" style="background:rgba(0,191,255,.15);border-color:#00bfff;color:#00bfff;font-size:.55rem">LİDER</span>`:isPartnerP?`<span class="badge" style="background:rgba(155,89,182,.15);border-color:#9b59b6;color:#9b59b6;font-size:.55rem">YAVER</span>`:'';
+    html+=`<div class="${cls}">
+      ${roleAbv||knownBadge?`<div style="position:absolute;top:5px;left:0;right:0;display:flex;justify-content:center;gap:3px;flex-wrap:wrap;z-index:2">${roleAbv}${knownBadge}</div>`:''}
+      ${avatarHtml}
+      <span class="pi-name">${nameHtml}</span>
     </div>`;
   });
   html+=`</div>`;

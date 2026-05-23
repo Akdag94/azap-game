@@ -1973,11 +1973,11 @@ function runMKBots(rc) {
         const target = targets[crypto.randomInt(0, targets.length)];
         const team = rebelSide.has(target.role) ? 'ASİ' : 'ŞÖVALYE';
         mk.powerResult = { type: 'role_spy', targetId: target.id, targetName: target.name, team };
-        mk.eventLog.push(`${leaderName} gizlice bir oyuncunun rolünü öğrendi`);
+        // Bot leader — no human to notify, result discarded
       }
     } else if (power === 'deck_spy') {
       mk.powerResult = { type: 'deck_spy', cards: mk.deck.slice(0, Math.min(3, mk.deck.length)) };
-      mk.eventLog.push(`${leaderName} desteden gelecek kartlara baktı`);
+      // Bot leader — no human to notify, result discarded
     } else if (power === 'execute') {
       let targets = rebelSide.has(leader?.role)
         ? alive.filter(p => p.id !== mk.currentLeaderId && !rebelSide.has(p.role))
@@ -1986,12 +1986,12 @@ function runMKBots(rc) {
       if (targets.length) {
         const target = targets[crypto.randomInt(0, targets.length)];
         target.isAlive = false;
-        mk.powerResult = { type: 'execute', targetName: target.name };
         mk.eventLog.push(`${leaderName} ${target.name}'i sistemden eledi`);
         io.to(rc).emit('mk:executed', { targetName: target.name });
         const kingWin = MK.checkKingExecuted(mk, target.id);
         if (kingWin.over) {
           mk.pendingPower = null;
+          mk.powerResult = null;
           emit(rc);
           setTimeout(() => endMKGame(rc, kingWin), 1500);
           return;
@@ -2000,6 +2000,7 @@ function runMKBots(rc) {
     }
 
     mk.pendingPower = null;
+    mk.powerResult = null;
     MK.advanceLeader(mk);
     mk.nominatedPartnerId = null;
     mk.phase = 'nomination';
@@ -2936,39 +2937,53 @@ io.on('connection', (socket) => {
     if (socket.id !== mk.currentLeaderId) return cb?.({ ok: false, err: 'Sen lider değilsin' });
     if (!mk.pendingPower) return cb?.({ ok: false, err: 'Güç yok' });
     const power = mk.pendingPower.type;
-    const leaderName = mk.players.get(socket.id)?.name || '?';
+    const oldLeaderId = socket.id;
+    const leaderName = mk.players.get(oldLeaderId)?.name || '?';
+    const partnerName = mk.players.get(mk.nominatedPartnerId)?.name || null;
+    const round = mk.board.matrix + mk.board.rebel + 1;
 
     if (power === 'role_spy') {
       const target = mk.players.get(targetId);
       if (!target || !target.isAlive) return cb?.({ ok: false, err: 'Geçersiz hedef' });
       const team = (target.role === 'knight') ? 'ŞÖVALYE' : 'ASİ';
-      mk.powerResult = { type: 'role_spy', targetId: targetId, targetName: target.name, team };
-      mk.eventLog.push(`${leaderName} gizlice bir oyuncunun rolünü öğrendi`);
+      mk.powerResult = { type: 'role_spy', targetId, targetName: target.name, team, leaderName, partnerName, round };
     } else if (power === 'deck_spy') {
-      mk.powerResult = { type: 'deck_spy', cards: mk.deck.slice(0, Math.min(3, mk.deck.length)) };
-      mk.eventLog.push(`${leaderName} desteden gelecek kartlara baktı`);
+      mk.powerResult = { type: 'deck_spy', cards: mk.deck.slice(0, Math.min(3, mk.deck.length)), leaderName, partnerName, round };
     } else if (power === 'execute') {
       const target = mk.players.get(targetId);
       if (!target || !target.isAlive) return cb?.({ ok: false, err: 'Geçersiz hedef' });
       target.isAlive = false;
-      mk.powerResult = { type: 'execute', targetName: target.name };
+      mk.powerResult = { type: 'execute', targetName: target.name, leaderName, partnerName, round };
       mk.eventLog.push(`${leaderName} ${target.name}'i sistemden eledi`);
       io.to(rc).emit('mk:executed', { targetName: target.name });
       const kingWin = MK.checkKingExecuted(mk, targetId);
       if (kingWin.over) {
+        // oldLeaderId is still currentLeaderId here (no advanceLeader yet) — leader sees result
         mk.pendingPower = null;
         cb?.({ ok: true });
         emit(rc);
+        mk.powerResult = null;
         setTimeout(() => endMKGame(rc, kingWin), 1500);
         return;
       }
     }
+    const savedResult = mk.powerResult;
     mk.pendingPower = null;
+    mk.powerResult = null;
     MK.advanceLeader(mk);
     mk.nominatedPartnerId = null;
     mk.phase = 'nomination';
     cb?.({ ok: true });
     emit(rc);
+    // Send result only to the leader who used the power
+    if (savedResult) {
+      const leaderSock = io.sockets.sockets.get(oldLeaderId);
+      if (leaderSock) {
+        const priv = MK.getPrivateState(mk, oldLeaderId);
+        priv.powerResult = savedResult;
+        leaderSock.emit('priv', priv);
+      }
+    }
     setTimeout(() => runMKBots(rc), 800);
   });
 
