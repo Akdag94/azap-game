@@ -840,7 +840,7 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 /* ══════════════════════════════════════════
    MÜZİK RADYO (Horizontal Pill)
 ══════════════════════════════════════════ */
-#MUSIC_BAR{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);z-index:9990;display:flex;transition:opacity .3s}
+#MUSIC_BAR{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:9990;display:flex;transition:opacity .3s}
 #MUSIC_BAR.muted{opacity:.45}
 .music-radio-pill{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 12px;background:rgba(0,0,0,.32);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.06);border-radius:20px;min-width:0}
 .music-radio-live{width:6px;height:6px;border-radius:50%;background:#1db954;flex-shrink:0;animation:musicPulse 2s ease-in-out infinite}
