@@ -5285,11 +5285,11 @@ function mkPlayerCardsHTML(s){
     if(isLeaderP)cls+=' mk-leader';
     if(isPartnerP)cls+=' mk-partner';
     const knownBadge=known&&!dead?`<span class="badge" style="background:rgba(0,0,0,.3);border:1px solid ${knownColor};color:${knownColor};font-size:.55rem;padding:1px 5px">${known.team==='ŞÖVALYE'?'ŞÖV':'ASİ'}</span>`:'';
-    const roleAbv=isLeaderP?`<span class="badge badge-l" style="background:rgba(0,191,255,.15);border-color:#00bfff;color:#00bfff;font-size:.55rem">LİDER</span>`:isPartnerP?`<span class="badge" style="background:rgba(155,89,182,.15);border-color:#9b59b6;color:#9b59b6;font-size:.55rem">YAVER</span>`:'';
+    const roleAbv=isLeaderP?`<span class="mk-role-badge mk-role-leader">LİDER</span>`:isPartnerP?`<span class="mk-role-badge mk-role-partner">YAVER</span>`:'';
     html+=`<div class="${cls}">
-      ${roleAbv||knownBadge?`<div style="position:absolute;top:5px;left:0;right:0;display:flex;justify-content:center;gap:3px;flex-wrap:wrap;z-index:2">${roleAbv}${knownBadge}</div>`:''}
       ${avatarHtml}
       <span class="pi-name">${nameHtml}</span>
+      ${roleAbv||knownBadge?`<div style="display:flex;justify-content:center;gap:3px;flex-wrap:wrap;margin-top:2px">${roleAbv}${knownBadge}</div>`:''}
     </div>`;
   });
   html+=`</div>`;

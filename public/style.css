@@ -954,8 +954,11 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 /* MK Oyuncu Kartları — orijinal .pi stilini kullanır, 2 sütun grid */
 .mk-pcards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;list-style:none}
 .mk-pcards .pi{min-height:120px}
-.mk-pcards .pi.mk-leader{border-color:#00bfff!important;box-shadow:0 0 10px rgba(0,191,255,.18)!important}
-.mk-pcards .pi.mk-partner{border-color:#9b59b6!important;box-shadow:0 0 10px rgba(155,89,182,.18)!important}
+.mk-pcards .pi.mk-leader{border-color:#b8860b!important;box-shadow:0 0 10px rgba(184,134,11,.22)!important}
+.mk-pcards .pi.mk-partner{border-color:#2e7d32!important;box-shadow:0 0 10px rgba(46,125,50,.22)!important}
+.mk-role-badge{display:inline-block;font-size:.58rem;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:8px;border:1px solid}
+.mk-role-leader{background:rgba(184,134,11,.18);border-color:#b8860b;color:#d4a017}
+.mk-role-partner{background:rgba(46,125,50,.18);border-color:#2e7d32;color:#4caf50}
 
 /* MK Güç Günlüğü */
 .mk-plog{background:rgba(255,200,0,.04);border:1px solid rgba(255,200,0,.18);border-radius:7px;padding:7px 10px;margin-bottom:10px}
