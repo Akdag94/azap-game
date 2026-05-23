@@ -327,8 +327,8 @@ function avHTML(avatar, size, fallbackEmoji, extraStyle){
 
 // ── MÜZİK RADYO (Sunucu Senkronize MP3) ──
 let _musicAudio=null,_musicPlaying=false,_musicCurrentFile='',_musicCurrentName='';
-let _musicMuted=false,_musicEnabled=true;
-try{_musicMuted=localStorage.getItem('azap_music_muted')==='1';_musicEnabled=localStorage.getItem('azap_music_enabled')!=='0';}catch{}
+let _musicMuted=true,_musicEnabled=true; // default: susturulmuş — kullanıcı kendisi açar (iOS autoplay bypass)
+try{_musicEnabled=localStorage.getItem('azap_music_enabled')!=='0';}catch{}
 
 // Sync state — NTP-style clock calibration, no per-sync network round-trips
 let _clockOffset=0,_trackStartTime=null,_radioSyncInterval=null,_clockCalibrated=false;
