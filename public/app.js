@@ -857,7 +857,7 @@ async function renderShopItems(){
         return true;
       });
       if(!items.length) return;
-      html+=`<div class="ci-subcat-title">${sc.label}</div><div class="ci-grid ci-subgrid">`;
+      html+=`<div class="ci-subcat-title">${sc.label}</div><div class="ci-subgrid">`;
       items.forEach(([id,item])=>{
         html+=_shopItemCard(id,item,ownedIds.has(id),!!item.exclusive);
       });
@@ -1035,7 +1035,7 @@ async function renderInventory(){
     PET_SUBCATS.forEach(sc=>{
       const sc_items = filtered.filter(it=>(_cosmeticCatalog?.[it.id]?.subcat||'special')===sc.key);
       if(!sc_items.length) return;
-      html+=`<div class="ci-subcat-title">${sc.label}</div><div class="ci-grid ci-subgrid">`;
+      html+=`<div class="ci-subcat-title">${sc.label}</div><div class="ci-subgrid">`;
       sc_items.forEach(it=>{
         const info = _cosmeticCatalog?.[it.id] || {emoji:'📦',name:it.id,desc:'',cat:'?',rarity:'rare'};
         html+=_invItemCard(it,info);
