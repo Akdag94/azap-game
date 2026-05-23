@@ -1850,6 +1850,18 @@ function runMKBots(rc) {
   const alive = MK.getAlive(mk);
   const rebelSide = new Set(['traitor', 'king']);
 
+  if (mk.phase === 'intro') {
+    mk.players.forEach((_, id) => { if (isBotId(id)) mk.readySet.add(id); });
+    if (mk.readySet.size >= mk.players.size) {
+      mk.phase = 'nomination';
+      emit(rc);
+      setTimeout(() => runMKBots(rc), 800);
+    } else {
+      emit(rc);
+    }
+    return;
+  }
+
   if (mk.phase === 'nomination') {
     if (!isBotId(mk.currentLeaderId)) return;
     const eligible = alive.filter(p =>
@@ -2809,6 +2821,20 @@ io.on('connection', (socket) => {
     const rc = prooms.get(socket.id); if (!rc) return null;
     return mkStates.get(rc);
   }
+
+  socket.on('mk:ready', (_, cb) => {
+    const rc = prooms.get(socket.id), mk = mkStates.get(rc);
+    if (!mk) return cb?.({ ok: false, err: 'MK oyunu yok' });
+    if (mk.phase !== 'intro') return cb?.({ ok: true });
+    mk.readySet.add(socket.id);
+    cb?.({ ok: true });
+    emit(rc);
+    if (mk.readySet.size >= mk.players.size) {
+      mk.phase = 'nomination';
+      emit(rc);
+      setTimeout(() => runMKBots(rc), 800);
+    }
+  });
 
   socket.on('mk:nominate', ({ partnerId } = {}, cb) => {
     const rc = prooms.get(socket.id), mk = mkStates.get(rc);

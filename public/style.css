@@ -897,3 +897,44 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 
 /* Lobi mod değiştirici */
 #MK_MODE_BTN{transition:all .2s}
+
+/* MK İntro Ekranı */
+.mk-intro-box{background:var(--bg2);border:1px solid rgba(0,200,255,.25);border-radius:12px;padding:14px;margin-bottom:10px}
+.mk-intro-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.mk-intro-title{font-family:'Fira Code',monospace;font-size:.95rem;font-weight:700;letter-spacing:3px;color:#00bfff}
+.mk-intro-badge{background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.4);border-radius:4px;color:#ffa500;font-size:.6rem;font-family:'Fira Code',monospace;font-weight:700;letter-spacing:2px;padding:2px 7px}
+.mk-intro-rules{max-height:48vh;overflow-y:auto;padding-right:2px;margin-bottom:12px}
+.mk-intro-section{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.06)}
+.mk-intro-section:last-child{border-bottom:none;margin-bottom:0}
+.mk-intro-sec-title{font-family:'Fira Code',monospace;font-size:.6rem;letter-spacing:2px;color:rgba(0,200,255,.6);font-weight:700;margin-bottom:5px}
+.mk-intro-role-row{display:flex;gap:10px;font-size:.78rem;margin:3px 0}
+.mk-intro-role-row span:first-child{min-width:60px;font-weight:700;font-family:'Fira Code',monospace;font-size:.72rem}
+.mk-intro-ol{padding-left:18px;line-height:1.85;font-size:.8rem}
+.mk-intro-win-row{font-size:.78rem;margin:3px 0;padding:5px 8px;border-radius:4px;background:rgba(0,0,0,.2)}
+.mk-intro-progress{margin-bottom:10px}
+.mk-intro-prog-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin-bottom:5px}
+.mk-intro-prog-fill{height:100%;background:linear-gradient(90deg,#00bfff,#7b68ee);border-radius:2px;transition:width .4s ease}
+.mk-intro-prog-text{font-size:.7rem;color:var(--dim);font-family:'Fira Code',monospace;text-align:center}
+.mk-intro-ready-btn{width:100%;padding:14px;background:linear-gradient(135deg,rgba(0,191,255,.15),rgba(123,104,238,.15));border:1px solid rgba(0,200,255,.5);border-radius:8px;color:#00bfff;font-family:'Fira Code',monospace;font-size:.85rem;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .2s}
+.mk-intro-ready-btn:hover:not(:disabled){background:linear-gradient(135deg,rgba(0,191,255,.25),rgba(123,104,238,.25));box-shadow:0 0 16px rgba(0,200,255,.25)}
+.mk-intro-ready-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* MK Lider Animasyonu */
+.mk-leader-anim{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .4s ease}
+.mk-leader-anim.mk-leader-anim-show{opacity:1}
+.mk-leader-anim-inner{background:rgba(6,4,14,.92);border:1px solid rgba(0,191,255,.5);border-radius:16px;padding:28px 40px;text-align:center;backdrop-filter:blur(12px);box-shadow:0 0 60px rgba(0,191,255,.2),0 20px 60px rgba(0,0,0,.7);transform:scale(.85) translateY(20px);transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.mk-leader-anim.mk-leader-anim-show .mk-leader-anim-inner{transform:scale(1) translateY(0)}
+.mk-leader-anim-crown{font-size:2.4rem;margin-bottom:8px;animation:mkCrownBounce .6s .3s ease both}
+@keyframes mkCrownBounce{0%{transform:translateY(-20px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.mk-leader-anim-label{font-family:'Fira Code',monospace;font-size:.62rem;letter-spacing:4px;color:rgba(0,200,255,.6);margin-bottom:6px;text-transform:uppercase}
+.mk-leader-anim-name{font-family:'Cinzel Decorative',serif;font-size:1.5rem;font-weight:700;color:#fff;text-shadow:0 0 20px rgba(0,191,255,.5);letter-spacing:2px}
+
+/* Rehber - Demo mod kartı */
+.guide-demo-card{border-color:rgba(0,200,255,.25)!important;position:relative}
+.guide-demo-label{display:inline-block;background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.4);border-radius:4px;color:#ffa500;font-size:.58rem;font-family:'Fira Code',monospace;font-weight:700;letter-spacing:2px;padding:2px 7px;margin-bottom:8px}
+.guide-mk-section{margin:10px 0;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.guide-mk-section:last-child{border-bottom:none}
+.guide-mk-title{font-family:'Fira Code',monospace;font-size:.6rem;letter-spacing:2px;color:rgba(0,200,255,.65);font-weight:700;margin-bottom:6px}
+.guide-mk-table{width:100%;border-collapse:collapse;font-size:.75rem;margin-top:4px}
+.guide-mk-table th{background:rgba(0,191,255,.08);color:#00bfff;font-family:'Fira Code',monospace;font-size:.62rem;letter-spacing:1px;padding:5px 8px;border:1px solid rgba(0,191,255,.2);text-align:center}
+.guide-mk-table td{padding:5px 8px;border:1px solid rgba(255,255,255,.07);text-align:center;color:var(--txt)}

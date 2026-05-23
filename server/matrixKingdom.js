@@ -43,7 +43,7 @@ function createMKState(playersArray) {
   const order = shuffle([...players.keys()]);
 
   return {
-    phase: 'nomination',
+    phase: 'intro',
     players,
     deck: buildDeck(),
     board: { matrix: 0, rebel: 0 },
@@ -63,6 +63,7 @@ function createMKState(playersArray) {
     winReason: null,
     lastCard: null,
     eventLog: [],
+    readySet: new Set(),
   };
 }
 
@@ -138,6 +139,8 @@ function getPublicState(state, roomPlayers) {
       cosmetics: roomPlayers?.get(p.id)?.cosmetics || {},
       isAlive: p.isAlive,
     })),
+    readyCount: state.readySet ? state.readySet.size : 0,
+    readyPlayers: state.readySet ? [...state.readySet] : [],
     winner: state.winner,
     winReason: state.winReason,
     rolesRevealed: state.rolesRevealed || null,

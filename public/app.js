@@ -129,6 +129,7 @@ const io2=io({
 let me,gs,ps,sel1,sel2,selG,voted,nsent,isSpec=false,isDead=false,AM='login',user=null,deathOk=false,lastDead=new Set(),_lastSpec=null;
 let mvpVoted=null;
 let mks=null,mkps=null; // Matrix Krallığı public/private state
+let mkReadyDone=false,prevMkLeaderId=null,prevMkPhase=null;
 const Q=id=>document.getElementById(id);
 // XSS koruması: HTML entity escape
 const esc = (s) => {
@@ -1448,6 +1449,83 @@ function renderGuide(){
         <li>Tarafsızsan kazanma şartını iyi oku; her tarafsız rol aynı şekilde oynanmaz.</li>
         <li>Birini suçlarken nedenini söyle: “şüpheli” demek yerine davranış, oy, rapor veya çelişki göster.</li>
       </ul>
+    </div>
+    <div class="guide-card guide-demo-card">
+      <div class="guide-demo-label">DEMO MOD</div>
+      <h3>⬡ Matrix Krallığı</h3>
+      <p style="margin-top:4px;font-size:.82rem;color:var(--dim)">Telefon gerektirmeyen, yüz yüze oynanan kart tabanlı dedüksiyon modu. 5-10 kişiyle oynanır.</p>
+      <div class="guide-mk-section">
+        <div class="guide-mk-title">TEMA & HIKÂYE</div>
+        <p>Matrix evreni çökmektedir. Sistemi yeniden inşa etmek isteyen <strong style="color:#00bfff">Şövalyeler</strong> ile onu sonsuza dek yıkmak isteyen <strong style="color:#e74c3c">Asiler</strong> karşı karşıyadır. Asilerin arasında kimliğini gizleyen bir <strong style="color:#9b59b6">Kral</strong> vardır; yakalanırsa Şövalyeler kazanır, Yaver koltuğuna oturursa Asiler zafer ilan eder.</p>
+      </div>
+      <div class="guide-mk-section">
+        <div class="guide-mk-title">ROL DAĞILIMI</div>
+        <table class="guide-mk-table">
+          <tr><th>Oyuncu</th><th>Şövalye</th><th>Asi</th><th>Kral</th><th>Not</th></tr>
+          <tr><td>5</td><td>3</td><td>1</td><td>1</td><td>Kral İlk Asi'yi bilir</td></tr>
+          <tr><td>6</td><td>4</td><td>1</td><td>1</td><td>Kral İlk Asi'yi bilir</td></tr>
+          <tr><td>7</td><td>4</td><td>2</td><td>1</td><td>—</td></tr>
+          <tr><td>8</td><td>5</td><td>2</td><td>1</td><td>—</td></tr>
+          <tr><td>9</td><td>5</td><td>3</td><td>1</td><td>—</td></tr>
+          <tr><td>10</td><td>6</td><td>3</td><td>1</td><td>—</td></tr>
+        </table>
+        <p style="font-size:.72rem;color:var(--dim);margin-top:4px">Asiler birbirini ve Kral'ı bilir. Kral, Asilerin kim olduğunu bilir.</p>
+      </div>
+      <div class="guide-mk-section">
+        <div class="guide-mk-title">DESTE</div>
+        <p>17 kartlık deste: <strong style="color:#00bfff">6 Matrix kartı</strong> + <strong style="color:#e74c3c">11 Asi kartı</strong>. Karıştırılır, kimse içeriğini göremez.</p>
+      </div>
+      <div class="guide-mk-section">
+        <div class="guide-mk-title">TUR AKIŞI</div>
+        <ol style="padding-left:18px;line-height:1.9;font-size:.82rem">
+          <li><strong>Aday Gösterme:</strong> Tur lideri hayatta olan bir oyuncuyu Yaver olarak aday gösterir. Geçen turun lideri ve yaveri aday gösterilemez (kilit kuralı).</li>
+          <li><strong>Oylama:</strong> Herkes aynı anda gizlice <em>EVET</em> veya <em>HAYIR</em> oylar. Oylama gizlidir; kimse kimin ne oyladığını göremez. Oylar açıldığında çoğunluk EVET ise hükümet kurulur. Beraberlikte hükümet REDDEDİLİR.</li>
+          <li><strong>Kaos Sayacı:</strong> Arka arkaya 3 hükümet reddedilirse kart seçimi yapılmaz; destenin en üstündeki kart otomatik masaya yüklenir.</li>
+          <li><strong>Kart Seçimi (Lider):</strong> Onaylanan lider desteden 3 kart çeker. Hepsini görür, birini sessizce atar ve kalan 2 kartı Yaver'e verir.</li>
+          <li><strong>Kart Yükleme (Yaver):</strong> Yaver 2 karttan birini seçip masaya yükler. Yüklenen kart herkese açıklanır.</li>
+          <li><strong>Güç:</strong> Masaya yüklenen kart Asi ise ve yeterli Asi kartı birikmiş ise lider özel bir güç kazanır (bkz. aşağıdaki tablo). Güç kullanılınca ya da atlanınca tur biter, liderlik sıraya göre geçer.</li>
+        </ol>
+      </div>
+      <div class="guide-mk-section">
+        <div class="guide-mk-title">ÖZEL GÜÇLER (Asi Kartı Sayısına Göre)</div>
+        <table class="guide-mk-table">
+          <tr><th>Masadaki Asi</th><th>Güç</th><th>Açıklama</th></tr>
+          <tr><td>1 <span style="font-size:.65rem;color:var(--dim)">(büyük oyun)</span></td><td>Rol Görme</td><td>Lider bir oyuncunun takımını gizlice öğrenir (Şövalye mi, Asi mi)</td></tr>
+          <tr><td>2</td><td>Rol Görme</td><td>Lider bir oyuncunun takımını gizlice öğrenir</td></tr>
+          <tr><td>3</td><td>Deste Görme</td><td>Lider destenin en üstündeki 3 kartı gizlice görür</td></tr>
+          <tr><td>4</td><td>İdam</td><td>Lider bir oyuncuyu oyundan kalıcı olarak çıkarır — idam edilen Kral ise Şövalyeler anında kazanır!</td></tr>
+          <tr><td>5</td><td>İdam</td><td>Aynı kural</td></tr>
+        </table>
+        <p style="font-size:.72rem;color:var(--dim);margin-top:4px">5-6 kişilik küçük oyunlarda 1. Asi kartında güç açılmaz.</p>
+      </div>
+      <div class="guide-mk-section">
+        <div class="guide-mk-title">KAZANMA KOŞULLARI</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+          <div style="background:rgba(0,191,255,.06);border:1px solid rgba(0,191,255,.25);border-radius:6px;padding:8px 10px;font-size:.8rem">
+            <strong style="color:#00bfff">🟦 Şövalyeler Kazanır:</strong>
+            <ul style="padding-left:16px;margin-top:4px;line-height:1.7">
+              <li>Masaya <strong>5 Matrix kartı</strong> yüklenirse</li>
+              <li>İdam gücüyle <strong>Kral öldürülürse</strong></li>
+            </ul>
+          </div>
+          <div style="background:rgba(192,57,43,.06);border:1px solid rgba(192,57,43,.25);border-radius:6px;padding:8px 10px;font-size:.8rem">
+            <strong style="color:#e74c3c">🟥 Asiler Kazanır:</strong>
+            <ul style="padding-left:16px;margin-top:4px;line-height:1.7">
+              <li>Masaya <strong>6 Asi kartı</strong> yüklenirse</li>
+              <li>Masada <strong>3 veya daha fazla Asi kartı varken</strong> Kral Yaver olarak onaylanırsa (Kral'ın Yaver seçilmesi yetmez; Şövalyelerin dikkatli oy kullanması gerekir!)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="guide-mk-section">
+        <div class="guide-mk-title">STRATEJİK NOTLAR</div>
+        <ul style="padding-left:16px;line-height:1.8;font-size:.8rem">
+          <li><strong>Şövalyeler:</strong> Kimin hangi hükümette Asi kartı yüklediğini not edin. Güvenilir çiftleri tekrar seçin.</li>
+          <li><strong>Asiler:</strong> Çok fazla Asi kartı yüklerseniz deşifre olursunuz. Zaman zaman Matrix kartı yükleyerek güven kazanın.</li>
+          <li><strong>Kral:</strong> Hemen Yaver olmayı istemeyin; masada 3 Asi kartı birikene kadar bekleyin. Erken deşifre olursanız idam edilebilirsiniz.</li>
+          <li><strong>İdam Stratejisi:</strong> Şövalye liderler Kral olduğundan şüphelendiğinizi ima eden oyuncuyu, Asi liderler güçlü bir Şövalyeyi hedef alır.</li>
+        </ul>
+      </div>
     </div>
     <div class="guide-card">
       <h3>🎭 Detaylı Roller Rehberi</h3>
@@ -4111,7 +4189,7 @@ io2.on('state',s=>{
     renderMK();
     return;
   }
-  mks=null;
+  mks=null; mkReadyDone=false; prevMkLeaderId=null; prevMkPhase=null;
 
   const m={lobby:'S2',role_selection:'S_RS',role_reveal:'S3',president_vote:'S_PV',night:'S4',morning_report:'S5',day_discussion:'S6',voting:'S7',vote_result:'S8',mvp_vote:'S_MV',mvp_result:'S_MVR',game_over:'S9',post_game:'S9'};
   // Sadece phase değiştiğinde ekranı değiştir (gereksiz redraw önler)
@@ -4981,6 +5059,15 @@ function renderMK(){
   if(!box||!mks)return;
   const s=mks.mkState;
   if(!s){box.innerHTML='';return;}
+  // Nomination fazına ilk girildiğinde lider animasyonu göster
+  if(s.mkPhase==='nomination' && prevMkPhase!=='nomination'){
+    const lid=s.currentLeader?.id;
+    if(lid && lid!==prevMkLeaderId){
+      showMkLeaderAnim(s.currentLeader.name);
+      prevMkLeaderId=lid;
+    }
+  }
+  prevMkPhase=s.mkPhase;
   box.innerHTML=mkBoardHTML(s)+mkRoleCardHTML()+mkPhaseHTML(s)+mkLogHTML(s)+mkPlayerListHTML(s);
 }
 
@@ -5032,6 +5119,7 @@ function mkPhaseHTML(s){
   const isLeader=mkps?.isLeader;
   const isPartner=mkps?.isPartner;
 
+  if(s.mkPhase==='intro') return mkIntroHTML(s);
   if(s.mkPhase==='nomination') return mkNominationHTML(s,isLeader);
   if(s.mkPhase==='vote') return mkVoteHTML(s);
   if(s.mkPhase==='card_leader') return mkCardLeaderHTML(isLeader);
@@ -5039,6 +5127,88 @@ function mkPhaseHTML(s){
   if(s.mkPhase==='power') return mkPowerHTML(s,isLeader);
   if(s.mkPhase==='game_over') return mkGameOverHTML(s);
   return '';
+}
+
+function mkReady(){
+  if(mkReadyDone)return;
+  mkReadyDone=true;
+  io2.emit('mk:ready',{},r=>{
+    if(!r?.ok){mkReadyDone=false;toast(r?.err||'Hata',1);}
+  });
+  const btn=Q('MK_READY_BTN');
+  if(btn){btn.disabled=true;btn.textContent='Bekleniyor...';}
+}
+
+function showMkLeaderAnim(name){
+  const el=document.createElement('div');
+  el.className='mk-leader-anim';
+  el.innerHTML=`<div class="mk-leader-anim-inner">
+    <div class="mk-leader-anim-crown">👑</div>
+    <div class="mk-leader-anim-label">BU TURUN LİDERİ</div>
+    <div class="mk-leader-anim-name">${esc(name||'?')}</div>
+  </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('mk-leader-anim-show')));
+  setTimeout(()=>{
+    el.classList.remove('mk-leader-anim-show');
+    setTimeout(()=>el.remove(),700);
+  },3200);
+}
+
+function mkIntroHTML(s){
+  const total=(s.players||[]).length;
+  const ready=s.readyCount||0;
+  const iAm=(s.readyPlayers||[]).includes(me);
+  const dist={5:'3 Şövalye + 1 Asi + 1 Kral',6:'4 Şövalye + 1 Asi + 1 Kral',7:'4 Şövalye + 2 Asi + 1 Kral',
+    8:'5 Şövalye + 2 Asi + 1 Kral',9:'5 Şövalye + 3 Asi + 1 Kral',10:'6 Şövalye + 3 Asi + 1 Kral'};
+  return `<div class="mk-intro-box">
+    <div class="mk-intro-header">
+      <div class="mk-intro-title">⬡ MATRİX KRALLIĞI</div>
+      <div class="mk-intro-badge">DEMO MOD</div>
+    </div>
+    <div class="mk-intro-rules">
+      <div class="mk-intro-section">
+        <div class="mk-intro-sec-title">AMAÇ</div>
+        <p><strong style="color:#00bfff">Şövalyeler</strong> 5 Matrix kartı masaya yüklemeli ya da Kral'ı idam etmeli. <strong style="color:#e74c3c">Asiler</strong> 6 Asi kartı yüklemeli ya da Kral'ı Yaver olarak onaylatmalı.</p>
+      </div>
+      <div class="mk-intro-section">
+        <div class="mk-intro-sec-title">ROLLER</div>
+        <div class="mk-intro-role-row"><span style="color:#00bfff">ŞÖVALYE</span><span>Matrix'i korur. Kimsenin rolünü bilmez.</span></div>
+        <div class="mk-intro-role-row"><span style="color:#e74c3c">ASİ</span><span>Şövalyeleri kandırır. Diğer Asileri ve Kral'ı bilir.</span></div>
+        <div class="mk-intro-role-row"><span style="color:#9b59b6">KRAL</span><span>Asilerle aynı taraftadır ama kimliği gizlidir. Asiler Kral'ı bilir.</span></div>
+      </div>
+      <div class="mk-intro-section">
+        <div class="mk-intro-sec-title">BU OYUNDA ROL DAĞILIMI (${total} kişi)</div>
+        <p style="color:var(--dim)">${dist[total]||''}</p>
+      </div>
+      <div class="mk-intro-section">
+        <div class="mk-intro-sec-title">OYUN AKIŞI</div>
+        <ol class="mk-intro-ol">
+          <li><strong>Aday Gösterme:</strong> Tur lideri bir Yaver adayı seçer.</li>
+          <li><strong>Oylama:</strong> Herkes gizlice EVET veya HAYIR oylar. Çoğunluk EVET derse hükümet kurulur. 3 ardışık red olursa kaos kartı otomatik çekilir.</li>
+          <li><strong>Kart Seçimi:</strong> Lider desteden 3 kart çeker, 1'ini gizlice atar. Kalan 2 kartı Yaver görür, birini masaya yükler.</li>
+          <li><strong>Güçler:</strong> Yeterli Asi kartı biriktiğinde özel güçler açılır: <em>Rol Görme → Deste Görme → İdam</em></li>
+        </ol>
+      </div>
+      <div class="mk-intro-section">
+        <div class="mk-intro-sec-title">KAZANMA KOŞULLARI</div>
+        <div class="mk-intro-win-row" style="color:#00bfff">🟦 Şövalyeler: 5 Matrix kartı <strong>VEYA</strong> Kral idam edilir</div>
+        <div class="mk-intro-win-row" style="color:#e74c3c">🟥 Asiler: 6 Asi kartı <strong>VEYA</strong> Kral Yaver olarak onaylanır (≥3 Asi kartıyla)</div>
+      </div>
+      <div class="mk-intro-section">
+        <div class="mk-intro-sec-title">STRATEJİ İPUCU</div>
+        <p style="color:var(--dim);font-size:.75rem">Şövalyeler: Kart örüntülerini takip edin, kimin hangi hükümette olduğuna bakın. Asiler: Şövalyeleri yavaşlatmak için güvenilir görünün. Kral: Çok erken deşifre olursan idam edilirsin!</p>
+      </div>
+    </div>
+    <div class="mk-intro-progress">
+      <div class="mk-intro-prog-bar"><div class="mk-intro-prog-fill" style="width:${Math.round(ready/Math.max(total,1)*100)}%"></div></div>
+      <div class="mk-intro-prog-text">${ready}/${total} oyuncu hazır</div>
+    </div>
+    ${iAm
+      ? `<button class="mk-intro-ready-btn" disabled>Bekleniyor... (${ready}/${total})</button>`
+      : `<button class="mk-intro-ready-btn" id="MK_READY_BTN" onclick="mkReady()">Okudum, Anladım ✓</button>`
+    }
+  </div>`;
 }
 
 function mkNominationHTML(s,isLeader){
@@ -5076,8 +5246,8 @@ function mkVoteHTML(s){
     </div>
     <div style="font-size:.75rem;color:var(--dim);margin-bottom:10px">Oy veren: ${s.votes?.total||0}/${(s.players||[]).filter(p=>p.isAlive).length}</div>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button class="mk-vote-btn mk-ja" onclick="mkVote('ja')">JA</button>
-      <button class="mk-vote-btn mk-nein" onclick="mkVote('nein')">NEIN</button>
+      <button class="mk-vote-btn mk-ja" onclick="mkVote('ja')">EVET</button>
+      <button class="mk-vote-btn mk-nein" onclick="mkVote('nein')">HAYIR</button>
     </div>
     <div style="margin-top:10px;font-size:.72rem;color:var(--dim);text-align:center">Oyun tamamen gizli — kimse kimin ne oy verdiğini göremez</div>
   </div>`;
@@ -5234,7 +5404,7 @@ function mkLogHTML(s){
 
 // MK event listeners
 io2.on('mk:vote_result',(d)=>{
-  const msg=d.approved?`Hükümet ONAYLANDI (${d.ja}JA/${d.nein}NEIN)`:`Hükümet REDDEDİLDİ (${d.ja}JA/${d.nein}NEIN)`;
+  const msg=d.approved?`Hükümet ONAYLANDI (${d.ja} EVET / ${d.nein} HAYIR)`:`Hükümet REDDEDİLDİ (${d.ja} EVET / ${d.nein} HAYIR)`;
   toast(msg,d.approved?0:1);
 });
 io2.on('mk:card_played',(d)=>{
