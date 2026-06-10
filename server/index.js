@@ -2219,7 +2219,9 @@ io.on('connection', (socket) => {
   // Yenile butonu için: anlık state ve priv state isteyebilir
   socket.on('state:request', (_, cb) => {
     const rc = prooms.get(socket.id);
-    if (rc) emit(rc);
+    if (rc) {
+      _emitImmediate(rc); // Debounce'i atla, anlık gönder
+    }
     cb?.({ ok: true });
   });
   socket.on('priv:request', (_, cb) => {
@@ -2410,6 +2412,8 @@ io.on('connection', (socket) => {
         clearTimeout(disconnectTimers.get(res.oldId));
         disconnectTimers.delete(res.oldId);
       }
+      // Eski socket ID'sini prooms'tan sil (çakışmayı önle)
+      if (res.oldId) prooms.delete(res.oldId);
       prooms.set(socket.id, rc); socket.join(rc);
       cb?.({ ok: true, code: rc, active: true });
       // Yeni sokete mevcut state + priv gönder
@@ -2430,6 +2434,7 @@ io.on('connection', (socket) => {
         player.isDisconnected = false;
         g.players.set(socket.id, player);
         if (g.leaderId === oldId) g.leaderId = socket.id;
+        prooms.delete(oldId); // Eski socket ID'sini prooms'tan sil
         prooms.set(socket.id, rc); socket.join(rc);
         cb?.({ ok: true, code: rc, active: false });
         emit(rc);

@@ -3152,6 +3152,12 @@ function sabotageCheck(){
   if(_saboShown) return;
   const promptAt = ps.sabotageGame.promptAt || Date.now();
   const wait = Math.max(0, promptAt - Date.now());
+  // Eğer zaman çoktan geçtiyse (promptAt < Date.now()), hemen göster
+  if(wait <= 0){
+    _saboShown = true;
+    startSabotageGame(ps.sabotageGame.gameType);
+    return;
+  }
   if(_saboPromptTimer) return;
   _saboPromptTimer = setTimeout(() => {
     _saboPromptTimer = null;

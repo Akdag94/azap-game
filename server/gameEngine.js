@@ -677,7 +677,8 @@ class GameEngine {
     const p = this.players.get(pid);
     if (!p?.isAlive || p.actualTeam !== TEAMS.HAIN) return false;
     if (this.phase !== PHASES.NIGHT) return false;
-    this.hainKillVotesLive.delete(pid); // kill iptali
+    // Sadece bu hainin kill oyunu iptal et, diğer hainlerin kill'lerini etkileme
+    this.hainKillVotesLive.delete(pid);
     this.hainAbilityChoices.set(pid, action);
     this.nightActions.set(pid, { pid, role: p.role, team: p.actualTeam, ...action });
     return true;
@@ -971,15 +972,9 @@ class GameEngine {
         this.tryKill(target, 'hain', rep, hainKills.map(a => a.pid));
       }
     } else {
-      // Multi: her hain kendi hedefini öldürür
-      const killed = new Set();
+      // Multi: her hain kendi hedefini öldürür (aynı hedefe birden fazla hain saldırabilir)
       hainKills.forEach(a => {
-        if (!killed.has(a.killTargetId)) {
-          this.tryKill(a.killTargetId, 'hain', rep, [a.pid]);
-          killed.add(a.killTargetId);
-        } else {
-          rep.get(a.pid)?.push({ i: '🧛', t: `${this.pn(a.killTargetId)} zaten saldırıldı.` });
-        }
+        this.tryKill(a.killTargetId, 'hain', rep, [a.pid]);
       });
     }
 
