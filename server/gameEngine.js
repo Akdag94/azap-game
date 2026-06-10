@@ -748,8 +748,8 @@ class GameEngine {
       const insane = this.isInsane(a.pid);
       this.gardiyanUsed.add(a.pid);
       if (insane) {
-        rep.get(a.pid)?.push({ i: '🛡️', t: 'Sokağa çıkma yasağı ilan ettin! Ama sahte...' });
-        this.hist(a.pid, 'Sokağa Çıkma Yasağı', '-', 'Sahte');
+        rep.get(a.pid)?.push({ i: '🛡️', t: 'Sokağa çıkma yasağı ilan ettin!' });
+        this.hist(a.pid, 'Sokağa Çıkma Yasağı', '-', 'Başarılı');
         return;
       }
       this.gardiyanShield = true;
@@ -871,7 +871,7 @@ class GameEngine {
         return;
       }
       if (insane) {
-        rep.get(a.pid)?.push({ i: '💻', t: `${this.pn(a.abilityTargetId)} hacklendi (sahte)` });
+        rep.get(a.pid)?.push({ i: '💻', t: `${this.pn(a.abilityTargetId)} hacklendi.` });
         return;
       }
       this.hackerUsesLeft.set(a.pid, usesLeft - 1);
@@ -887,7 +887,7 @@ class GameEngine {
     acts.filter(a => a.role === 'pusucu').forEach(a => {
       const insane = this.isInsane(a.pid);
       if (insane) {
-        rep.get(a.pid)?.push({ i: '🪤', t: 'Pusu kurdun (sahte)' });
+        rep.get(a.pid)?.push({ i: '🪤', t: 'Pusu kurdun. Bu gece sana gelen biri rastgele ölecek.' });
         return;
       }
       this.ambushTrap.set(a.pid, []); // Bu gece aktif
@@ -1290,7 +1290,7 @@ class GameEngine {
         if (crypto.randomInt(0, 2) > 0 && allAlive.length > 0) {
           const rp = allAlive[crypto.randomInt(0, allAlive.length)];
           rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: ${rp.name} kişisine rol kullandı.` });
-          this.hist(a.pid, 'Takip', t.name, `${rp.name}'e gitti (sahte)`);
+          this.hist(a.pid, 'Takip', t.name, `${rp.name}'e gitti`);
         } else {
           rep.get(a.pid)?.push({ i: '👣', t: `${t.name}: Bu gece hiçbir şey yapmadı.` });
           this.hist(a.pid, 'Takip', t.name, 'Hiçbir şey yapmadı');
@@ -1354,7 +1354,7 @@ class GameEngine {
       }
       const insane = this.isInsane(a.pid);
       if (insane) {
-        rep.get(a.pid)?.push({ i: '⚒️', t: `${t.name}'e zırh giydirdin (sahte)` });
+        rep.get(a.pid)?.push({ i: '⚒️', t: `${t.name}'e Çelik Zırh giydirdin.` });
         return;
       }
       this.steelArmor.set(a.targetId, a.pid);
@@ -1423,7 +1423,7 @@ class GameEngine {
       const t = this.players.get(a.abilityTargetId); if (!t?.isAlive) return;
       const insane = this.isInsane(a.pid);
       if (insane) {
-        rep.get(a.pid)?.push({ i: '🦠', t: `${t.name}'e virüs bulaştırdın (sahte)` });
+        rep.get(a.pid)?.push({ i: '🦠', t: `${t.name}'e virüs bulaştı. Yarın yetenek kullanırsa hedefi ölecek.` });
         return;
       }
       this.infected.set(a.abilityTargetId, { byId: a.pid, sinceRound: this.round });
