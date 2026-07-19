@@ -17,16 +17,20 @@ const path = require('path');
 const SERVER = process.env.AZAP_SERVER || 'https://azap.online';
 const ROOT = path.join(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
-const OUT = path.join(__dirname, 'AzapOnline', 'WebAssets');
+// İki hedef: native Xcode projesi (ios/) ve Expo uygulaması (azap-mobile/)
+const OUTS = [
+  path.join(__dirname, 'AzapOnline', 'WebAssets'),
+  path.join(ROOT, 'azap-mobile', 'webassets')
+];
 
-fs.mkdirSync(OUT, { recursive: true });
+OUTS.forEach(o => fs.mkdirSync(o, { recursive: true }));
 
 // 1) Birebir kopyalanan yerel dosyalar
 const copyFiles = ['app.js', 'style.css', 'a.png', 'manifest.json'];
 copyFiles.forEach(f => {
   const src = path.join(PUB, f);
   if (fs.existsSync(src)) {
-    fs.copyFileSync(src, path.join(OUT, f));
+    OUTS.forEach(o => fs.copyFileSync(src, path.join(o, f)));
     console.log('kopyalandı:', f);
   } else {
     console.warn('bulunamadı, atlandı:', f);
@@ -55,7 +59,6 @@ html = html.replace(/(href|src|content)="\//g, `$1="${SERVER}/`);
 // importmap içindeki "/vendor/..." yolları da mutlaklaştır
 html = html.replace(/"\/vendor\//g, `"${SERVER}/vendor/`);
 
-fs.writeFileSync(path.join(OUT, 'index.html'), html);
+OUTS.forEach(o => fs.writeFileSync(path.join(o, 'index.html'), html));
 console.log('dönüştürüldü: index.html');
-console.log(`\n✅ WebAssets hazır → ${OUT}`);
-console.log('Xcode: WebAssets klasörünü projeye "folder reference" (mavi klasör) olarak ekle.');
+OUTS.forEach(o => console.log(`✅ WebAssets hazır → ${o}`));

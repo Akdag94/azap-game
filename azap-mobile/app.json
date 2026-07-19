@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "AZAP Online",
+    "slug": "azap-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "azap",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#06060e",
+    "ios": {
+      "bundleIdentifier": "online.azap.app",
+      "appleTeamId": "CNANRXP44Q",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "AZAP, oyun içi sesli sohbet için mikrofonunuza erişir.",
+        "UIViewControllerBasedStatusBarAppearance": false
+      }
+    },
+    "android": {
+      "package": "online.azap.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#06060e",
+        "foregroundImage": "./assets/icon.png"
+      }
+    },
+    "plugins": [
+      "expo-iap",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#06060e",
+          "image": "./assets/icon.png",
+          "imageWidth": 160
+        }
+      ],
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "92edaac4-6313-4cc1-a458-6fba35a1b081"
+      }
+    },
+    "owner": "akdag94"
+  }
+}

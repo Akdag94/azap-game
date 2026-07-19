@@ -780,6 +780,20 @@ const IS_IOS_APP = (() => {
   return /AzapiOS/i.test(navigator.userAgent);
 })();
 
+// Native köprüye mesaj gönder — hem WKWebView (webkit.messageHandlers)
+// hem React Native WebView (ReactNativeWebView.postMessage) desteklenir
+function _nativePost(bridge, payload) {
+  try {
+    const wk = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[bridge];
+    if (wk) { wk.postMessage(payload); return true; }
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ bridge, ...payload }));
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
 function applyIosShopRestrictions(){
   if(!IS_IOS_APP) return;
   // iOS'ta satın alımlar StoreKit (Apple IAP) üzerinden yapılır.
@@ -804,10 +818,7 @@ window.azapPushToken=function(token){
 function _maybeAskPushPermission(){
   if(!IS_IOS_APP||_pushPermissionAsked||!user)return;
   _pushPermissionAsked=true;
-  try{
-    const bridge=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.push;
-    if(bridge) bridge.postMessage({action:'register'});
-  }catch(e){}
+  _nativePost('push',{action:'register'});
 }
 // Reconnect sonrası bekleyen token varsa tekrar kaydet
 io2.on('connect',()=>{
@@ -914,9 +925,7 @@ async function shopBuy(packageId){
   if(IS_IOS_APP){
     // Native StoreKit köprüsüne yönlendir — ödeme Apple IAP ile yapılır (Kural 3.1.1)
     if(!user){toast('Giriş yap!',1);return;}
-    const bridge=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.iap;
-    if(bridge){
-      bridge.postMessage({action:'purchase',packageId,productId:'online.azap.'+packageId,username:user.username});
+    if(_nativePost('iap',{action:'purchase',packageId,productId:'online.azap.'+packageId,username:user.username})){
       toast('App Store satın alma başlatılıyor...');
     } else {
       toast('Satın alma yalnızca App Store üzerinden yapılabilir.',1);

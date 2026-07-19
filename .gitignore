@@ -17,3 +17,6 @@ dist/
 ios/AzapOnline/WebAssets/
 data/iap_transactions.json
 data/apns-key.p8
+azap-mobile/node_modules/
+azap-mobile/.expo/
+azap-mobile/webassets/
