@@ -50,18 +50,19 @@ const ROLES = {
   DEMIRCI: { id:'demirci', name:'Demirci', team:TEAMS.MASUM, emoji:'⚒️',
     desc:'Gece birine "Çelik Zırh" giydirir. Zırh kırılana (saldırı emilene) kadar üstünde kalır. Kendine zırh yapamaz. Zırhın ne zaman kırıldığını bilemez.',
     canBeHain:false, canBeChosen:true, hasNightAction:true, implemented:true },
+  // ── SİSTEMDEN KALDIRILAN (ESKİ DEMO) ROLLER — implemented:false: havuza giremez, lobide seçilemez ──
   INFAZCI: { id:'infazci', name:'İnfazcı', team:TEAMS.MASUM, emoji:'🔨',
     desc:'Gece bir kişiyi zindana kapatır: o gece yetenek kullanamaz, saldırılamaz. Oyun boyunca 1 kez infazcı zindandakini idam edebilir.',
-    canBeHain:false, canBeChosen:true, hasNightAction:true, implemented:true },
+    canBeHain:false, canBeChosen:true, hasNightAction:true, implemented:false },
   GARDIYAN: { id:'gardiyan', name:'Gardiyan', team:TEAMS.MASUM, emoji:'🛡️',
     desc:'Tüm köyü koruyan, devasa Doktor. Oyun boyunca 1 kez "Sokağa Çıkma Yasağı" ilan eder. O gece hiç kimse öldürülemez (bomba dahil).',
-    canBeHain:false, canBeChosen:true, hasNightAction:true, implemented:true },
+    canBeHain:false, canBeChosen:true, hasNightAction:true, implemented:false },
   ENGIZITOR: { id:'engizitor', name:'Engizitör', team:TEAMS.MASUM, emoji:'⚖️',
     desc:'Tartışma fazında kendini ifşa edip oylama olmadan birini infaz edebilir (oyun boyunca 1 kez). Hain/tarafsız ise hedef ölür. Masum ise kendisi ölür.',
-    canBeHain:false, canBeChosen:true, hasNightAction:false, implemented:true },
+    canBeHain:false, canBeChosen:true, hasNightAction:false, implemented:false },
   BUZCU: { id:'buzcu', name:'Buzcu', team:TEAMS.MASUM, emoji:'❄️',
     desc:'Oyun boyunca 2 kez bir oyuncuyu karantinaya alır. Karantinadaki oyuncu ertesi gündüz oylamaya katılamaz, kendisine oy verilemez, gece saldırılardan etkilenmez ve yetenek kullanamaz.',
-    canBeHain:false, canBeChosen:true, hasNightAction:true, implemented:true },
+    canBeHain:false, canBeChosen:true, hasNightAction:true, implemented:false },
 
   // ── HAİNLER (kırmızı) ──
   SUIKASTCI: { id:'suikastci', name:'Suikastçı', team:TEAMS.HAIN, emoji:'🗡️',
@@ -76,18 +77,19 @@ const ROLES = {
   GOLGE: { id:'golge', name:'Gölge', team:TEAMS.HAIN, emoji:'👤',
     desc:'Ertesi gün birini tamamen susturur. Sadece susturan ve susturulan bilir.',
     canBeChosen:true, hasNightAction:true },
+  // Kaldırılan (eski demo) hain roller
   KOSTEBEK: { id:'kostebek', name:'Köstebek', team:TEAMS.HAIN, emoji:'🦔',
     desc:'Hain Savcı. Her gece birini incelediğinde 2 rol seçeneği gösterir, biri kesinlikle doğru. Hain seçenek olarak gelmez.',
-    canBeChosen:true, hasNightAction:true, implemented:true },
+    canBeChosen:true, hasNightAction:true, implemented:false },
   PUSUCU: { id:'pusucu', name:'Pusucu', team:TEAMS.HAIN, emoji:'🪤',
     desc:'Pusu kurar. O gece evine biri gelirse gelenlerden biri rastgele ölür.',
-    canBeChosen:true, hasNightAction:true, implemented:true },
+    canBeChosen:true, hasNightAction:true, implemented:false },
   HACKER: { id:'hacker', name:'Hacker', team:TEAMS.HAIN, emoji:'💻',
     desc:'Bir bilgi toplayan masum rolü hackler. O kişi rolünü kullanırsa o gece hiçbir bilgi raporu gelmez (sadece bilgi toplayan rolleri etkiler).',
     canBeChosen:true, hasNightAction:true, implemented:true },
   VAMPIR: { id:'vampir', name:'Vampir', team:TEAMS.HAIN, emoji:'🧛',
-    desc:'Gece birini öldürebilir. Öldürsün veya öldürmesin, ertesi gün sabotaj başlatır.',
-    canBeChosen:true, hasNightAction:true, hasSabotage:true, implemented:true },
+    desc:'Gece birini öldürebilir.',
+    canBeChosen:true, hasNightAction:true, implemented:false },
 
   // ── TARAFSIZLAR (mavi) ──
   DODO: { id:'dodo', name:'Dodo', team:TEAMS.TARAFSIZ, emoji:'🦤',
@@ -104,7 +106,7 @@ const ROLES = {
     canBeChosen:true, hasNightAction:false },
   VEBA: { id:'veba', name:'Veba', team:TEAMS.TARAFSIZ, emoji:'☠️',
     desc:'Her gece bir kişiye hastalık bulaştırır (haberi olmaz). Hayattaki herkes hastalandığında tüm hastalar anında ölür ve Veba tek başına kazanır.',
-    canBeChosen:true, hasNightAction:true, implemented:true },
+    canBeChosen:true, hasNightAction:true, implemented:false },
 
   // ── DELİ (mor) ──
   DELI: { id:'deli', name:'Deli', team:TEAMS.MASUM, emoji:'🤡',

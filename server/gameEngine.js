@@ -774,10 +774,12 @@ class GameEngine {
     // 1. POLİS + ÇİLİNGİR
     acts.filter(a => a.role === 'polis' && a.targetId).forEach(a => {
       const insane = this.isInsane(a.pid);
+      // Seri Katil engellenemez ve iz bırakmaz — polis onu hedef alırsa "hiçbir şey yapmadı" görür
+      const targetIsSK = this.players.get(a.targetId)?.role === 'seri_katil';
       const targetAct = this.nightActions.get(a.targetId);
-      const triedSomething = !!targetAct;
+      const triedSomething = !!targetAct && !targetIsSK;
       if (!insane) {
-        this.blocked.add(a.targetId);
+        if (!targetIsSK) this.blocked.add(a.targetId);
         if (triedSomething) {
           rep.get(a.targetId)?.push({ i: '🔦', t: 'Polis seni gece engelledi! Yeteneğini kullanamadın.' });
           rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} rol kullandı ama engellendi! (Girişimi durduruldu.)` });
@@ -788,9 +790,15 @@ class GameEngine {
           this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Hiçbir şey yapmadı');
         }
       } else {
+        // Deli polis: gerçek engel yok; rapor/geçmiş gerçek polis formatlarından biriyle birebir aynı
         rep.get(a.targetId)?.push({ i: '🔦', t: 'Polis bu gece seni ziyaret etti.' });
-        rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} bu gece engellendi.` });
-        this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Sahte');
+        if (crypto.randomInt(0, 2) > 0) {
+          rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} rol kullandı ama engellendi! (Girişimi durduruldu.)` });
+          this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Girişimi durduruldu');
+        } else {
+          rep.get(a.pid)?.push({ i: '🔦', t: `${this.pn(a.targetId)} bu gece hiçbir şey yapmadı.` });
+          this.hist(a.pid, 'Engelleme', this.pn(a.targetId), 'Hiçbir şey yapmadı');
+        }
       }
     });
 
@@ -813,13 +821,13 @@ class GameEngine {
     acts.filter(a => a.role === 'buzcu' && a.targetId).forEach(a => {
       const t = this.players.get(a.targetId); if (!t?.isAlive) return;
       const insane = this.isInsane(a.pid);
+      // Hak her durumda azalır — deli buzcunun sayacı düşmezse deli olduğunu anlar
+      const left = (this.buzcuLeft.has(a.pid) ? this.buzcuLeft.get(a.pid) : 2) - 1;
+      this.buzcuLeft.set(a.pid, left);
       if (!insane) {
         this.blocked.add(a.targetId);
         t.isShielded = true;
         this.locked.set(a.targetId, a.pid);
-        // Hak azalt
-        const left = (this.buzcuLeft.has(a.pid) ? this.buzcuLeft.get(a.pid) : 2) - 1;
-        this.buzcuLeft.set(a.pid, left);
         // Ertesi gündüz oylama dışı
         this.frozen.set(a.targetId, 1);
         rep.get(a.targetId)?.push({ i: '❄️', t: 'Karantinaya alındın! Ertesi gündüz oylamaya katılamazsın.' });
@@ -832,6 +840,22 @@ class GameEngine {
     acts.filter(a => a.role === 'infazci' && a.targetId).forEach(a => {
       const t = this.players.get(a.targetId); if (!t?.isAlive) return;
       const insane = this.isInsane(a.pid);
+      if (insane) {
+        // Deli infazcı: gerçek etki yok ama raporlar ve hak sayacı normal görünmeli
+        if (a.execute) {
+          const left = this.infazExecutionsLeft.has(a.pid) ? this.infazExecutionsLeft.get(a.pid) : 1;
+          if (left > 0) {
+            this.infazExecutionsLeft.set(a.pid, left - 1);
+            rep.get(a.pid)?.push({ i: '🔨', t: `${t.name} zindanda infaz edildi.` });
+          } else {
+            rep.get(a.pid)?.push({ i: '🔨', t: 'İnfaz hakkın bitti, sadece zindana attın.' });
+          }
+        } else {
+          rep.get(a.pid)?.push({ i: '🔨', t: `${t.name} zindana atıldı.` });
+        }
+        this.hist(a.pid, 'Zindan', t.name, 'Başarılı');
+        return;
+      }
       if (!insane) {
         this.blocked.add(a.targetId);
         t.isShielded = true;
@@ -872,7 +896,11 @@ class GameEngine {
         return;
       }
       if (insane) {
-        rep.get(a.pid)?.push({ i: '💻', t: `${this.pn(a.abilityTargetId)} hacklendi.` });
+        // Deli hacker: gerçek etki yok ama sayaç ve rapor formatı normalle aynı olmalı
+        this.hackerUsesLeft.set(a.pid, usesLeft - 1);
+        this.hackerLastTarget.set(a.pid, a.abilityTargetId);
+        rep.get(a.pid)?.push({ i: '💻', t: `${this.pn(a.abilityTargetId)} hacklendi. (${usesLeft - 1} hak kaldı)` });
+        this.hist(a.pid, 'Hack', this.pn(a.abilityTargetId), 'Başarılı');
         return;
       }
       this.hackerUsesLeft.set(a.pid, usesLeft - 1);
@@ -896,7 +924,9 @@ class GameEngine {
       this.hist(a.pid, 'Pusu', '-', 'Başarılı');
     });
 
-    const eff = acts.filter(a => !this.blocked.has(a.pid));
+    // Seri Katil hiçbir blokla (polis/çilingir/buzcu/infazcı) durdurulamaz.
+    // Tek istisna: Gardiyan'ın sokağa çıkma yasağı (yukarıda tüm geceyi keser).
+    const eff = acts.filter(a => !this.blocked.has(a.pid) || a.role === 'seri_katil');
 
     // 2. HİPNOTİZMACI + GÖLGE
     eff.filter(a => a.role === 'hipnotizmaci' && a.abilityTargetId).forEach(a => {
@@ -995,9 +1025,9 @@ class GameEngine {
       if (!t?.isAlive) return;
 
       if (insane) {
-        // Deli Şerif: silah tutukluk yapar, kimse ölmez ama "Vurdun!" raporu alır
-        rep.get(a.pid)?.push({ i: '🤠', t: `${t.name}'i vurdun!` });
-        this.hist(a.pid, 'Vurma', t.name, 'Başarılı');
+        // Deli Şerif: silah tutukluk yapar, kimse ölmez ama rapor/geçmiş gerçek şerifle aynı formatta
+        rep.get(a.pid)?.push({ i: '🤠', t: `${t.name}'i vurdun! Kasaba için kahraman oldun!` });
+        this.hist(a.pid, 'Vurma', t.name, 'Kahraman');
         this.log(`🤠 Deli Şerif ${this.pn(a.pid)} → ${t.name} (tutukluk - sahte)`);
       } else {
         const targetRole = this.ro(t.role);
@@ -1174,22 +1204,24 @@ class GameEngine {
     // 8. BİLGİ TOPLAMA
     eff.filter(a => a.role === 'savci' && a.targetId).forEach(a => {
       const insane = this.isInsane(a.pid);
-      if (this.savciUsed.has(a.pid) && !insane) {
+      // Deli savcı da hakkını tüketir — aksi halde her gece kullanabildiğini fark edip deli olduğunu anlar
+      if (this.savciUsed.has(a.pid)) {
         rep.get(a.pid)?.push({ i: '⚖️', t: 'Sorgulama hakkını kullandın.' });
         return;
       }
-      if (!insane) this.savciUsed.add(a.pid);
+      this.savciUsed.add(a.pid);
       const t = this.players.get(a.targetId); if (!t) return;
       const realRole = this.ro(t.role);
       if (insane) {
         const allR = Object.values(ROLES).filter(r => r.id !== 'deli');
         const fake = allR[crypto.randomInt(0, allR.length)];
-        const fakeTeam = ['masum','hain','tarafsiz'][crypto.randomInt(0, 3)];
-        rep.get(a.pid)?.push({ i: '⚖️', t: `${t.name}: ${fake.emoji} ${fake.name} (${fakeTeam})` });
+        // Takım, gösterilen sahte rolle tutarlı olsun (rastgele takım rolle çelişip deliyi ele verir)
+        rep.get(a.pid)?.push({ i: '⚖️', t: `${t.name}: ${fake.emoji} ${fake.name} (${fake.team})` });
+        this.hist(a.pid, 'Sorgulama', t.name, `${fake.name} (${fake.team})`);
       } else {
         rep.get(a.pid)?.push({ i: '⚖️', t: `${t.name}: ${realRole?.emoji} ${realRole?.name} (${t.actualTeam})` });
+        this.hist(a.pid, 'Sorgulama', t.name, `${realRole?.name} (${t.actualTeam})`);
       }
-      this.hist(a.pid, 'Sorgulama', t.name, insane ? realRole?.name : realRole?.name);
     });
 
     eff.filter(a => a.role === 'gazeteci' && a.targetId).forEach(a => {
@@ -1349,7 +1381,10 @@ class GameEngine {
       }
       const insane = this.isInsane(a.pid);
       if (insane) {
+        // Deli demirci: zırh gerçek değil ama "aynı kişiye tekrar veremezsin" kuralı aynı işlemeli
+        this.demirciHistory.add(a.targetId);
         rep.get(a.pid)?.push({ i: '⚒️', t: `${t.name}'e Çelik Zırh giydirdin.` });
+        this.hist(a.pid, 'Zırh', t.name, 'Aktif');
         return;
       }
       this.steelArmor.set(a.targetId, a.pid);
@@ -1365,10 +1400,11 @@ class GameEngine {
       const insane = this.isInsane(a.pid);
       const realRole = this.ro(t.role);
       if (insane) {
-        // Deli köstebek: 2 rastgele rol
+        // Deli köstebek: 2 rastgele rol (geçmişe de aynı sahte bilgi yazılır)
         const allRoles = Object.values(ROLES).filter(r => r.id !== 'deli' && r.team !== TEAMS.HAIN);
         const sh = this.shuf([...allRoles]).slice(0, 2);
         rep.get(a.pid)?.push({ i: '🦔', t: `${t.name}: ${sh[0].name} veya ${sh[1].name}` });
+        this.hist(a.pid, 'Köstebek', t.name, `${sh[0].name}/${sh[1].name}`);
         return;
       }
       // Hedef hain ise: hangi rol gösterilecek? "Hain seçenekte gelmez" — masum/tarafsız 2 rol gösterelim
@@ -1632,39 +1668,15 @@ class GameEngine {
   }
 
   // ── SABOTAJ ──
-  // Hain gece sabotaj oyu (kolektif). Çoğunluk → ertesi gündüz mini oyun aktive
+  // SİSTEM KALDIRILDI: sabotaj artık oyunda yok. Kodun geri kalanıyla uyum için
+  // fonksiyonlar duruyor ama hiçbir zaman aktive olmuyor.
   submitSabotage(pid) {
-    if (this.phase !== PHASES.NIGHT) return { ok: false, err: 'Sadece gece sabotaj yapılabilir!' };
-    const p = this.players.get(pid);
-    if (!p?.isAlive || p.actualTeam !== TEAMS.HAIN) return { ok: false, err: 'Hain değilsin!' };
-    if (this.sabotageUsedCount >= 2) return { ok: false, err: 'Sabotaj hakkı bitti (maks 2)!' };
-    if (this.sabotageVotes.has(pid)) {
-      this.sabotageVotes.delete(pid);
-    } else {
-      this.sabotageVotes.add(pid);
-    }
-    return { ok: true, voted: this.sabotageVotes.has(pid), totalVotes: this.sabotageVotes.size };
+    return { ok: false, err: 'Sabotaj sistemi oyundan kaldırıldı.' };
   }
 
-  // resolveNight sonunda: HERHANGİ bir hain oy verdiyse pending olur
   _checkSabotageActivation() {
-    const aliveHain = this.alive().filter(p => p.actualTeam === TEAMS.HAIN);
-    const vampirVar = aliveHain.some(p => p.role === 'vampir');
-    // Hain sabotajı için limit kontrolü (sistem sabotajı limitsiz)
-    const hainVoted = this.sabotageVotes.size > 0;
-    if (hainVoted && this.sabotageUsedCount >= 2) {
-      this.sabotagePending = false;
-      return false;
-    }
-    if (aliveHain.length === 0 || (!vampirVar && this.sabotageVotes.size === 0)) {
-      this.sabotagePending = false;
-      return false;
-    }
-    this.sabotagePending = true;
-    this.sabotagePendingFromSystem = vampirVar && this.sabotageVotes.size === 0;
-    // Hain sabotajıysa sayı arttır
-    if (!this.sabotagePendingFromSystem) this.sabotageUsedCount++;
-    return true;
+    this.sabotagePending = false;
+    return false;
   }
 
   // Gündüzde rastgele bir anda çağrılır (index.js setTimeout)
@@ -1998,7 +2010,8 @@ class GameEngine {
   getVoteWeight(vid) {
     const v = this.players.get(vid);
     if (v?.role === 'muhtar') {
-      if (v.isInsane || v.isTempInsane) { const r = crypto.randomInt(0, 100) / 100; return r < 0.25 ? -1 : r < 0.5 ? 0 : 2; }
+      // Deli muhtar: rehberdeki kural — oyu bazen 1, bazen 3 sayılır (negatif/0 oy tally'i bozuyordu)
+      if (v.isInsane || v.isTempInsane) return crypto.randomInt(0, 2) === 0 ? 1 : 3;
       return 2;
     }
     return 1;
@@ -2314,7 +2327,8 @@ class GameEngine {
     const players = [...this.players.values()].map(p => ({
       id: p.id, name: p.name, username: p.username, avatar: p.avatar,
       cosmetics: p.cosmetics || {},
-      wins: p.wins, mvp: p.mvp, isAlive: p.isAlive, isPresident: p.id === this.presidentId
+      wins: p.wins, mvp: p.mvp, isAlive: p.isAlive, isPresident: p.id === this.presidentId,
+      isDisconnected: !!p.isDisconnected
     }));
     return {
       code: this.code, phase: this.phase, round: this.round,

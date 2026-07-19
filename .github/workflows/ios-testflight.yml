@@ -1,0 +1,103 @@
+# ============================================================
+# AZAP iOS — Mac'siz TestFlight Derlemesi
+#
+# GitHub'ın macOS runner'ında çalışır: Mac'e ihtiyacın YOK.
+# Tetikleme: GitHub → Actions → "iOS TestFlight" → Run workflow
+#
+# GEREKEN SECRETS (GitHub repo → Settings → Secrets and variables → Actions):
+#   ASC_KEY_ID      App Store Connect API Key ID (Users and Access → Integrations → Keys)
+#   ASC_ISSUER_ID   Issuer ID (aynı sayfada)
+#   ASC_KEY_P8      .p8 dosyasının İÇERİĞİ (base64 DEĞİL, düz metin)
+#   APPLE_TEAM_ID   Developer hesabı Team ID (Membership sayfasında)
+#
+# API Key oluştururken rol: "App Manager" (veya Admin) seç —
+# otomatik imzalama (cloud signing) sertifika/profil oluşturabilsin.
+# ============================================================
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "Build numarası (boş bırakılırsa run number kullanılır)"
+        required: false
+
+jobs:
+  build-and-upload:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - name: Kodu çek
+        uses: actions/checkout@v4
+
+      - name: XcodeGen kur
+        run: brew install xcodegen
+
+      - name: Gömülü web istemcisini üret
+        run: node ios/sync-web-assets.js
+
+      - name: Xcode projesini üret
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: App Store Connect API anahtarını yaz
+        run: |
+          mkdir -p ~/private_keys
+          echo "${{ secrets.ASC_KEY_P8 }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Build numarasını ayarla
+        run: |
+          BUILD_NO="${{ github.event.inputs.build_number }}"
+          if [ -z "$BUILD_NO" ]; then BUILD_NO="${{ github.run_number }}"; fi
+          echo "BUILD_NO=$BUILD_NO" >> $GITHUB_ENV
+
+      - name: Arşivle (cloud signing)
+        run: |
+          xcodebuild -project ios/AzapOnline.xcodeproj \
+            -scheme AzapOnline \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/AzapOnline.xcarchive \
+            archive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            CURRENT_PROJECT_VERSION=$BUILD_NO
+
+      - name: IPA dışa aktar
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/AzapOnline.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
+
+      - name: TestFlight'a yükle
+        run: |
+          python3 - <<'PYEOF'
+          import json, os
+          key = open(os.path.expanduser('~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8')).read()
+          json.dump({
+            "key_id": "${{ secrets.ASC_KEY_ID }}",
+            "issuer_id": "${{ secrets.ASC_ISSUER_ID }}",
+            "key": key,
+            "in_house": False
+          }, open('asc_api_key.json', 'w'))
+          PYEOF
+          fastlane pilot upload \
+            --ipa build/export/AzapOnline.ipa \
+            --api_key_path asc_api_key.json \
+            --skip_waiting_for_build_processing true
+
+      - name: IPA artifact olarak sakla
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AzapOnline-ipa
+          path: build/export/*.ipa
+          if-no-files-found: ignore

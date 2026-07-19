@@ -34,10 +34,12 @@ process.on('SIGTERM', () => { if (_cache) try { fs.writeFileSync(DB, JSON.string
 
 // Avatar DB değeri → URL dönüştürücü (cache-busting ile)
 // External URL ise (Giphy CDN gibi) olduğu gibi döner
+// NOT: iOS gömülü istemci file:// origin'den çalıştığı için URL mutlak olmalı.
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://azap.online';
 function avatarUrl(val) {
   if (!val) return null;
   if (typeof val === 'string' && /^https?:\/\//i.test(val)) return val;
-  return '/avatars/' + val + '?v=' + Date.now();
+  return PUBLIC_BASE_URL + '/avatars/' + val + '?v=' + Date.now();
 }
 
 function ensureStats(u) {
@@ -144,6 +146,54 @@ module.exports = {
         return;
       }
     }
+  },
+  // ── PUSH BİLDİRİM TOKENLARI (iOS APNs cihaz tokenları, kullanıcı başına max 5) ──
+  addPushToken(username, token) {
+    const db = read(), key = username?.toLowerCase()?.trim();
+    if (!db[key]) return { success: false };
+    if (typeof token !== 'string' || token.length < 32 || token.length > 200 || !/^[a-f0-9]+$/i.test(token)) {
+      return { success: false, error: 'Geçersiz token' };
+    }
+    if (!db[key].pushTokens) db[key].pushTokens = [];
+    if (!db[key].pushTokens.includes(token)) {
+      db[key].pushTokens.push(token);
+      if (db[key].pushTokens.length > 5) db[key].pushTokens = db[key].pushTokens.slice(-5);
+      write(db);
+    }
+    return { success: true };
+  },
+  removePushToken(username, token) {
+    const db = read(), key = username?.toLowerCase()?.trim();
+    if (!db[key] || !db[key].pushTokens) return { success: false };
+    db[key].pushTokens = db[key].pushTokens.filter(t => t !== token);
+    write(db);
+    return { success: true };
+  },
+  getPushTokens(username) {
+    const db = read(), key = username?.toLowerCase()?.trim();
+    return (db[key] && db[key].pushTokens) || [];
+  },
+  // Tüm push tokenları olan kullanıcıları döndür (admin duyurusu için)
+  listPushUsers() {
+    const db = read();
+    return Object.values(db)
+      .filter(u => u.pushTokens && u.pushTokens.length > 0)
+      .map(u => u.username);
+  },
+
+  // Kullanıcının kendi hesabını kalıcı silmesi (App Store 5.1.1(v) zorunluluğu)
+  // Şifre doğrulaması ister; avatar dosyası dahil tüm veriyi siler.
+  deleteAccount(username, password) {
+    const db = read(), key = username?.toLowerCase()?.trim();
+    const u = db[key];
+    if (!u) return { success: false, error: 'Kullanıcı yok.' };
+    if (!bcrypt.compareSync(password || '', u.hash)) return { success: false, error: 'Şifre yanlış.' };
+    if (u.avatar && !/^https?:\/\//i.test(u.avatar)) {
+      try { fs.unlinkSync(path.join(AVATAR_DIR, u.avatar)); } catch {}
+    }
+    delete db[key];
+    write(db);
+    return { success: true };
   },
   changePassword(username, oldPass, newPass) {
     const db = read(), key = username?.toLowerCase()?.trim();

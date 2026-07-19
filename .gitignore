@@ -12,3 +12,8 @@ data/avatars/
 .vscode/
 .idea/
 dist/
+
+# Uretilen dosyalar
+ios/AzapOnline/WebAssets/
+data/iap_transactions.json
+data/apns-key.p8

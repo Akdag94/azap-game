@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
 const Reports = require('./reports');
+const Push = require('./push');
 const { PHASES, TEAMS } = require('./gameConstants');
 const registerLegalRoutes = require('./legalPages');
 
@@ -32,18 +33,35 @@ if (process.env.TURN_URL) {
 }
 
 // ── GÜVENLİK: opsiyonel middleware'ler (npm install helmet express-rate-limit) ──
-let helmet = null, rateLimit = null;
+let helmet = null, rateLimit = null, compression = null;
 try { helmet = require('helmet'); } catch(e){ console.warn('[GÜVENLİK] helmet yok — npm install helmet öneriliyor'); }
 try { rateLimit = require('express-rate-limit'); } catch(e){ console.warn('[GÜVENLİK] express-rate-limit yok — npm install express-rate-limit öneriliyor'); }
+try { compression = require('compression'); } catch(e){ console.warn('[PERF] compression yok — npm install compression öneriliyor'); }
 
 const app = express();
 // Reverse proxy (nginx) arkasındaysa: client IP'yi doğru almak için
 app.set('trust proxy', 1);
 app.disable('x-powered-by'); // Express imzasını gizle
+// PERF: gzip sıkıştırma — app.js/style.css gibi büyük statik dosyalarda ~%70 küçülme
+if (compression) app.use(compression());
 
 const server = http.createServer(app);
+// İzinli origin'ler: web + iOS gömülü istemci (file:// origin'i "null" olarak gelir)
+const ALLOWED_ORIGINS = new Set([
+  'https://azap.online', 'https://www.azap.online',
+  'http://localhost:3000', 'http://127.0.0.1:3000',
+  'http://localhost:5500', 'http://127.0.0.1:5500',
+  'capacitor://localhost', 'ionic://localhost',
+  'null' // WKWebView loadFileURL (iOS gömülü istemci)
+]);
 const io = new Server(server, {
-  cors: { origin: ["https://azap.online", "http://localhost:3000", "https://www.azap.online", "http://127.0.0.1:3000", "http://localhost:5500", "http://127.0.0.1:5500" ] },
+  cors: {
+    origin: (origin, cb) => {
+      // Origin başlığı olmayan istekler (native app, curl) ve izinli origin'ler geçer
+      if (!origin || ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+      cb(new Error('CORS: izinsiz origin'));
+    }
+  },
   maxHttpBufferSize: 8e6,
   pingTimeout: 20000,
   pingInterval: 25000,
@@ -111,6 +129,8 @@ app.use('/avatars', express.static(path.join(__dirname, '..', 'data', 'avatars')
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   dotfiles: 'deny',
   setHeaders: (res, filePath) => {
+    // Statik varlıklar herkese açık — iOS gömülü istemci (file:// origin) da çekebilsin
+    res.setHeader('Access-Control-Allow-Origin', '*');
     if (/\.(css|js)$/i.test(filePath)) {
       // CSS/JS sık güncellenir — tarayıcı her seferinde sunucuyu kontrol etsin
       res.setHeader('Cache-Control', 'no-cache');
@@ -124,9 +144,26 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
 }));
 app.use('/vendor/three', express.static(path.join(__dirname, '..', 'node_modules', 'three'), {
   dotfiles: 'deny',
-  setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=86400')
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // ES module import'ları CORS ister — gömülü istemci için şart
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
 }));
 app.use(express.json({ limit: '1mb' }));
+
+// ── API CORS (iOS gömülü istemci file:// origin'den fetch yapar) ──
+app.use('/api', (req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 // ── ÖDEME PAKETLERİ KATALOĞU ──
 const PAYMENT_PACKAGES = {
@@ -1129,7 +1166,10 @@ setInterval(function(){ if(!document.getElementById('dash').classList.contains('
 registerLegalRoutes(app);
 
 // SPA fallback — sadece güvenli yolları index.html'e yönlendir
-app.get('*', (req, res) => {
+app.get('*', (req, res, next) => {
+  // API rotaları fallback'e takılmasın (bazıları bu satırdan SONRA kaydediliyor —
+  // örn. /api/shop/packages; yoksa JSON yerine HTML döner ve mağaza kataloğu bozulur)
+  if (req.path.startsWith('/api/')) return next();
   // Bilinen statik uzantılar 404 döner (gerçek dosya bulunamadıysa)
   if (/\.(env|key|pem|crt|sql|db|log|bak|backup|old|swp|swo|json|yml|yaml|md|gitignore|htaccess|config|conf|ini|toml)$/i.test(req.path)) {
     return res.status(404).send('Not Found');
@@ -1151,6 +1191,99 @@ setupPayment(app, io, {
   authed,
   paymentLimiter,
   apiLimiter
+});
+
+// ── APPLE IN-APP PURCHASE DOĞRULAMA (iOS uygulaması) ──
+// iOS uygulaması StoreKit satın alımını bitirince base64 App Store receipt'ini buraya yollar.
+// Sunucu Apple verifyReceipt servisiyle doğrular, ürünü hesaba tanımlar.
+// Ürün eşlemesi: Apple product_id → PAYMENT_PACKAGES anahtarı.
+// Varsayılan: "online.azap.gold_100" → "gold_100" (prefix'i kırpar).
+// Özel eşleme için env: APPLE_IAP_PRODUCTS='{"com.x.gold":"gold_100"}'
+const IAP_PRODUCT_MAP = (() => {
+  try { return JSON.parse(process.env.APPLE_IAP_PRODUCTS || '{}'); } catch { return {}; }
+})();
+const IAP_TX_DB = path.join(__dirname, '..', 'data', 'iap_transactions.json');
+let _iapProcessedTx = new Set();
+try { _iapProcessedTx = new Set(JSON.parse(fs.readFileSync(IAP_TX_DB, 'utf8'))); } catch {}
+function _iapSaveTx() {
+  try { fs.writeFileSync(IAP_TX_DB, JSON.stringify([..._iapProcessedTx])); } catch (e) { console.error('[IAP] tx kaydı yazılamadı:', e.message); }
+}
+function _iapMapProduct(productId) {
+  if (IAP_PRODUCT_MAP[productId]) return IAP_PRODUCT_MAP[productId];
+  // "online.azap.gold_100" → "gold_100"
+  const short = String(productId || '').split('.').pop();
+  return PAYMENT_PACKAGES[short] ? short : null;
+}
+async function _iapVerifyWithApple(receiptData) {
+  const body = JSON.stringify({
+    'receipt-data': receiptData,
+    'password': process.env.APPLE_SHARED_SECRET || '',
+    'exclude-old-transactions': true
+  });
+  const post = async (url) => {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    return r.json();
+  };
+  let res = await post('https://buy.itunes.apple.com/verifyReceipt');
+  // 21007: sandbox receipt'i production'a gönderilmiş — sandbox'ta tekrar dene (Apple'ın önerdiği akış)
+  if (res && res.status === 21007) res = await post('https://sandbox.itunes.apple.com/verifyReceipt');
+  return res;
+}
+
+app.post('/api/iap/verify', paymentLimiter || ((r, s, n) => n()), async (req, res) => {
+  try {
+    const { username, receiptData } = req.body || {};
+    if (typeof username !== 'string' || username.length < 2 || username.length > 16) {
+      return res.status(400).json({ ok: false, error: 'Kullanıcı adı geçersiz' });
+    }
+    if (typeof receiptData !== 'string' || receiptData.length < 20 || receiptData.length > 2_000_000) {
+      return res.status(400).json({ ok: false, error: 'Receipt geçersiz' });
+    }
+    const userStats = Accounts.getStats(username);
+    if (!userStats) return res.status(404).json({ ok: false, error: 'Kullanıcı bulunamadı' });
+
+    const appleRes = await _iapVerifyWithApple(receiptData);
+    if (!appleRes || appleRes.status !== 0) {
+      console.warn('[IAP] Doğrulama başarısız, status:', appleRes && appleRes.status);
+      return res.status(400).json({ ok: false, error: 'Apple doğrulaması başarısız', appleStatus: appleRes && appleRes.status });
+    }
+
+    // Bundle ID kontrolü (env tanımlıysa)
+    const expectedBundle = process.env.APPLE_BUNDLE_ID;
+    if (expectedBundle && appleRes.receipt?.bundle_id !== expectedBundle) {
+      return res.status(400).json({ ok: false, error: 'Bundle ID uyuşmuyor' });
+    }
+
+    // in_app + latest_receipt_info içindeki işlenmemiş işlemleri tanımla
+    const txs = [
+      ...(appleRes.receipt?.in_app || []),
+      ...(appleRes.latest_receipt_info || [])
+    ];
+    const credited = [];
+    for (const tx of txs) {
+      const txId = tx.transaction_id;
+      if (!txId || _iapProcessedTx.has(txId)) continue;
+      const packageId = _iapMapProduct(tx.product_id);
+      if (!packageId) continue; // tanınmayan ürün — atla
+      const r = applyPayment(username, packageId);
+      if (r && r.ok !== false) {
+        _iapProcessedTx.add(txId);
+        credited.push({ transactionId: txId, productId: tx.product_id, packageId });
+        console.log(`[IAP] ${username} → ${packageId} tanımlandı (tx: ${txId})`);
+      }
+    }
+    if (credited.length > 0) _iapSaveTx();
+
+    const fresh = Accounts.getStats(username);
+    // Bağlı socket'lere güncel stats gönder
+    authed.forEach((uname, sid) => {
+      if (uname === username && fresh) io.sockets.sockets.get(sid)?.emit('statsUpdate', fresh);
+    });
+    res.json({ ok: true, credited, coins: fresh?.coins, premium: fresh?.premium });
+  } catch (err) {
+    console.error('[IAP] /api/iap/verify hata:', err);
+    res.status(500).json({ ok: false, error: 'Sunucu hatası' });
+  }
 });
 
 // ── ANLİK ZİYARETÇİ İSTATİSTİKLERİ (sadece sayaçlar, IP kaydetmiyoruz) ──
@@ -1415,11 +1548,6 @@ function maybeResolveVoteIfEveryoneOnlineVoted(rc, g) {
   const eligibleIds = g.alive().filter(p => !g.frozen.has(p.id) && io.sockets.sockets.has(p.id)).map(p => p.id);
   const votedEligible = eligibleIds.filter(id => g.votes.has(id)).length;
   if (eligibleIds.length > 0 && votedEligible >= eligibleIds.length) {
-    if (g.sabotagePending && !g.hasActiveSabotage?.()) {
-      triggerPendingSabotageNow(rc);
-      return;
-    }
-    if (g.hasActiveSabotage?.()) return;
     clearTimer(rc);
     resolveVote(rc);
   }
@@ -1488,45 +1616,7 @@ function toDay(rc) {
   g.startDiscussion();
   emit(rc);
   startTimer(rc, g.config.DISCUSSION_DURATION, () => toVote(rc));
-
-  // ── HAIN/VAMPİR SABOTAJI ──
-  // Gündüz veya oylama boyunca rastgele zamanda başlayabilir.
-  if (g.sabotagePending) {
-    const triggerAt = crypto.randomInt(0, (g.config.DISCUSSION_DURATION + g.config.VOTING_DURATION) * 1000 + 1);
-    setTimeout(() => {
-      if (!rooms.has(rc)) return;
-      if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
-      if (g.sabotageActive) return;
-      const ok = g.triggerSabotage(!!g.sabotagePendingFromSystem);
-      if (ok) {
-        io.to(rc).emit('sabotage:start', {
-          targetIds: [...g.sabotageTargets.keys()],
-          fromSystem: !!g.sabotagePendingFromSystem
-        });
-        watchSabotage(rc);
-        emit(rc);
-      }
-    }, triggerAt);
-  } else {
-    // ── SİSTEM RANDOM SABOTAJI (~%20 ihtimal, hain sabotajı yoksa) ──
-    if (crypto.randomInt(0, 100) < 20) {
-      const triggerAt = crypto.randomInt(0, (g.config.DISCUSSION_DURATION + g.config.VOTING_DURATION) * 1000 + 1);
-      setTimeout(() => {
-        if (!rooms.has(rc)) return;
-        if (g.phase !== PHASES.DAY_DISCUSSION && g.phase !== PHASES.VOTING) return;
-        if (g.sabotageActive || g.sabotagePending) return;
-        const ok = g.triggerSabotage(true);
-        if (ok) {
-          io.to(rc).emit('sabotage:start', {
-            targetIds: [...g.sabotageTargets.keys()],
-            fromSystem: true
-          });
-          watchSabotage(rc);
-          emit(rc);
-        }
-      }, triggerAt);
-    }
-  }
+  // Sabotaj sistemi oyundan kaldırıldı — gündüz tetikleyicisi yok.
 }
 
 function triggerPendingSabotageNow(rc) {
@@ -1556,15 +1646,6 @@ function toVote(rc) {
 function resolveVote(rc) {
   const g = rooms.get(rc); if (!g) return;
   if (g.phase !== PHASES.VOTING) return;
-  if (g.sabotagePending && !g.hasActiveSabotage?.()) {
-    triggerPendingSabotageNow(rc);
-  }
-  if (g.hasActiveSabotage?.()) {
-    clearTimer(rc);
-    emit(rc);
-    setTimeout(() => resolveVote(rc), 1000);
-    return;
-  }
   const res = g.resolveVoting();
   io.to(rc).emit('voteResult', res); emit(rc);
   let wc = g.checkWin();
@@ -1595,14 +1676,6 @@ function resolveVote(rc) {
 
 function toNextNightAfterVote(rc) {
   const g = rooms.get(rc); if (!g) return;
-  if (g.sabotagePending && !g.hasActiveSabotage?.()) {
-    triggerPendingSabotageNow(rc);
-  }
-  if (g.hasActiveSabotage?.()) {
-    emit(rc);
-    setTimeout(() => toNextNightAfterVote(rc), 1000);
-    return;
-  }
   g.nextRound();
   emit(rc);
   startTimer(rc, g.config.NIGHT_DURATION, () => resolveNight(rc));
@@ -2135,17 +2208,12 @@ function radioTrackEnded() {
 console.log(`[Radio] ${radioFiles.length} şarkı yüklendi`);
 
 io.on('connection', (socket) => {
-  // ── MÜZİK RADYO ──
-  socket.emit('radio:track', radioGetNow());
-  socket.on('radio:now', (_, cb) => { cb?.(radioGetNow()); });
+  // ── MÜZİK RADYO: SİSTEM PASİFE ALINDI ──
+  // radio:track yayını yapılmıyor; istemci istekleri boş/no-op cevaplanır.
+  socket.on('radio:now', (_, cb) => { cb?.(null); });
   socket.on('time:ping', (_, cb) => { cb?.({ t: Date.now() }); });
-  socket.on('radio:ended', () => { radioTrackEnded(); });
-  socket.on('radio:skip', (_, cb) => {
-    const u = authed.get(socket.id);
-    if (!u || !Accounts.isAdmin(u)) return cb?.({ ok: false, err: 'Yetkin yok' });
-    radioSkip();
-    cb?.({ ok: true });
-  });
+  socket.on('radio:ended', () => {});
+  socket.on('radio:skip', (_, cb) => { cb?.({ ok: false, err: 'Müzik sistemi pasif' }); });
 
   // ── ZİYARETÇİ İSTATİSTİKLERİ (güvenli sayaçlar) ──
   siteStats.totalConnections++;
@@ -2213,6 +2281,70 @@ io.on('connection', (socket) => {
     if (token && typeof token === 'string') Accounts.logoutToken(token);
     authed.delete(socket.id);
     cb?.({ success: true });
+  });
+
+  // ── PUSH BİLDİRİM TOKEN KAYDI (iOS uygulaması) ──
+  // Native taraf APNs cihaz tokenını web'e enjekte eder, web authed oturumla buraya yollar.
+  socket.on('push:register', ({ token } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    const r = Accounts.addPushToken(u, token);
+    if (r.success) console.log(`[Push] Token kaydedildi: ${u}`);
+    cb?.(r.success ? { ok: true } : { ok: false, err: r.error || 'Kaydedilemedi' });
+  });
+  socket.on('push:unregister', ({ token } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ ok: false });
+    Accounts.removePushToken(u, token);
+    cb?.({ ok: true });
+  });
+
+  // Admin: tüm push kullanıcılarına duyuru gönder
+  socket.on('admin:pushBroadcast', ({ title, body } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u || !Accounts.isAdmin(u)) return cb?.({ ok: false, err: 'Admin yetkin yok!' });
+    if (typeof title !== 'string' || !title.trim() || typeof body !== 'string' || !body.trim()) {
+      return cb?.({ ok: false, err: 'Başlık ve mesaj gerekli' });
+    }
+    if (!Push.enabled()) return cb?.({ ok: false, err: 'APNs yapılandırılmamış (sunucu .env)' });
+    const users = Accounts.listPushUsers();
+    let queued = 0;
+    users.forEach(uname => {
+      queued++;
+      Push.sendToUser(Accounts, uname, { title: title.trim().slice(0, 60), body: body.trim().slice(0, 200) });
+    });
+    console.log(`[Push] Admin duyurusu → ${queued} kullanıcı (${u})`);
+    cb?.({ ok: true, userCount: queued });
+  });
+
+  // Hesabı kalıcı sil (App Store 5.1.1(v): uygulama içi hesap silme zorunlu)
+  socket.on('auth:deleteAccount', ({ password } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ success: false, error: 'Giriş yap!' });
+    if (typeof password !== 'string' || !password) return cb?.({ success: false, error: 'Şifre gerekli.' });
+    // Bir odadaysa önce odadan temiz çıkar
+    const rc = prooms.get(socket.id);
+    if (rc) {
+      const g = rooms.get(rc);
+      if (g) {
+        g.removePlayer(socket.id); g.removeSpectator(socket.id);
+        if (g.players.size === 0 && g.spectators.size === 0) { rooms.delete(rc); clearTimer(rc); }
+        else {
+          if (g.leaderId === socket.id && g.players.size > 0) {
+            const newLeader = [...g.players.values()].find(p => !g.isBot(p.id));
+            g.leaderId = newLeader ? newLeader.id : [...g.players.keys()][0];
+          }
+          emit(rc);
+        }
+      }
+      prooms.delete(socket.id);
+    }
+    const r = Accounts.deleteAccount(u, password);
+    if (r.success) {
+      authed.delete(socket.id);
+      console.log(`[account] ${u} hesabını kalıcı olarak sildi`);
+    }
+    cb?.(r);
   });
   socket.on('auth:stats', (_, cb) => { const u = authed.get(socket.id); cb(u ? Accounts.getStats(u) : null); });
 
@@ -3536,6 +3668,14 @@ io.on('connection', (socket) => {
             }
             p.isDisconnected = true;
             emit(rc);
+            // 📲 Push: aktif oyunda bağlantısı kopan oyuncuya "geri dön" bildirimi
+            if (p.username && Push.enabled()) {
+              Push.sendToUser(Accounts, p.username, {
+                title: '🎮 AZAP — Bağlantın koptu!',
+                body: 'Oyun devam ediyor. 3 dakika içinde geri dönmezsen oyundan çıkarılacaksın.',
+                data: { type: 'reconnect', roomCode: rc }
+              });
+            }
             // 3 dakika sonra hâlâ offline ise oyundan çıkar (oyunun devam edebilmesi için)
             if (disconnectTimers.has(socket.id)) clearTimeout(disconnectTimers.get(socket.id));
             const _sid = socket.id, _rc = rc;

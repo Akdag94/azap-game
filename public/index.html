@@ -13,15 +13,15 @@
 <meta property="og:title" content="AZAP - Sosyal Dedüksiyon">
 <meta property="og:description" content="Türkçe sosyal dedüksiyon oyunu. Hain bul, masum kal.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="/favicon.svg">
+<meta property="og:image" content="/a.png">
 <title>AZAP - Sosyal Dedüksiyon</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" href="/a.png?v=3">
 
-<link rel="apple-touch-icon" href="/favicon.png?v=2">
+<link rel="apple-touch-icon" href="/a.png?v=3">
 <link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Sacramento&family=Caveat:wght@400;700&family=Pacifico&family=Kaushan+Script&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="/style.css?v=20260523o">
+<link rel="stylesheet" href="/style.css?v=20260720b">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -37,7 +37,7 @@
   <button id="VOICE_MIC_BTN" onclick="toggleMic()" title="Mikrofonu aç/kapat" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">🎤</button>
   <button id="VOICE_DEAF_BTN" onclick="toggleDeafen()" title="Tüm sesi sustur/aç" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">🎧</button>
   <button id="VOICE_SETTINGS_BTN" onclick="toggleVoiceSettings()" title="Ses & Ayarlar" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">⚙️</button>
-  <button id="VOICE_RADIO_BTN" onclick="toggleMusic()" title="Radyo Aç/Kapat" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,215,96,.3);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">🎵</button>
+  <button id="VOICE_RADIO_BTN" onclick="toggleMusic()" title="Radyo Aç/Kapat" style="display:none;width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,215,96,.3);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;align-items:center;justify-content:center;transition:all .15s">🎵</button>
   <button id="VOICE_RADIO_SKIP" onclick="radioSkipAdmin()" title="Şarkı Geç (Admin)" style="display:none;width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,215,96,.3);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;align-items:center;justify-content:center;transition:all .15s">⏭️</button>
   <div id="VOICE_STATUS" style="font-size:.6rem;color:var(--dim);text-align:center;max-width:60px;line-height:1.1"></div>
 </div>
@@ -95,8 +95,9 @@
 <input type="checkbox" id="VOICE_ENABLED" onchange="toggleVoiceEnabled(this.checked)">
 <span>🎤 Sesli sohbet (lobi & oyun)</span>
 </label>
-<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;margin-top:6px">
-<input type="checkbox" id="MUSIC_ENABLED" checked onchange="toggleMusicEnabled(this.checked)">
+<!-- Müzik sistemi pasife alındı -->
+<label style="display:none;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;margin-top:6px">
+<input type="checkbox" id="MUSIC_ENABLED" onchange="toggleMusicEnabled(this.checked)">
 <span>🎵 Müzik radyo (menü & lobi)</span>
 </label>
 </div>
@@ -109,6 +110,8 @@
 </div>
 <div class="st mt12" style="color:var(--hain)">Hesap</div>
 <button class="b bs" style="border:1px solid var(--hain);color:var(--hain);background:transparent;width:100%" onclick="doLogout()">🚪 Çıkış Yap</button>
+<button class="b bs" style="border:1px solid var(--hain);color:var(--hain);background:rgba(192,57,43,.08);width:100%;margin-top:6px" onclick="deleteAccount()">🗑️ Hesabı Kalıcı Olarak Sil</button>
+<div style="font-size:.62rem;color:var(--dim);margin-top:4px;line-height:1.4">Hesabını silersen tüm istatistiklerin, altınların, envanterin ve premium üyeliğin geri alınamaz şekilde silinir.</div>
 </div></div>
 
 <!-- Mağaza Modal -->
@@ -359,7 +362,7 @@
 <button class="admin-btn" id="ADMIN_BTN" onclick="openAdminModal()" title="🕵️ Admin Bakış (oyun içi)">👁️</button>
 
 <!-- Admin Menü butonu (sadece admin için) - kullanıcı yönetimi + rapor görüntüleme -->
-<button class="admin-menu-btn" id="ADMIN_MENU_BTN" onclick="openAdminMenuModal()" title="⚙️ Admin Menü">⚙️</button>
+<button class="admin-menu-btn" id="ADMIN_MENU_BTN" onclick="openAdminMenuModal()" title="🛠️ Admin Panel">🛠️</button>
 
 <!-- Report butonu top-actions içine yerleştirilmiş -->
 
@@ -416,6 +419,13 @@
     <div id="AM_STATS_PANE" style="display:none">
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button class="am-action-btn info" onclick="amLoadStats()">🔄 Yenile</button>
+      </div>
+      <div style="background:rgba(0,150,255,.05);border:1px solid rgba(0,150,255,.2);border-radius:8px;padding:10px;margin-bottom:14px">
+        <div style="font-size:.82rem;font-weight:600;margin-bottom:6px">📲 Push Duyuru (iOS cihazlara)</div>
+        <input class="inp" id="AM_PUSH_TITLE" placeholder="Başlık (max 60)" maxlength="60" style="width:100%;margin-bottom:6px">
+        <textarea id="AM_PUSH_BODY" rows="2" maxlength="200" placeholder="Mesaj (max 200)" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--brd);color:var(--txt);border-radius:4px;font-family:inherit;font-size:.82rem;resize:vertical;margin-bottom:6px"></textarea>
+        <button class="am-action-btn ok" onclick="amPushBroadcast()">📤 Tüm Cihazlara Gönder</button>
+        <span id="AM_PUSH_STATUS" style="font-size:.72rem;color:var(--dim);margin-left:8px"></span>
       </div>
       <div id="AM_STATS_BODY"></div>
     </div>
@@ -583,7 +593,7 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
 <div class="scr on" id="S0">
 <div class="auth-card">
   <div class="auth-brand">
-    <img class="auth-brand-favicon" src="/favicon.svg" alt="AZAP" onerror="this.style.display='none'">
+    <img class="auth-brand-favicon" src="/a.png?v=3" alt="AZAP" onerror="this.style.display='none'">
     <div class="auth-brand-logo">AZAP</div>
     <div class="auth-brand-sub">Sosyal Dedüksiyon</div>
   </div>
@@ -647,8 +657,8 @@ Hoş geldin, <strong id="WN"></strong>
 <div class="sep">veya</div>
 <div class="grp">
 <input class="inp code-inp" id="IC" placeholder="••••" maxlength="4">
-<div class="lg-btn-row">
-  <button class="lg-btn" onclick="joinRoom()"><span class="lg-btn-icon">➕</span> Katıl</button>
+<button class="lg-btn lg-btn-primary" style="margin-top:8px" onclick="joinRoom()"><span class="lg-btn-icon">➕</span> Katıl</button>
+<div class="lg-btn-row" style="margin-top:8px">
   <button class="lg-btn" onclick="spectate()"><span class="lg-btn-icon">👁️</span> İzle</button>
 </div>
 </div>
@@ -780,7 +790,7 @@ Hoş geldin, <strong id="WN"></strong>
 <label style="font-size:.78rem;cursor:pointer"><input type="radio" name="rsm" value="auto" checked onchange="uSet()"> Otomatik</label>
 <label style="font-size:.78rem;cursor:pointer"><input type="radio" name="rsm" value="pick" onchange="uSet()"> Oyuncular seçsin</label>
 </div>
-<div class="st mt8" style="display:flex;align-items:center;justify-content:space-between">Roller<label style="font-size:.68rem;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:400"><input type="checkbox" id="DEMO_TOGGLE" onchange="demoRolesEnabled=this.checked;buildRG();uSet()"> Demo roller</label></div>
+<div class="st mt8">Roller</div>
 <div class="rgrid" id="RG"></div>
 </div>
 
@@ -1122,6 +1132,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="/app.js?v=20260523q"></script>
+<script src="/app.js?v=20260720b"></script>
 </body>
 </html>

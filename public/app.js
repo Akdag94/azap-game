@@ -116,8 +116,11 @@
   }
 })();
 
-// (müzik sistemi kaldırıldı)
-const io2=io({
+// ── SUNUCU ADRESİ ──
+// Web'de: aynı origin (boş). iOS uygulamasında (gömülü istemci):
+// index.html'e sync scripti window.AZAP_SERVER='https://azap.online' enjekte eder.
+const SERVER_BASE = (typeof window!=='undefined' && window.AZAP_SERVER) ? window.AZAP_SERVER : '';
+const io2=io(SERVER_BASE||undefined,{
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
@@ -202,7 +205,7 @@ const RDEF={
     full:'<b>Ne yapar?</b> Tamamen bağımsız bir kazanma hedefi: sen kendini gündüz oylamasında astırtırsan oyunu tek başına kazanırsın — hem masumlar hem hainler kaybeder.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu yoktur. Gündüzleri şüphe çekecek şekilde davran, çelişkili konuş, herkesi provoke et. Amacın oylamada en çok oyu almak.<br><br><b>Önemli kurallar:</b><ul><li>Gece öldürülürsen kazanamazsın — sadece oylama ile asılmak kazanmayı sağlar.</li><li>Buzcu tarafından karantinaya alınırsan o tur oylamaya giremezsin — bu sana zarar verir.</li><li>Rolünü açık etme; hem masumlar hem hainler seni elemeye çalışacak.</li></ul><b>Strateji:</b> "Suçlu" gibi dav­ran ama kanıtlanamayacak şekilde. Savcı\'nın seni sorgulamaması için ondan önce başkasını suçla. Oylamanın son anına kadar şüpheyi üzerinde tut.'},
   SERI_KATIL:{e:'🔪',n:'Seri Katil',t:'tarafsız',
     d:'Her gece engellenemez biçimde birini öldürür. İz bırakmaz. Son 2 kişiden biri olursa kazanır.',
-    full:'<b>Ne yapar?</b> Bağımsız katil. Her gece dilediğin bir oyuncuyu öldürebilirsin (veya bu geceyi atlayabilirsin). Hiçbir güç seni engelleyemez.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. İstersen "Pas geç" seçeneğiyle o geceyi atla.<br><br><b>Önemli kurallar:</b><ul><li>Polis seni engelleyemez; Çilingir kilidi işlemez; Gardiyan yasağı bile etkisiz.</li><li>Gazeteci veya Takipçi seni gözlerse "Rol kullanmadı" / "Hiçbir yere gitmedi" görür — iz bırakmaz.</li><li>Kurban\'ı öldürürsen vasiyet "Bir Seri Katil tarafından öldürüldüm" der ama adın gizli kalır.</li><li>Hedefin Doktor veya Gazi tarafından korunuyorsa o gece öldüremezsin.</li><li>Kazanma: oyun sonunda son 2 hayatta kalan oyuncu arasında olursan tek başına kazanırsın.</li></ul><b>Strateji:</b> Masum gibi davran, hainler gibi de değil. Her iki tarafı birbirine karşı kullan, aralarındaki çatışmayı körükle ve sonunda yalnız kal.'},
+    full:'<b>Ne yapar?</b> Bağımsız katil. Her gece dilediğin bir oyuncuyu öldürebilirsin (veya bu geceyi atlayabilirsin). Hiçbir güç seni engelleyemez.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. İstersen "Pas geç" seçeneğiyle o geceyi atla.<br><br><b>Önemli kurallar:</b><ul><li>Polis seni engelleyemez; Çilingir kilidi işlemez. Tek istisna: Gardiyan\'ın sokağa çıkma yasağı gecesi sen de öldüremezsin.</li><li>Gazeteci veya Takipçi seni gözlerse "Rol kullanmadı" / "Hiçbir yere gitmedi" görür — iz bırakmaz.</li><li>Kurban\'ı öldürürsen vasiyet "Bir Seri Katil tarafından öldürüldüm" der ama adın gizli kalır.</li><li>Hedefin Doktor veya Gazi tarafından korunuyorsa o gece öldüremezsin.</li><li>Kazanma: oyun sonunda son 2 hayatta kalan oyuncu arasında olursan tek başına kazanırsın.</li></ul><b>Strateji:</b> Masum gibi davran, hainler gibi de değil. Her iki tarafı birbirine karşı kullan, aralarındaki çatışmayı körükle ve sonunda yalnız kal.'},
   CELLAT:{e:'⛓️',n:'Cellat',t:'tarafsız',
     d:'Oyun başında sistem rastgele bir masum atar. O kişiyi oylamayla astırtırsan kazanırsın.',
     full:'<b>Ne yapar?</b> Sistem sana gizlice bir "hedef" oyuncu atar (her zaman masum biri). O kişinin gündüz oylamasında asılmasını sağlamak senin tek hedefin.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu yoktur. Gündüz tartışmalarda hedefinin üzerine şüphe yığ, ona karşı oy ver, başkalarını da ikna et. Rol ekranında hedef adını görebilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Hedef gece öldürülürse (hain/SK tarafından) kazanma şansın biter.</li><li>Hedef, başka bir kişi yüzünden değil, sen yüzünden asılmalı — pratikte aynı etki yaratır.</li><li>Hedefi çok açık hedeflemek seni ele verebilir.</li></ul><b>Strateji:</b> Hem masumlarla hem hainlerle geçici ittifak kurabilirsin — "bunu asalım" noktasında ortak zemin bulunabilir. Hedefini doğrudan suçlamak yerine dolaylı şüphe yönet.'},
@@ -226,7 +229,7 @@ const RDEF={
     full:'<b>Ne yapar?</b> O geceyi tamamen koruma altına alırsın. Hain saldırısı, Seri Katil, Şerif, Bomba dahil HİÇBİR ölüm o gece gerçekleşemez.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında "Sokağa Çıkma Yasağı" butonuna bas. Bir kez kullandıktan sonra bu yetenek bir daha gelmez.<br><br><b>Önemli kurallar:</b><ul><li>Ertesi sabah herkes yasağın uygulandığını öğrenir (kimin uyguladığını değil).</li><li>Hainler hala birbirini görür ve sohbet edebilir; sadece öldürme aksiyonları engellenir.</li><li>Seri Katil bile bu gece öldüremez.</li></ul><b>Strateji:</b> Hainlerin büyük bir hareket yapacağını sezdiğinde (örn. kritik bir masum hedefteyse) kullan. İki tur birden ölüm olmazsa köy avantaj kazanır. Hakkı çok erken kullanma.'},
   ENGIZITOR:{e:'⚖️',n:'Engizitör',t:'masum',
     d:'Tartışma fazında 1 kez anında infaz yapabilir. Masum infaz edersen kendin ölürsün.',
-    full:'<b>Ne yapar?</b> Oylama beklemeden, tartışma sırasında tek başına bir kişiyi anında infaz edebilirsin. Mahkeme kararı vermene gerek yok — tek yetkisi senin.<br><br><b>Nasıl kullanılır?</b> Tartışma fazında özel "Engizitör İnfazı" butonu belirir. Hedefi seç, onayla — hemen etkisi olur.<br><br><b>Önemli kurallar:</b><ul><li>Hain veya Tarafsız infaz edersen: hedef ölür, sen kurtulursun.</li><li>Masum infaz edersen: hedef ölür VE sen de anında ölürsün. Hatalı kullanımın bedeli büyük.</li><li>Oyun boyunca 1 kez kullanılabilir. Harcandıktan sonra gündüz aksiyonun olmaz.</li></ul><b>Strateji:</b> Rolünü uzun süre gizle. Kesin hain olduğunu bildiğin ama köyün oylama yapamayacağı durumda sürpriz el açarak infaz gerçekleştir.'},
+    full:'<b>Ne yapar?</b> Oylama beklemeden, tartışma sırasında tek başına bir kişiyi anında infaz edebilirsin. Mahkeme kararı vermene gerek yok — tek yetkisi senin.<br><br><b>Nasıl kullanılır?</b> Tartışma fazında özel "Engizitör İnfazı" butonu belirir. Hedefi seç, onayla — hemen etkisi olur.<br><br><b>Önemli kurallar:</b><ul><li>Hain veya Tarafsız infaz edersen: hedef ölür, sen kurtulursun.</li><li>Masum infaz edersen: hedef KURTULUR, SEN anında ölürsün. Hatalı kullanımın bedeli büyük.</li><li>Oyun boyunca 1 kez kullanılabilir. Harcandıktan sonra gündüz aksiyonun olmaz.</li></ul><b>Strateji:</b> Rolünü uzun süre gizle. Kesin hain olduğunu bildiğin ama köyün oylama yapamayacağı durumda sürpriz el açarak infaz gerçekleştir.'},
   PUSUCU:{e:'🪤',n:'Pusucu',t:'hain',
     d:'Gece evine pusu kurar. O gece evine gelen biri rastgele ölür. Hain takım arkadaşları da risk altında.',
     full:'<b>Ne yapar?</b> Hain takımında beklenmedik tuzak. O geceyi seçersen evine gelen herhangi bir oyuncu (hain olsun masum olsun) rastgele ölür.<br><br><b>Nasıl kullanılır?</b> Gece ekranında "Pusu Kur" butonuna bas. Evine kim gelirse gelsin tuzak aktifleşir — seçim şans eseri.<br><br><b>Önemli kurallar:</b><ul><li>Hain kill oylamasına katılırsın; hem kill hem pusu aynı gecede olabilir.</li><li>Hain takım arkadaşın seni "ziyaret" etmeye giderse pusuya düşebilir — dikkat!</li><li>Gazeteci/Takipçi/Polis seni takip ederse ya da hedef alırsa pusuya düşer.</li><li>Pusu birden çok kişi gelirse sadece biri rastgele seçilip ölür.</li></ul><b>Strateji:</b> Polis veya Takipçi rolünün seni takip ettiğini düşünüyorsan o gece pusu kur — kendi ziyaretçin tuzağa düşer. Hain arkadaşlara "Bu gece ziyarete gelmeyin" haberini ilet.'},
@@ -239,34 +242,14 @@ const RDEF={
   DELI:{e:'🤡',n:'Deli',t:'deli',
     d:'Bir masum rolün sahte kopyasıdır. Tüm aksiyonları etkisiz, raporları sahte. Kendisi bunun farkında değildir.',
     full:'<b>Ne yapar?</b> Oyun başında bazı oyunculara "Deli" atanır. O oyuncu ekranında başka bir rolü (örn. Doktor, Savcı) görür. Aksiyonlarını sanki o rolmüş gibi yapar — ama hiçbirinin gerçek etkisi olmaz.<br><br><b>Nasıl kullanılır?</b> Oyuncu kendini deli olduğunu bilemez; göründüğü rolü oynar. Dışarıdan Psikolog "deli" çıkarabilir.<br><br><b>Önemli kurallar:</b><ul><li>Sahte rol raporları: koruduysa bile kurtarma ya da "saldırı olmadı" duyurur — ama gerçekte koruma uygulanmamıştır.</li><li>Psikolog tespit eder ve sahte bilgiden kaçınabilir.</li><li>Deli, sahte rolünü gerçek sanan iyi niyetli bir oyuncudur; köy için tehlike kasıtsız bilgi kirliliğidir.</li></ul><b>Strateji (köy için):</b> Psikolog\'un tespitini ciddiye al. "Deli" olduğu anlaşılan oyuncunun verdiği bilgilere güvenme.'},
-  VAMPIR:{e:'🧛',n:'Vampir',t:'hain',d:'Gece öldürür, sabotaj pasifi var.',
-    full:'Gece birini öldürebilirsin. Öldürsen de öldürmesen de ertesi gün sabotaj başlatır. Sabotaj: 10 saniye içinde başlamazsan (masum/tarafsız) ölürsün. Hainler sabotaja girmezseniz de ölmez.'}
+  VAMPIR:{e:'🧛',n:'Vampir',t:'hain',d:'Gece birini öldürebilir.',
+    full:'<b>Ne yapar?</b> Hain takımının klasik avcısı. Gece hain öldürme oylamasına katılır ve birini öldürebilir.<br><br><b>Önemli kurallar:</b><ul><li>Doktor, Gazi, Çilingir gibi korumalar saldırısını engelleyebilir.</li><li>Diğer hainlerle gece sohbetinde koordine olabilir.</li></ul>'}
 };
 
-// DEMO ROLLER (İsteğe bağlı oyun havuzuna eklenebilir)
-const RDEF_DEMO={
-  INFAZCI:{e:'🔨',n:'İnfazcı (Demo)',t:'masum',
-    d:'Her gece birini zindana kapatır. Zindan: yetenek kullanamaz, saldırılamaz. Oyun boyunca 1 kez idam edebilir.',
-    full:'<b>Ne yapar?</b> Her gece bir kişiyi zindana kapatırsın. Ek olarak oyun boyunca 1 kez o zindandaki kişiyi doğrudan infaz edebilirsin.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. Ayrı bir "İdam Et" butonu çıkar — kullanırsan o kişi sabah raporunda ölü görünür.<br><br><b>Önemli kurallar:</b><ul><li>Zindandaki: yetenek kullanamaz ve dışarıdan saldırılamaz (korunur).</li><li>İdam hakkı tüm oyun boyunca sadece 1 kez. Harcandıktan sonra sadece zindan kalır.</li><li>Zindan etkisi bir gecelik; ertesi gece aynı kişiyi tekrar zindana atman gerekir.</li></ul>'},
-  GARDIYAN:{e:'🛡️',n:'Gardiyan (Demo)',t:'masum',
-    d:'Oyun boyunca 1 kez sokağa çıkma yasağı ilan eder. O gece hiçbir ölüm gerçekleşmez.',
-    full:'<b>Ne yapar?</b> O geceyi tamamen koruma altına alırsın. Hain saldırısı, Seri Katil, Şerif, Bomba dahil HİÇBİR ölüm o gece gerçekleşemez.<br><br><b>Nasıl kullanılır?</b> Gece aksiyonu ekranında "Sokağa Çıkma Yasağı" butonuna bas. Bir kez kullandıktan sonra bu yetenek bir daha gelmez.<br><br><b>Önemli kurallar:</b><ul><li>Ertesi sabah herkes yasağın uygulandığını öğrenir (kimin uyguladığını değil).</li><li>Seri Katil bile bu gece öldüremez.</li></ul>'},
-  ENGIZITOR:{e:'⚖️',n:'Engizitör (Demo)',t:'masum',
-    d:'Tartışma fazında 1 kez anında infaz yapabilir. Masum infaz edersen kendin ölürsün.',
-    full:'<b>Ne yapar?</b> Oylama beklemeden, tartışma sırasında tek başına bir kişiyi anında infaz edebilirsin.<br><br><b>Nasıl kullanılır?</b> Tartışma fazında özel "Engizitör İnfazı" butonu belirir. Hedefi seç, onayla — hemen etkisi olur.<br><br><b>Önemli kurallar:</b><ul><li>Hain veya Tarafsız infaz edersen: hedef ölür, sen kurtulursun.</li><li>Masum infaz edersen: hedef ölür VE sen de anında ölürsün.</li><li>Oyun boyunca 1 kez kullanılabilir.</li></ul>'},
-  BUZCU:{e:'❄️',n:'Buzcu (Demo)',t:'masum',
-    d:'Oyun boyunca 2 kez birini karantinaya alır. Karantinadaki: oylayamaz, oylanamaz, saldırıdan etkilenmez, yetenek kullanamaz.',
-    full:'<b>Ne yapar?</b> Seçtiğin oyuncuyu bir sonraki gün boyunca karantinaya alırsın. Karantinadaki kişi hem tamamen izole edilir hem saldırıdan korunur.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. 2 kullanım hakkın var (kalan sayı ekranda görünür).<br><br><b>Önemli kurallar:</b><ul><li>Karantinadaki: oylamaya katılamaz, kendisine oy verilemez, gece saldırısından etkilenmez, yetenek kullanamaz.</li><li>2 hak dolunca gece aksiyonun olmaz.</li></ul>'},
-  KOSTEBEK:{e:'🦔',n:'Köstebek (Demo)',t:'hain',
-    d:'Her gece birinin rolünü 2 seçenek arasında görür (biri kesinlikle doğru). Hain takımın bilgi toplayıcısı.',
-    full:'<b>Ne yapar?</b> Her gece bir kişiyi hain gözüyle incelersin. O kişinin gerçek rolü dahil 2 seçenek alırsın — biri kesinlikle doğru.<br><br><b>Nasıl kullanılır?</b> Hedef seç, onayla. Sabah raporunda 2 olası rol gösterilir; doğru olanı Savcı gibi kesin değil, tahmin et. Hain sohbetinde paylaşıp Suikastçıya hedef gösterebilirsin.<br><br><b>Önemli kurallar:</b><ul><li>Her gece kullanılabilir — sınırsız.</li><li>Hacker seni hacklerse bilgiyi göremezsin.</li><li>Deli Köstebek: her iki seçenek de yanlış olabilir.</li></ul>'},
-  PUSUCU:{e:'🪤',n:'Pusucu (Demo)',t:'hain',
-    d:'Gece evine pusu kurar. O gece evine gelen biri rastgele ölür. Hain takım arkadaşları da risk altında.',
-    full:'<b>Ne yapar?</b> Hain takımında beklenmedik tuzak. O geceyi seçersen evine gelen herhangi bir oyuncu (hain olsun masum olsun) rastgele ölür.<br><br><b>Nasıl kullanılır?</b> Gece ekranında "Pusu Kur" butonuna bas. Evine kim gelirse gelsin tuzak aktifleşir.<br><br><b>Önemli kurallar:</b><ul><li>Hain kill oylamasına katılırsın; hem kill hem pusu aynı gecede olabilir.</li><li>Hain takım arkadaşın seni "ziyaret" etmeye giderse pusuya düşebilir — dikkat!</li><li>Gazeteci/Takipçi/Polis seni hedef alırsa pusuya düşer.</li></ul>'},
-  VEBA:{e:'☠️',n:'Veba (Demo)',t:'tarafsız',
-    d:'Her gece birine hastalık bulaştırır. Hayattaki herkes hastalanınca tüm hastalar ölür, Veba TEK BAŞINA kazanır.',
-    full:'<b>Ne yapar?</b> Bağımsız biyolojik tehdit. Her gece bir kişiye sessizce hastalık bulaştırırsın. Hayattaki tüm oyuncular hastalandığında salgın başlar ve herkesi öldürerek tek başına kazanırsın.<br><br><b>Nasıl kullanılır?</b> Gece hedef seç, onayla. Hastalanan kişi fark etmez.<br><br><b>Önemli kurallar:</b><ul><li>Kazanmak için hayattaki HERKES (sen hariç) hastalanmış olmalı.</li><li>Sadece sen kazanırsın; masumlar, hainler, tarafsızlar hepsi kaybeder.</li><li>Tamamen gizli kal — şüphe çekersen köy seni eleyebilir.</li></ul>'}
-};
+// DEMO ROL SİSTEMİ KALDIRILDI — eski demo roller artık oyunda yok.
+const RDEF_DEMO={};
+// Sistemden kaldırılan roller: hiçbir listede/rehberde gösterilmez, havuza giremez.
+const REMOVED_ROLE_KEYS=new Set(['INFAZCI','GARDIYAN','ENGIZITOR','BUZCU','KOSTEBEK','PUSUCU','VEBA','VAMPIR']);
 
 // id -> emoji+name lookup
 const ID_MAP={};
@@ -327,8 +310,9 @@ function avHTML(avatar, size, fallbackEmoji, extraStyle){
 
 // ── MÜZİK RADYO (Sunucu Senkronize MP3) ──
 let _musicAudio=null,_musicPlaying=false,_musicCurrentFile='',_musicCurrentName='';
-let _musicMuted=true,_musicEnabled=true; // default: susturulmuş — kullanıcı kendisi açar (iOS autoplay bypass)
-try{_musicEnabled=localStorage.getItem('azap_music_enabled')!=='0';}catch{}
+// MÜZİK SİSTEMİ KOMPLE PASİF — radyo/müzik hiçbir ekranda çalışmaz
+const MUSIC_DISABLED=true;
+let _musicMuted=true,_musicEnabled=false;
 
 // Sync state — NTP-style clock calibration, no per-sync network round-trips
 let _clockOffset=0,_trackStartTime=null,_radioSyncInterval=null,_clockCalibrated=false;
@@ -383,6 +367,7 @@ function _radioCheckSync(){
 }
 
 function _initRadio(){
+  if(MUSIC_DISABLED) return;
   if(_musicAudio) return;
   const a=Q('MUSIC_AUDIO');
   if(!a) return;
@@ -409,6 +394,7 @@ function _tryMobilePlay(){
 }
 
 function _radioPreload(){
+  if(MUSIC_DISABLED) return;
   _initRadio();
   if(!io2||!io2.connected) return;
   io2.emit('radio:now',null,d=>{
@@ -432,6 +418,7 @@ function _radioPreload(){
 }
 
 function radioLoadTrack(data){
+  if(MUSIC_DISABLED) return;
   if(!data||!data.file) return;
   _initRadio();
   if(!_musicAudio) return;
@@ -463,6 +450,7 @@ function radioLoadTrack(data){
 }
 
 function shouldPlayMusic(){
+  if(MUSIC_DISABLED) return false;
   if(!_musicEnabled) return false;
   const s1=Q('S1'),s2=Q('S2');
   return (s1&&s1.classList.contains('on'))||(s2&&s2.classList.contains('on'));
@@ -489,6 +477,7 @@ function startMusic(){if(_musicAudio&&!_musicMuted&&_musicAudio.src){_musicAudio
 function stopMusic(){if(_musicAudio) _musicAudio.pause();}
 
 function toggleMusic(){
+  if(MUSIC_DISABLED) return;
   _musicMuted=!_musicMuted;
   try{localStorage.setItem('azap_music_muted',_musicMuted?'1':'0');}catch{}
   if(_musicAudio){
@@ -510,6 +499,7 @@ function toggleMusic(){
 }
 function toggleMusicCollapse(){} // compat stub
 function toggleMusicEnabled(on){
+  if(MUSIC_DISABLED) return;
   _musicEnabled=!!on;
   try{localStorage.setItem('azap_music_enabled',on?'1':'0');}catch{}
   const cb=Q('MUSIC_ENABLED');if(cb) cb.checked=_musicEnabled;
@@ -517,6 +507,13 @@ function toggleMusicEnabled(on){
   else applyMusicForCurrentScreen();
 }
 function updateMusicUI(){
+  if(MUSIC_DISABLED){
+    const bar=Q('MUSIC_BAR');if(bar)bar.style.display='none';
+    const vrb=Q('VOICE_RADIO_BTN');if(vrb)vrb.style.display='none';
+    const vskip=Q('VOICE_RADIO_SKIP');if(vskip)vskip.style.display='none';
+    const skip=Q('MUSIC_SKIP');if(skip)skip.style.display='none';
+    return;
+  }
   const icoOn=Q('MUSIC_ICO_ON'),icoOff=Q('MUSIC_ICO_OFF');
   if(icoOn) icoOn.style.display=_musicMuted?'none':'block';
   if(icoOff) icoOff.style.display=_musicMuted?'block':'none';
@@ -768,6 +765,67 @@ function tryAutoLogin(){
   return true;
 }
 
+// ── iOS UYGULAMA MODU ──
+// iOS sarmalayıcı (WKWebView) oyunu "?platform=ios" ile açmalı veya User-Agent'a
+// "AzapiOS" eklemeli. App Store Kuralı 3.1.1: dijital içerik (altın, premium,
+// bağış) uygulama içinde SADECE Apple In-App Purchase ile satılabilir.
+// Bu modda gerçek para sekmeleri gizlenir; IAP entegrasyonu native tarafta yapılır.
+const IS_IOS_APP = (() => {
+  try {
+    if (window.AZAP_PLATFORM === 'ios') return true; // gömülü istemci (sync scripti enjekte eder)
+    const qp = new URLSearchParams(location.search);
+    if (qp.get('platform') === 'ios') localStorage.setItem('azap_platform', 'ios');
+    if (localStorage.getItem('azap_platform') === 'ios') return true;
+  } catch {}
+  return /AzapiOS/i.test(navigator.userAgent);
+})();
+
+function applyIosShopRestrictions(){
+  if(!IS_IOS_APP) return;
+  // iOS'ta satın alımlar StoreKit (Apple IAP) üzerinden yapılır.
+  // Bağış sekmesi iOS'ta yok; altın/premium görünür ama ödeme native köprüden geçer.
+  document.querySelectorAll('.shop-tab').forEach(b=>{
+    if(b.dataset.tab==='donate') b.style.display='none';
+  });
+  // Web ödeme onay kutuları IAP akışında geçersiz — gizle
+  const cons=Q('SHOP_CONSENTS'); if(cons) cons.style.display='none';
+}
+
+// ── PUSH BİLDİRİM KÖPRÜSÜ (iOS) ──
+// Akış: giriş yapılınca web native'e "izin iste" der → native APNs tokenını
+// window.azapPushToken(token) ile geri enjekte eder → web authed socket ile kaydeder.
+let _pendingPushToken=null,_pushPermissionAsked=false;
+window.azapPushToken=function(token){
+  _pendingPushToken=token;
+  if(user&&io2.connected){
+    io2.emit('push:register',{token},r=>{ if(r&&r.ok) _pendingPushToken=null; });
+  }
+};
+function _maybeAskPushPermission(){
+  if(!IS_IOS_APP||_pushPermissionAsked||!user)return;
+  _pushPermissionAsked=true;
+  try{
+    const bridge=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.push;
+    if(bridge) bridge.postMessage({action:'register'});
+  }catch(e){}
+}
+// Reconnect sonrası bekleyen token varsa tekrar kaydet
+io2.on('connect',()=>{
+  setTimeout(()=>{ if(_pendingPushToken&&user) window.azapPushToken(_pendingPushToken); },1500);
+});
+
+// Native iOS uygulamasından satın alma sonucu döner (WKWebView evaluateJavaScript ile çağrılır)
+window.azapIapResult = function(result){
+  try{
+    if(result && result.ok){
+      toast('✅ Satın alma başarılı! Hesabına tanımlandı.');
+      io2.emit('auth:stats',null,r=>{if(r){user=r;updateUserUI();updateShopHeader();}});
+    } else {
+      toast((result&&result.error)||'Satın alma tamamlanamadı.',1);
+    }
+  }catch(e){}
+};
+
 // ── MAĞAZA ──
 let _shopPackages = null;
 let _shopDonationPresets = null;
@@ -775,7 +833,7 @@ let _shopDonationPresets = null;
 async function loadShopCatalog(){
   if(_shopPackages) return;
   try{
-    const r = await fetch('/api/shop/packages');
+    const r = await fetch(SERVER_BASE+'/api/shop/packages');
     const d = await r.json();
     _shopPackages = d.packages;
     _shopDonationPresets = d.donationPresets;
@@ -853,6 +911,18 @@ function getPaymentConsents(){
 }
 
 async function shopBuy(packageId){
+  if(IS_IOS_APP){
+    // Native StoreKit köprüsüne yönlendir — ödeme Apple IAP ile yapılır (Kural 3.1.1)
+    if(!user){toast('Giriş yap!',1);return;}
+    const bridge=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.iap;
+    if(bridge){
+      bridge.postMessage({action:'purchase',packageId,productId:'online.azap.'+packageId,username:user.username});
+      toast('App Store satın alma başlatılıyor...');
+    } else {
+      toast('Satın alma yalnızca App Store üzerinden yapılabilir.',1);
+    }
+    return;
+  }
   if(!user){toast('Giriş yap!',1);return;}
   const pkg = _shopPackages?.[packageId];
   if(!pkg){toast('Paket yok',1);return;}
@@ -860,7 +930,7 @@ async function shopBuy(packageId){
   if(!consents) return;
   if(!confirm(`${pkg.label} satın alacaksın.\nFiyat: ₺${pkg.price.toFixed(2)}\nDevam?`))return;
   try{
-    const r = await fetch('/api/payment/create',{
+    const r = await fetch(SERVER_BASE+'/api/payment/create',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ username: user.username, packageId, consents })
@@ -882,6 +952,7 @@ async function shopBuy(packageId){
 }
 
 async function shopDonate(){
+  if(IS_IOS_APP){toast('iOS uygulamasında bağış App Store üzerinden yapılır.',1);return;}
   if(!user){toast('Giriş yap!',1);return;}
   const amt = parseFloat(Q('SHOP_DONATE_AMOUNT').value);
   if(!amt || amt < 5){toast('Min 5 TL!',1);return;}
@@ -890,7 +961,7 @@ async function shopDonate(){
   if(!consents) return;
   if(!confirm(`₺${amt} bağış yapacaksın. ❤️\nDestek için teşekkürler!`))return;
   try{
-    const r = await fetch('/api/payment/create',{
+    const r = await fetch(SERVER_BASE+'/api/payment/create',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ username: user.username, packageId: 'donation', donationAmount: amt, consents })
@@ -951,6 +1022,7 @@ async function openShopModal(){
     updateShopHeader();
     openModal('MDL_SHOP');
     shopSwitchTab('gold');
+    applyIosShopRestrictions();
   });
 }
 
@@ -966,7 +1038,7 @@ async function loadCosmeticCatalog(){
   if(_cosmeticCatalogPromise) return _cosmeticCatalogPromise;
   _cosmeticCatalogPromise = (async()=>{
   try{
-    const r = await fetch('/api/shop/cosmetics');
+    const r = await fetch(SERVER_BASE+'/api/shop/cosmetics');
     const d = await r.json();
     _cosmeticCatalog = d.items;
   }catch(e){ console.error('Kozmetik katalog yüklenemedi', e); }
@@ -1347,8 +1419,28 @@ function doLogout(){
     setTimeout(()=>location.reload(),500);
   });
 }
+// Hesabı kalıcı sil (App Store 5.1.1(v): uygulama içi hesap silme zorunlu)
+function deleteAccount(){
+  if(!user){toast('Giriş yap!',1);return;}
+  if(!confirm('⚠️ HESABINI KALICI OLARAK SİLMEK ÜZERESİN!\n\nTüm istatistiklerin, altınların, envanterin ve premium üyeliğin GERİ ALINAMAZ şekilde silinecek.\n\nDevam etmek istiyor musun?'))return;
+  const pw=prompt('Onaylamak için şifreni gir:');
+  if(!pw)return;
+  io2.emit('auth:deleteAccount',{password:pw},r=>{
+    if(r&&r.success){
+      try{localStorage.removeItem('azap_token');}catch{}
+      clearLastRoom();
+      user=null;
+      closeModal('MDL_PROFILE');
+      toast('Hesabın kalıcı olarak silindi. Görüşmek üzere!');
+      setTimeout(()=>location.reload(),1200);
+    } else toast((r&&r.error)||'Hesap silinemedi.',1);
+  });
+}
+
 function updateUserUI(){
   if(!user)return;
+  // iOS: giriş yapılmış kullanıcı için push izni akışını (bir kez) başlat
+  if(typeof _maybeAskPushPermission==='function') _maybeAskPushPermission();
   Q('WN').textContent=user.username;
   // Ana menüde avatar + frame (köşeli 13px)
   const fw = cosmeticFrameWrap(user.equipped, true);
@@ -1522,7 +1614,7 @@ function loadMoreGiphy(){
 function _fetchGiphyPage(replace){
   if(_giphyLoading || _giphyEnded) return;
   _giphyLoading = true;
-  const url = `/api/giphy/search?q=${encodeURIComponent(_giphyQuery)}&limit=${GIPHY_PAGE}&offset=${_giphyOffset}`;
+  const url = `${SERVER_BASE}/api/giphy/search?q=${encodeURIComponent(_giphyQuery)}&limit=${GIPHY_PAGE}&offset=${_giphyOffset}`;
   fetch(url)
     .then(r => r.json())
     .then(data => {
@@ -1856,8 +1948,8 @@ function renderGuide(){
 function renderGuideRoles(team){
   const list=Q('GUIDE_ROLE_LIST');
   if(!list)return;
-  const allRoles={...RDEF,...RDEF_DEMO};
-  const entries=Object.entries(allRoles).filter(([k,v])=>team==='all'||v.t===team);
+  const allRoles={...RDEF};
+  const entries=Object.entries(allRoles).filter(([k,v])=>!REMOVED_ROLE_KEYS.has(k)&&(team==='all'||v.t===team));
   list.innerHTML=entries.map(([k,rd])=>`
     <div class="role-guide-item team-${rd.t}" style="cursor:pointer" onclick="this.querySelector('.guide-role-full')?.classList.toggle('open')">
       <div class="role-guide-h"><span class="em">${rd.e}</span><span class="nm">${rd.n}</span><span class="role-guide-tag rtag ${rd.t}">${rd.t.toUpperCase()}</span></div>
@@ -1920,6 +2012,9 @@ function leaveRoom(){
 }
 function leaveAfterGame(){
   io2.emit('room:leave');
+  // KRİTİK: kayıtlı oda temizlenmezse bir sonraki bağlantıda otomatik rejoin
+  // kullanıcıyı eski lobiye geri atıyordu
+  clearLastRoom();
   resetClient();
   show('S1');
   io2.emit('auth:stats',null,r=>{if(r){user=r;updateUserUI();}});
@@ -2006,27 +2101,11 @@ let demoRolesEnabled=false; // Demo rolleri dahil etme durumu
 
 function buildRG(){
   const g=Q('RG');g.innerHTML='';
-  // Ana roller (DELI, VAMPIR ve demo roller hariç)
-  const _demoKeys=new Set(Object.keys(RDEF_DEMO));
+  // Roller (DELI ve sistemden kaldırılan roller hariç)
   const _tOrder={masum:0,hain:1,'tarafsız':2,deli:3};
-  Object.entries(RDEF).filter(([k])=>k!=='DELI' && k!=='VAMPIR' && !_demoKeys.has(k)).sort((a,b)=>(_tOrder[a[1].t]??9)-(_tOrder[b[1].t]??9)).forEach(([k,v])=>{
+  Object.entries(RDEF).filter(([k])=>k!=='DELI' && !REMOVED_ROLE_KEYS.has(k)).sort((a,b)=>(_tOrder[a[1].t]??9)-(_tOrder[b[1].t]??9)).forEach(([k,v])=>{
     const d=document.createElement('div');
     d.className=`rchip on ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`;d.dataset.key=k;
-    d.innerHTML=`<span>${v.e}</span>${v.n}`;
-    d.onclick=()=>{d.classList.toggle('on');uSet();};
-    g.appendChild(d);
-  });
-  // Demo bölüm ayırıcı
-  const sep=document.createElement('div');
-  sep.style.cssText='grid-column:1/-1;font-size:.62rem;color:var(--dim);padding:6px 0 2px;border-top:1px solid var(--brd);margin-top:4px;letter-spacing:1.5px;font-family:"Cinzel Decorative",serif';
-  sep.textContent='\u2697\ufe0f DEMO ROLLER';
-  g.appendChild(sep);
-  // Demo roller + VAMPIR (her zaman göster, on/off durumu demoRolesEnabled'a bağlı)
-  const demoAll={...RDEF_DEMO};
-  if(RDEF.VAMPIR) demoAll.VAMPIR={...RDEF.VAMPIR,n:'Vampir (Demo)'};
-  Object.entries(demoAll).forEach(([k,v])=>{
-    const d=document.createElement('div');
-    d.className=`rchip demo ${demoRolesEnabled?'on':''} ${v.t==='hain'?'tv':v.t==='tarafsız'?'tt':''}`.trim();d.dataset.key=k;
     d.innerHTML=`<span>${v.e}</span>${v.n}`;
     d.onclick=()=>{d.classList.toggle('on');uSet();};
     g.appendChild(d);
@@ -2649,7 +2728,8 @@ function renderLobby(){
   const bp=Q('BET_PANEL');
   if(bp){
     const isPlayer = gs.players.some(p=>p.id===me);
-    bp.style.display = (user && isPlayer && !gs.mkMode) ? 'block' : 'none';
+    // iOS uygulamasında bahis paneli gizli (App Store 5.3 — kumar benzeri mekanik riski)
+    bp.style.display = (user && isPlayer && !gs.mkMode && !IS_IOS_APP) ? 'block' : 'none';
     const bmc=Q('BET_MY_COINS');
     if(bmc && user) bmc.textContent='💰 ' + (user.coins||0);
   }
@@ -3058,25 +3138,9 @@ function updateSuikastFloatingBtn(){
       ebtn.style.display='none';
     }
   }
-  // Floating sabotaj butonu (hain takım, gece fazında)
+  // Sabotaj sistemi oyundan kaldırıldı — buton hiç gösterilmez
   const sbtn = Q('SABOTAJ_BTN_FLOAT');
-  if(sbtn){
-    const isHain = ps?.team === 'hain' && ps?.isAlive;
-    if(isHain && gs?.phase === 'night'){
-      sbtn.style.display='flex';
-      if(ps?.sabotageVoted){
-        sbtn.style.background='linear-gradient(135deg,#a04020,#c25030)';
-        sbtn.style.boxShadow='0 0 12px rgba(192,80,40,.5)';
-        sbtn.title='Sabotaj oyunu geri çek';
-      } else {
-        sbtn.style.background='linear-gradient(135deg,#5e2c1c,#8e3a1a)';
-        sbtn.style.boxShadow='';
-        sbtn.title='Sabotaj oyu ver';
-      }
-    } else {
-      sbtn.style.display='none';
-    }
-  }
+  if(sbtn) sbtn.style.display='none';
   // Mini Oyun butonu kaldırıldı
   const mgBtn = Q('MINIGAME_BTN_FLOAT');
   if(mgBtn) mgBtn.style.display='none';
@@ -3989,7 +4053,7 @@ function openRoleGuideModal(){
 function filterRoleGuide(team){
   document.querySelectorAll('[data-rgt]').forEach(b=>b.classList.toggle('active',b.dataset.rgt===team));
   const body=Q('ROLE_GUIDE_BODY');
-  const entries=Object.entries(RDEF).filter(([k,v])=>team==='all'||v.t===team);
+  const entries=Object.entries(RDEF).filter(([k,v])=>!REMOVED_ROLE_KEYS.has(k)&&(team==='all'||v.t===team));
   body.innerHTML=entries.map(([k,rd])=>`
     <div class="role-card">
       <div class="role-card-hdr">
@@ -4359,6 +4423,24 @@ io2.on('radio:track',(data)=>{
   const cb=Q('MUSIC_ENABLED');if(cb) cb.checked=_musicEnabled;
   if(shouldPlayMusic()&&_musicEnabled) radioLoadTrack(data);
 });
+
+// Admin: iOS cihazlara push duyurusu gönder
+function amPushBroadcast(){
+  const title=Q('AM_PUSH_TITLE')?.value?.trim(), body=Q('AM_PUSH_BODY')?.value?.trim();
+  if(!title||!body){toast('Başlık ve mesaj gerekli',1);return;}
+  if(!confirm(`📲 Push duyurusu gönderilecek:\n\n${title}\n${body}\n\nTüm kayıtlı iOS cihazlara gitsin mi?`))return;
+  const st=Q('AM_PUSH_STATUS');if(st)st.textContent='Gönderiliyor...';
+  io2.emit('admin:pushBroadcast',{title,body},r=>{
+    if(r&&r.ok){
+      if(st)st.textContent=`✅ ${r.userCount} kullanıcıya kuyruklandı`;
+      toast(`📲 Duyuru ${r.userCount} kullanıcıya gönderildi`);
+      const t=Q('AM_PUSH_TITLE'),b=Q('AM_PUSH_BODY');if(t)t.value='';if(b)b.value='';
+    } else {
+      if(st)st.textContent='';
+      toast((r&&r.err)||'Gönderilemedi',1);
+    }
+  });
+}
 
 function radioSkipAdmin(){
   io2.emit('radio:skip',null,r=>{
@@ -4846,6 +4928,8 @@ function _voiceLog(...a){ try{ console.log('[voice]', ...a); }catch{} }
 function toggleVoiceEnabled(on){
   VOICE.enabled = !!on;
   try { localStorage.setItem('azap_voice_enabled', on ? '1' : '0'); } catch {}
+  // Profil modalındaki checkbox ile ayarlar panelindeki toggle senkron kalsın
+  const cb = Q('VOICE_ENABLED'); if (cb) cb.checked = VOICE.enabled;
   if (on) {
     // Bir odaya bağlıysak hemen başlat
     if (gs && me) startVoice();
