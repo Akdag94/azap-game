@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<script>window.AZAP_SERVER='https://azap.online';window.AZAP_PLATFORM='ios';</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#c0392b">
+<meta name="description" content="AZAP - Türkçe sosyal dedüksiyon oyunu. 33 farklı rolle hain bul, masum kal. Mobil ve web'de oynanabilir.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AZAP">
+<!-- Open Graph (sosyal paylaşım) -->
+<meta property="og:title" content="AZAP - Sosyal Dedüksiyon">
+<meta property="og:description" content="Türkçe sosyal dedüksiyon oyunu. Hain bul, masum kal.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="a.png">
+<title>AZAP - Sosyal Dedüksiyon</title>
+<link rel="icon" type="image/png" href="a.png?v=3">
+
+<link rel="apple-touch-icon" href="a.png?v=3">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Sacramento&family=Caveat:wght@400;700&family=Pacifico&family=Kaushan+Script&display=swap" rel="stylesheet">
+<script src="https://azap.online/socket.io/socket.io.js"></script>
+<link rel="stylesheet" href="style.css?v=20260720b">
+</head>
+<body class="modern-ui">
+<div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
+<div class="tbar" id="TB"><div class="tbar-f" id="TF"></div></div>
+<div class="tnum" id="TN"></div>
+<div class="specbar" id="SB">👁️ İZLEYİCİ</div>
+
+<!-- SESLİ SOHBET KONTROL PANELİ (sürüklenebilir) -->
+<div id="VOICE_PANEL" style="display:none;position:fixed;top:46px;left:8px;z-index:9998;flex-direction:column;gap:6px;background:rgba(8,12,18,.85);backdrop-filter:blur(8px);border:1px solid rgba(180,150,90,.25);border-radius:10px;padding:6px">
+  <div id="VOICE_DRAG_HANDLE" style="width:100%;height:10px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;cursor:grab">
+    <div style="width:20px;height:3px;background:rgba(180,150,90,.35);border-radius:2px"></div>
+  </div>
+  <button id="VOICE_MIC_BTN" onclick="toggleMic()" title="Mikrofonu aç/kapat" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">🎤</button>
+  <button id="VOICE_DEAF_BTN" onclick="toggleDeafen()" title="Tüm sesi sustur/aç" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">🎧</button>
+  <button id="VOICE_SETTINGS_BTN" onclick="toggleVoiceSettings()" title="Ses & Ayarlar" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">⚙️</button>
+  <button id="VOICE_RADIO_BTN" onclick="toggleMusic()" title="Radyo Aç/Kapat" style="display:none;width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,215,96,.3);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;align-items:center;justify-content:center;transition:all .15s">🎵</button>
+  <button id="VOICE_RADIO_SKIP" onclick="radioSkipAdmin()" title="Şarkı Geç (Admin)" style="display:none;width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,215,96,.3);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;align-items:center;justify-content:center;transition:all .15s">⏭️</button>
+  <div id="VOICE_STATUS" style="font-size:.6rem;color:var(--dim);text-align:center;max-width:60px;line-height:1.1"></div>
+</div>
+<!-- Remote audio elements buraya enjekte edilir -->
+<div id="VOICE_AUDIO_CONTAINER" style="display:none"></div>
+<audio id="MUSIC_AUDIO" preload="none"></audio>
+
+<div class="dawn-overlay" id="DAWN"><div class="dawn-gradient"></div></div>
+
+<!-- Debug Konsol -->
+<div id="DBG_BTN" style="display:none;position:fixed;bottom:60px;left:6px;z-index:99998;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);color:#0f0;font-size:.65rem;cursor:pointer;font-family:monospace;line-height:28px;text-align:center" onclick="toggleDebug()">⚙</div>
+<div id="DBG_PANEL" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99997;max-height:45vh;background:rgba(0,0,0,.92);border-top:1px solid #333;font-family:'Fira Code',monospace;font-size:.65rem;overflow:hidden;flex-direction:column">
+<div style="display:flex;justify-content:space-between;padding:4px 8px;border-bottom:1px solid #333;flex-shrink:0">
+  <span style="color:#0f0">🔧 Debug Konsol</span>
+  <div style="display:flex;gap:8px">
+    <span id="DBG_FPS" style="color:#ff0">FPS: --</span>
+    <span id="DBG_MEM" style="color:#0ff">MEM: --</span>
+    <button style="background:none;border:none;color:#f55;cursor:pointer;font-size:.7rem" onclick="clearDebugLog()">Temizle</button>
+    <button style="background:none;border:none;color:#aaa;cursor:pointer;font-size:.8rem" onclick="toggleDebug()">✕</button>
+  </div>
+</div>
+<div id="DBG_LOG" style="flex:1;overflow-y:auto;padding:4px 8px;color:#ccc;white-space:pre-wrap;word-break:break-all"></div>
+</div>
+
+<!-- Modals -->
+<div class="mdl-bg" id="MDL_GUIDE"><div class="mdl">
+<div class="mdl-h"><h2>📜 AZAP Rehberi</h2><button class="mdl-cl" onclick="closeModal('MDL_GUIDE')">✕</button></div>
+<div id="GUIDE_CONTENT"></div>
+</div></div>
+
+<div class="mdl-bg" id="MDL_PROFILE"><div class="mdl">
+<div class="mdl-h"><h2>👤 Profilim</h2><button class="mdl-cl" onclick="closeModal('MDL_PROFILE')">✕</button></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:12px">
+<div id="PROF_AV_WRAP" style="display:flex;flex-direction:column;align-items:center"></div>
+<div style="font-family:'Cinzel Decorative',serif;font-size:1.1rem;font-weight:700" id="PROF_NAME">-</div>
+</div>
+<div class="stats">
+<div class="sr"><span>Oyunlar</span><span class="sv" id="MOD_SP">0</span></div>
+<div class="sr"><span>Kazanılan 🏆</span><span class="sv" id="MOD_SW">0</span></div>
+<div class="sr"><span>Kaybedilen</span><span class="sv" id="MOD_SL">0</span></div>
+<div class="sr"><span>İyi Oyuncu Ödülleri ❤️</span><span class="sv mvp" id="MOD_MV">0</span></div>
+<div class="sr"><span>💰 Altın</span><span class="sv" id="MOD_COINS" style="color:var(--gold);font-weight:600">0</span></div>
+<div class="sr" id="MOD_PREMIUM_ROW" style="display:none"><span>👑 Premium</span><span class="sv" id="MOD_PREMIUM" style="color:#bb8fce;font-weight:600">-</span></div>
+<div class="sr" id="MOD_DONATED_ROW" style="display:none"><span>💝 Toplam Bağış</span><span class="sv" id="MOD_DONATED" style="color:#e91e63;font-weight:600">₺0</span></div>
+</div>
+
+
+<div class="st mt12">⚙️ Ayarlar</div>
+<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:6px;padding:10px">
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.78rem">
+<input type="checkbox" id="HIDE_COSMETICS" onchange="_hideOtherCosmetics=this.checked;try{localStorage.setItem('azap_hide_cosmetics',this.checked?'1':'0')}catch{}">
+<span>Diğer oyuncuların kozmetik efektlerini gizle</span>
+</label>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;margin-top:6px">
+<input type="checkbox" id="VOICE_ENABLED" onchange="toggleVoiceEnabled(this.checked)">
+<span>🎤 Sesli sohbet (lobi & oyun)</span>
+</label>
+<!-- Müzik sistemi pasife alındı -->
+<label style="display:none;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;margin-top:6px">
+<input type="checkbox" id="MUSIC_ENABLED" onchange="toggleMusicEnabled(this.checked)">
+<span>🎵 Müzik radyo (menü & lobi)</span>
+</label>
+</div>
+
+<div class="st mt12">Şifre Değiştir</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<input class="inp" id="OLD_PW" type="password" placeholder="Eski şifre">
+<input class="inp" id="NEW_PW" type="password" placeholder="Yeni şifre">
+<button class="b b1 bs" onclick="changePass()">Şifreyi Güncelle</button>
+</div>
+<div class="st mt12" style="color:var(--hain)">Hesap</div>
+<button class="b bs" style="border:1px solid var(--hain);color:var(--hain);background:transparent;width:100%" onclick="doLogout()">🚪 Çıkış Yap</button>
+<button class="b bs" style="border:1px solid var(--hain);color:var(--hain);background:rgba(192,57,43,.08);width:100%;margin-top:6px" onclick="deleteAccount()">🗑️ Hesabı Kalıcı Olarak Sil</button>
+<div style="font-size:.62rem;color:var(--dim);margin-top:4px;line-height:1.4">Hesabını silersen tüm istatistiklerin, altınların, envanterin ve premium üyeliğin geri alınamaz şekilde silinir.</div>
+</div></div>
+
+<!-- Mağaza Modal -->
+<div class="mdl-bg" id="MDL_SHOP"><div class="mdl">
+<div class="mdl-h"><h2>🛒 AZAP Mağaza</h2><button class="mdl-cl" onclick="closeModal('MDL_SHOP')">✕</button></div>
+
+<!-- Bakiye + Premium durumu üst banner -->
+<div class="shop-status">
+  <div class="shop-balance">
+    <span style="font-size:.78rem;color:var(--dim)">Bakiyen</span>
+    <span id="SHOP_COINS" style="color:var(--gold);font-weight:700;font-size:1.1rem">0 💰</span>
+  </div>
+  <div class="shop-premium" id="SHOP_PREMIUM_BADGE" style="display:none">
+    <span style="color:#bb8fce;font-weight:700;font-size:.82rem">👑 PREMIUM</span>
+    <span id="SHOP_PREMIUM_DAYS" style="font-size:.7rem;color:var(--dim)"></span>
+  </div>
+</div>
+
+<!-- Sekme butonları -->
+<div class="shop-tabs">
+  <button class="shop-tab active" data-tab="gold" onclick="shopSwitchTab('gold')">💰 Altın</button>
+  <button class="shop-tab" data-tab="premium" onclick="shopSwitchTab('premium')">👑 Premium</button>
+  <button class="shop-tab" data-tab="donate" onclick="shopSwitchTab('donate')">💝 Bağış</button>
+  <button class="shop-tab" data-tab="items" onclick="shopSwitchTab('items')">🎨 Eşyalar</button>
+</div>
+
+<!-- Sekme içerikleri -->
+<div id="SHOP_BODY">
+
+  <!-- ALTIN SEKMESİ -->
+  <div class="shop-pane" id="SHOP_PANE_gold">
+    <div id="SHOP_GOLD_PACKAGES"></div>
+  </div>
+
+  <!-- PREMIUM SEKMESİ -->
+  <div class="shop-pane" id="SHOP_PANE_premium" style="display:none">
+    <div style="background:linear-gradient(135deg,rgba(187,143,206,.1),rgba(94,58,135,.1));border:1px solid rgba(187,143,206,.3);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:1.05rem;font-weight:700;color:#bb8fce;margin-bottom:6px">👑 AZAP Premium Avantajları</div>
+      <div style="font-size:.78rem;line-height:1.6;color:var(--txt)">
+        ✨ <strong>+%50 Altın</strong> kazanımı (her oyun)<br>
+        🎨 <strong>Özel premium çerçeve</strong> avatarına<br>
+        🌟 İsmin <strong>mor renkte</strong> + premium rozet<br>
+        💬 <strong>Reklamsız</strong> deneyim (gelecekte)<br>
+        🚀 <strong>Yeni roller</strong> ve özelliklere erken erişim<br>
+        💎 Aylık <strong>200 bonus altın</strong>
+      </div>
+    </div>
+    <div id="SHOP_PREMIUM_PACKAGES"></div>
+  </div>
+
+  <!-- BAĞIŞ SEKMESİ -->
+  <div class="shop-pane" id="SHOP_PANE_donate" style="display:none">
+    <div style="text-align:center;padding:10px 0 14px">
+      <div style="font-size:2.5rem;margin-bottom:6px">💝</div>
+      <div style="font-size:1.05rem;font-weight:700;color:#e91e63;margin-bottom:6px">AZAP'ı Destekle</div>
+      <div style="font-size:.78rem;color:var(--dim);line-height:1.5">
+        Sunucu maliyetleri ve yeni özellikler için<br>desteğin çok değerli! ❤️
+      </div>
+    </div>
+    <div class="lbl">Önerilen Miktar</div>
+    <div id="SHOP_DONATE_PRESETS" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+    <div class="lbl">Veya Kendi Miktarın</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input class="inp" id="SHOP_DONATE_AMOUNT" type="number" min="5" max="5000" placeholder="₺ Miktar" style="flex:1;padding:8px">
+      <button class="b bs" style="background:linear-gradient(135deg,#e91e63,#ad1457);color:#fff;border:none;font-weight:600" onclick="shopDonate()">💝 Bağış Yap</button>
+    </div>
+    <div style="font-size:.7rem;color:var(--dim);text-align:center;margin-top:8px">
+      Bağış yapanlar profillerinde 💝 destekçi rozeti alır.
+    </div>
+  </div>
+
+  <!-- EŞYALAR SEKMESİ -->
+  <div class="shop-pane" id="SHOP_PANE_items" style="display:none">
+    <div class="ci-filter" id="SHOP_ITEM_FILTER">
+      <button class="ci-filter-btn active" data-cat="all" onclick="shopFilterItems('all')">Tümü</button>
+      <button class="ci-filter-btn" data-cat="frame" onclick="shopFilterItems('frame')">🖼️ Kartlık</button>
+      <button class="ci-filter-btn" data-cat="pet" onclick="shopFilterItems('pet')">🐾 Pet</button>
+      <button class="ci-filter-btn" data-cat="font" onclick="shopFilterItems('font')">✒️ Yazı Tipi</button>
+    </div>
+    <div id="SHOP_PET_SUBFILTER" style="display:none" class="ci-subfilter">
+      <button class="ci-subfilter-btn active" data-sub="all" onclick="shopFilterPetSub('all')">Tümü</button>
+      <button class="ci-subfilter-btn" data-sub="farm" onclick="shopFilterPetSub('farm')">🐾 Evcil</button>
+      <button class="ci-subfilter-btn" data-sub="wild" onclick="shopFilterPetSub('wild')">🦁 Vahşi</button>
+      <button class="ci-subfilter-btn" data-sub="bird" onclick="shopFilterPetSub('bird')">🦅 Kuşlar</button>
+      <button class="ci-subfilter-btn" data-sub="sea" onclick="shopFilterPetSub('sea')">🐬 Deniz</button>
+      <button class="ci-subfilter-btn" data-sub="reptile" onclick="shopFilterPetSub('reptile')">🐊 Sürüngenler</button>
+      <button class="ci-subfilter-btn" data-sub="insect" onclick="shopFilterPetSub('insect')">🐝 Böcekler</button>
+      <button class="ci-subfilter-btn" data-sub="special" onclick="shopFilterPetSub('special')">🌟 Özel</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+      <input class="ci-search" id="SHOP_ITEM_SEARCH" placeholder="Eşya ara..." oninput="shopFilterItems()" style="flex:1;margin:0">
+      <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--dim);white-space:nowrap;cursor:pointer">
+        <input type="checkbox" id="SHOP_HIDE_OWNED" onchange="shopFilterItems()"> Alınanları Gizle
+      </label>
+    </div>
+    <div class="ci-grid" id="SHOP_ITEM_GRID"></div>
+    <div style="font-size:.62rem;color:var(--dim);margin-top:8px;line-height:1.4;text-align:center">
+      Satın alma işlemi ile <a href="https://azap.online/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a>'ni kabul etmiş olursunuz.
+    </div>
+  </div>
+
+</div>
+
+<!-- Ödeme Öncesi Zorunlu Onaylar -->
+<div id="SHOP_CONSENTS" style="margin-top:10px;padding:10px;background:rgba(0,0,0,.25);border:1px solid var(--brd);border-radius:6px;font-size:.7rem;color:var(--dim);line-height:1.8">
+  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
+    <input type="checkbox" id="CHK_KVKK" style="margin-top:2px">
+    <span><a href="https://azap.online/yasal/kvkk" target="_blank" style="color:var(--hi);text-decoration:underline">KVKK Aydınlatma Metni</a>'ni okudum, kabul ediyorum.</span>
+  </label>
+  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
+    <input type="checkbox" id="CHK_MSS" style="margin-top:2px">
+    <span><a href="https://azap.online/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a>'ni okudum, kabul ediyorum.</span>
+  </label>
+  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
+    <input type="checkbox" id="CHK_CAYMA" style="margin-top:2px">
+    <span>Dijital içeriğin <strong>anında teslim</strong> edileceğini ve teslim sonrası <a href="https://azap.online/yasal/iptal-iade" target="_blank" style="color:var(--hi);text-decoration:underline">cayma hakkından feragat</a> ettiğimi onayıyorum.</span>
+  </label>
+</div>
+<div style="margin-top:8px;padding:8px;background:rgba(0,0,0,.15);border-radius:5px;font-size:.68rem;color:var(--dim);text-align:center;line-height:1.6">
+  🔒 Tüm ödemeler PCI-DSS uyumlu lisanslı ödeme sağlayıcısı üzerinden <strong>3D Secure</strong> ile işlenir. Kart bilgilerin AZAP'ta saklanmaz.<br>
+  <span style="display:inline-flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 131.39 86.9" style="height:24px;width:auto"><rect width="131.39" height="86.9" rx="8" fill="#1a1f71"/><circle cx="47.54" cy="43.45" r="21.24" fill="#eb001b"/><circle cx="83.85" cy="43.45" r="21.24" fill="#f79e1b"/><path d="M65.7 26.97a21.2 21.2 0 0 0-7.92 16.48c0 6.63 3.04 12.55 7.92 16.48a21.2 21.2 0 0 0 7.92-16.48c0-6.63-3.04-12.55-7.92-16.48z" fill="#ff5f00"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 471" style="height:20px;width:auto"><path d="M0 40C0 17.9 17.9 0 40 0h670c22.1 0 40 17.9 40 40v391c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V40z" fill="#1a1f71"/><path d="M278.2 334.2l33.4-207h53.3l-33.4 207zM524.3 130.8c-10.5-4-27-8.3-47.6-8.3-52.4 0-89.3 27.8-89.6 67.7-.3 29.5 26.3 45.9 46.4 55.7 20.6 10 27.5 16.4 27.4 25.4-.1 13.7-16.4 20-31.6 20-21.1 0-32.4-3.1-49.7-10.7l-6.8-3.3-7.4 45.8c12.3 5.7 35.1 10.7 58.8 10.9 55.8 0 92-27.5 92.4-70.1.2-23.4-13.9-41.2-44.5-55.9-18.5-9.5-29.9-15.9-29.8-25.5 0-8.5 9.6-17.6 30.4-17.6 17.4-.3 30 3.7 39.8 7.8l4.8 2.4 7.2-44.3zm137.9-3.5h-41c-12.7 0-22.2 3.7-27.8 17l-78.8 188h55.7s9.1-25.3 11.2-30.8h68.1c1.6 7.2 6.5 30.8 6.5 30.8h49.3l-43.2-205zm-65.5 132.4c4.4-11.9 21.2-57.7 21.2-57.7-.3.5 4.4-11.9 7.1-19.7l3.6 17.8s10.2 49 12.3 59.6h-44.2zM232.8 127.3l-52 141.2-5.6-28.4c-9.6-32.6-39.6-68-73.2-85.7l47.5 179.7h56.2l83.5-207h-56.4z" fill="#fff"/><path d="M131.3 127.3H46.6l-.7 4.2c66.7 17 110.8 58.1 129.1 107.5l-18.6-94.7c-3.2-12.9-12.5-16.6-25.1-17z" fill="#f9a533"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" style="height:20px;width:auto"><rect width="200" height="60" rx="6" fill="#003087"/><text x="100" y="40" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="28" fill="#fff" letter-spacing="4">TROY</text><rect x="12" y="8" width="10" height="44" rx="3" fill="#e30613"/><rect x="26" y="8" width="10" height="44" rx="3" fill="#009639"/></svg>
+  </span><br>
+  <a href="https://azap.online/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a> &nbsp;·&nbsp;
+  <a href="https://azap.online/yasal/iptal-iade" target="_blank" style="color:var(--hi);text-decoration:underline">İptal &amp; İade Koşulları</a> &nbsp;·&nbsp;
+  <a href="https://azap.online/yasal/kvkk" target="_blank" style="color:var(--hi);text-decoration:underline">KVKK</a>
+</div>
+</div></div>
+
+<!-- Envanter Modal -->
+<div class="mdl-bg" id="MDL_INVENTORY"><div class="mdl">
+<div class="mdl-h"><h2>🎒 Envanter</h2><button class="mdl-cl" onclick="closeModal('MDL_INVENTORY')">✕</button></div>
+<div id="INV_EQUIPPED_PREVIEW" class="inv-equipped-preview"></div>
+<div class="ci-filter" id="INV_FILTER">
+  <button class="ci-filter-btn active" data-cat="all" onclick="invFilter('all')">Tümü</button>
+  <button class="ci-filter-btn" data-cat="frame" onclick="invFilter('frame')">🖼️ Kartlık</button>
+  <button class="ci-filter-btn" data-cat="pet" onclick="invFilter('pet')">🐾 Pet</button>
+  <button class="ci-filter-btn" data-cat="font" onclick="invFilter('font')">✒️ Yazı Tipi</button>
+</div>
+<div id="INV_PET_SUBFILTER" style="display:none" class="ci-subfilter">
+  <button class="ci-subfilter-btn active" data-sub="all" onclick="invFilterPetSub('all')">Tümü</button>
+  <button class="ci-subfilter-btn" data-sub="farm" onclick="invFilterPetSub('farm')">🐾 Evcil</button>
+  <button class="ci-subfilter-btn" data-sub="wild" onclick="invFilterPetSub('wild')">🦁 Vahşi</button>
+  <button class="ci-subfilter-btn" data-sub="bird" onclick="invFilterPetSub('bird')">🦅 Kuşlar</button>
+  <button class="ci-subfilter-btn" data-sub="sea" onclick="invFilterPetSub('sea')">🐬 Deniz</button>
+  <button class="ci-subfilter-btn" data-sub="reptile" onclick="invFilterPetSub('reptile')">🐊 Sürüngenler</button>
+  <button class="ci-subfilter-btn" data-sub="insect" onclick="invFilterPetSub('insect')">🐝 Böcekler</button>
+  <button class="ci-subfilter-btn" data-sub="special" onclick="invFilterPetSub('special')">🌟 Özel</button>
+</div>
+<input class="ci-search" id="INV_SEARCH" placeholder="Eşya ara..." oninput="invFilter()">
+<div id="PROF_INVENTORY" class="ci-grid"></div>
+</div></div>
+
+<!-- Geçmiş Raporlar Modal -->
+<div class="mdl-bg" id="MDL_HISTORY"><div class="mdl" style="max-width:420px;max-height:80vh;display:flex;flex-direction:column">
+<div class="mdl-h"><h2>� Geçmiş Raporlar</h2><button class="mdl-cl" onclick="closeModal('MDL_HISTORY')">✕</button></div>
+<div id="HISTORY_TABS" style="display:flex;gap:6px;padding:0 12px 8px;flex-shrink:0;overflow-x:auto"></div>
+<div id="HISTORY_CONTENT" style="flex:1;overflow-y:auto;padding:0 12px 12px"></div>
+</div></div>
+
+<!-- Ses & Oyun Ayarları Modal -->
+<div class="mdl-bg" id="MDL_VSETTINGS"><div class="mdl" style="max-width:400px">
+<div class="mdl-h"><h2>⚙️ Ayarlar</h2><button class="mdl-cl" onclick="closeModal('MDL_VSETTINGS')">✕</button></div>
+<div style="max-height:60vh;overflow-y:auto;padding:4px">
+  <div class="lbl" style="margin-bottom:6px">🔊 Oyuncu Ses Seviyeleri</div>
+  <div id="VSETTINGS_PLAYERS" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+  <div class="lbl" style="margin-bottom:6px">🎤 Mikrofon</div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <span style="font-size:.75rem;color:var(--dim)">Hassasiyet:</span>
+    <input type="range" id="VSETTINGS_MIC_SENS" min="1" max="10" value="5" style="flex:1;height:4px" oninput="setMicSensitivity(this.value)">
+    <span id="VSETTINGS_MIC_SENS_VAL" style="font-size:.7rem;color:var(--hi);min-width:20px">5</span>
+  </div>
+  <div class="lbl" style="margin-bottom:6px">🎮 Oyun Ayarları</div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <button class="b" onclick="toggleVoiceEnabled(!VOICE.enabled);closeModal('MDL_VSETTINGS')" id="VSETTINGS_VOICE_TOGGLE" style="font-size:.75rem">🎙️ Sesli Sohbet Aç/Kapat</button>
+    <button class="b" onclick="refreshGame();closeModal('MDL_VSETTINGS')" style="font-size:.75rem">🔄 Yenile</button>
+    <button class="b" onclick="closeModal('MDL_VSETTINGS');exitToMainMenu()" style="font-size:.75rem;border-color:rgba(192,57,43,.4);color:#ee9999">� Ana Menü</button>
+    <button class="b" onclick="closeModal('MDL_VSETTINGS');openReportModal()" style="font-size:.75rem;border-color:rgba(192,57,43,.4);color:var(--hain)">🐛 Hata Bildir</button>
+  </div>
+</div>
+</div></div>
+
+<!-- Giphy GIF Seçim Modal -->
+<div class="mdl-bg" id="MDL_GIPHY"><div class="mdl" style="max-width:560px">
+<div class="mdl-h"><h2>🔍 Giphy'den GIF Seç</h2><button class="mdl-cl" onclick="closeModal('MDL_GIPHY')">✕</button></div>
+<div style="display:flex;gap:6px;margin-bottom:8px">
+  <input class="inp" id="GIPHY_Q" placeholder="Ara: kedi, dans, lol..." style="flex:1" onkeypress="if(event.key==='Enter')searchGiphy()">
+  <button class="b bs" onclick="searchGiphy()" style="background:var(--hi);color:#000;font-weight:600">Ara</button>
+</div>
+<div style="font-size:.7rem;color:var(--dim);margin-bottom:8px">⚠️ GIF'ler Giphy CDN'inden gelir, sunucu diski kullanılmaz. Boş arama yaparsan trend GIF'ler gösterilir.</div>
+<div id="GIPHY_GRID" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:55vh;overflow-y:auto;padding:4px">
+  <div style="grid-column:1/-1;text-align:center;color:var(--dim);font-size:.78rem;padding:20px">Aramak için yukarıya yaz veya boş ara → trend GIF'ler.</div>
+</div>
+</div></div>
+
+<!-- Avatar Kırpma Modal -->
+<div class="mdl-bg" id="MDL_CROP"><div class="mdl" style="max-width:340px">
+<div class="mdl-h"><h2>✂️ Fotoğrafı Ayarla</h2><button class="mdl-cl" onclick="cancelCrop()">✕</button></div>
+<div id="CROP_AREA" style="position:relative;width:280px;height:280px;margin:0 auto;overflow:hidden;border-radius:13px;border:2px solid var(--brd);background:#000;touch-action:none;cursor:grab">
+  <img id="CROP_IMG" style="position:absolute;user-select:none;-webkit-user-drag:none;pointer-events:none" draggable="false">
+  <div style="position:absolute;inset:0;border-radius:13px;box-shadow:inset 0 0 0 2px rgba(201,169,110,.5);pointer-events:none"></div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:0 10px">
+  <span style="font-size:.75rem;color:var(--dim)">🔍</span>
+  <input type="range" id="CROP_ZOOM" min="100" max="300" value="100" style="flex:1" oninput="cropZoom(this.value)">
+</div>
+<div style="display:flex;gap:8px;margin-top:12px">
+  <button class="b b2 bs" style="flex:1" onclick="cancelCrop()">İptal</button>
+  <button class="b b1 bs" style="flex:1" onclick="applyCrop()">✅ Kaydet</button>
+</div>
+</div></div>
+
+<div class="dov" id="DOV">
+<div class="dsk">💀</div>
+<div class="dtx">Öldün</div>
+<div class="dsu">Artık sadece izleyebilirsin.</div>
+<button class="dcl" onclick="enterDeathSpectate()">İZLEYİCİ MODUNA GEÇ</button>
+</div>
+
+<!-- Bomba patlama efekti -->
+<div class="dov" id="BOMB_OV" style="background:rgba(80,10,0,.96)">
+<div class="dsk" style="font-size:8rem;animation:none" id="BOMB_EMOJI">💥</div>
+<div class="dtx" style="color:#ff6b35;font-size:1.8rem" id="BOMB_TXT">BOMBA PATLADI!</div>
+<div class="dsu" style="color:#f4a261" id="BOMB_VICTIMS"></div>
+</div>
+
+<!-- Suikast efekti -->
+<div class="dov" id="SUIKAST_OV" style="background:rgba(10,0,0,.96)">
+<div class="dsk" style="font-size:6rem;animation:none">🗡️</div>
+<div class="dtx" style="font-size:1.4rem" id="SUIKAST_TXT"></div>
+<div class="dsu" id="SUIKAST_SUB"></div>
+</div>
+
+<button class="htog" id="HT" onclick="Q('HP').classList.toggle('op')">📜</button>
+
+<!-- Kendi rolünü gösteren badge (sol üst, oyun başladıysa) -->
+<button class="role-info-btn" id="ROLE_INFO_BTN" onclick="openMyRoleModal()">
+  <span id="ROLE_INFO_EMOJI">🎭</span>
+  <span id="ROLE_INFO_NAME">Rol</span>
+</button>
+
+<!-- Rol rehberi butonu (sol alt) -->
+<button class="role-guide-btn" id="ROLE_GUIDE_BTN" onclick="openRoleGuideModal()" title="Rol Rehberi">📖</button>
+
+<!-- Admin Bakış butonu (sadece admin için) -->
+<button class="admin-btn" id="ADMIN_BTN" onclick="openAdminModal()" title="🕵️ Admin Bakış (oyun içi)">👁️</button>
+
+<!-- Admin Menü butonu (sadece admin için) - kullanıcı yönetimi + rapor görüntüleme -->
+<button class="admin-menu-btn" id="ADMIN_MENU_BTN" onclick="openAdminMenuModal()" title="🛠️ Admin Panel">🛠️</button>
+
+<!-- Report butonu top-actions içine yerleştirilmiş -->
+
+<!-- Admin Bakış modal -->
+<div class="role-modal" id="ADMIN_MODAL">
+<div class="role-modal-content">
+<button class="role-modal-close" onclick="Q('ADMIN_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title" style="color:#9b59b6">👁️ ADMİN BAKIŞ</div>
+<div style="font-size:.7rem;color:var(--dim);text-align:center;margin-bottom:10px;font-style:italic">Bu görünüm sadece sana özel — kimse haberdar değil.</div>
+<div id="ADMIN_BODY"></div>
+</div>
+</div>
+
+<!-- Admin Menü modal: Kullanıcılar + Raporlar -->
+<div class="role-modal" id="ADMIN_MENU_MODAL">
+<div class="am-shell">
+  <div class="am-hdr">
+    <div class="am-hdr-title">⚙️ ADMİN PANEL</div>
+    <button class="am-close" onclick="Q('ADMIN_MENU_MODAL').classList.remove('sh')">✕</button>
+  </div>
+  <div class="am-nav">
+    <button class="am-nav-btn active" data-amtab="users" onclick="amSwitchTab('users')">👥 Kullanıcılar</button>
+    <button class="am-nav-btn" data-amtab="stats" onclick="amSwitchTab('stats')">📊 İstatistikler</button>
+    <button class="am-nav-btn" data-amtab="reports" onclick="amSwitchTab('reports')">🐛 Bug Raporları</button>
+  </div>
+  <div class="am-body">
+    <div id="AM_USERS_PANE">
+      <div class="am-create-section">
+        <div class="am-create-hdr" onclick="amToggleCreate()">
+          <span>+ Yeni Hesap Oluştur</span>
+          <span id="AM_CREATE_ARROW" style="font-size:.7rem;opacity:.6">▶</span>
+        </div>
+        <div class="am-create-body" id="AM_CREATE_BODY">
+          <div class="am-create-grid">
+            <input id="AM_NEW_U" placeholder="Kullanıcı adı (2-16)" maxlength="16">
+            <input id="AM_NEW_P" type="password" placeholder="Şifre (min 3)">
+            <label class="am-create-chk"><input type="checkbox" id="AM_NEW_ADMIN"> Admin</label>
+            <button class="b b1 bs" onclick="amCreateUser()">Oluştur</button>
+          </div>
+        </div>
+      </div>
+      <div class="am-toolbar">
+        <input id="AM_SEARCH" class="am-search" placeholder="🔍 Kullanıcı ara..." oninput="amFilterUsers()">
+        <select id="AM_FILTER" class="am-filter-sel" onchange="amFilterUsers()">
+          <option value="all">Tümü</option>
+          <option value="admin">Admin</option>
+          <option value="premium">Premium</option>
+          <option value="donor">Bağışçı</option>
+        </select>
+      </div>
+      <div id="AM_USERS_COUNT" class="am-users-count"></div>
+      <div id="AM_USERS_LIST"></div>
+    </div>
+    <div id="AM_STATS_PANE" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="am-action-btn info" onclick="amLoadStats()">🔄 Yenile</button>
+      </div>
+      <div style="background:rgba(0,150,255,.05);border:1px solid rgba(0,150,255,.2);border-radius:8px;padding:10px;margin-bottom:14px">
+        <div style="font-size:.82rem;font-weight:600;margin-bottom:6px">📲 Push Duyuru (iOS cihazlara)</div>
+        <input class="inp" id="AM_PUSH_TITLE" placeholder="Başlık (max 60)" maxlength="60" style="width:100%;margin-bottom:6px">
+        <textarea id="AM_PUSH_BODY" rows="2" maxlength="200" placeholder="Mesaj (max 200)" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--brd);color:var(--txt);border-radius:4px;font-family:inherit;font-size:.82rem;resize:vertical;margin-bottom:6px"></textarea>
+        <button class="am-action-btn ok" onclick="amPushBroadcast()">📤 Tüm Cihazlara Gönder</button>
+        <span id="AM_PUSH_STATUS" style="font-size:.72rem;color:var(--dim);margin-left:8px"></span>
+      </div>
+      <div id="AM_STATS_BODY"></div>
+    </div>
+    <div id="AM_REPORTS_PANE" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="am-action-btn info" onclick="amLoadReports()">🔄 Yenile</button>
+        <button class="am-action-btn ok" onclick="amExportReports()">📥 Raporları İndir</button>
+      </div>
+      <div id="AM_REPORTS_LIST"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Report modal (her kullanıcıya): bug bildir -->
+<div class="role-modal" id="REPORT_MODAL">
+<div class="role-modal-content" style="max-width:520px">
+<button class="role-modal-close" onclick="Q('REPORT_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title" style="color:var(--hain)">🐛 HATA / GERİ BİLDİRİM</div>
+<div style="font-size:.78rem;color:var(--dim);margin-bottom:10px;text-align:center">Hata, öneri ya da geri bildirimini paylaş.</div>
+<div class="lbl">Açıklama</div>
+<textarea id="RPT_DESC" rows="5" placeholder="Ne oldu? Ne yaparken oldu? Ne bekliyordun?" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--brd);color:var(--txt);border-radius:4px;font-family:inherit;font-size:.85rem;resize:vertical"></textarea>
+<div class="lbl mt8">Ekran Görüntüsü (opsiyonel — max 5MB)</div>
+<input id="RPT_IMG" type="file" accept="image/*" style="font-size:.78rem;width:100%">
+<div id="RPT_PREVIEW" style="margin-top:6px;text-align:center"></div>
+<button class="b b1 bs bw mt12" id="RPT_SUBMIT" onclick="submitReport()">📤 Raporu Gönder</button>
+</div>
+</div>
+
+<!-- Kendi rolünün detayı modal -->
+<div class="role-modal" id="MY_ROLE_MODAL">
+<div class="role-modal-content">
+<button class="role-modal-close" onclick="Q('MY_ROLE_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title">SENİN ROLÜN</div>
+<div id="MY_ROLE_BODY"></div>
+</div>
+</div>
+
+<!-- Tüm rol rehberi modal -->
+<div class="role-modal" id="ROLE_GUIDE_MODAL">
+<div class="role-modal-content">
+<button class="role-modal-close" onclick="Q('ROLE_GUIDE_MODAL').classList.remove('sh')">✕</button>
+<div class="role-modal-title">📖 ROL REHBERİ</div>
+<div class="role-tabs" id="ROLE_GUIDE_TABS"></div>
+<div id="ROLE_GUIDE_BODY"></div>
+</div>
+</div>
+
+<!-- Floating Suikast butonu (sadece suikastçı için, gündüz/oylama fazında) -->
+<button class="suikast-btn" id="SUIKAST_BTN_FLOAT" onclick="openSuikastModal()" title="Suikast">🗡️</button>
+
+<!-- Floating Engizitör butonu (sadece engizitör için, tartışma fazında) -->
+<button class="suikast-btn" id="ENGIZITOR_BTN_FLOAT" onclick="openEngizitorModal()" title="Engizitör İnfaz" style="background:linear-gradient(135deg,#5e3a87,#8e44ad);border-color:#8e44ad;display:none">⚖️</button>
+
+<!-- Floating Sabotaj butonu (sadece hainler için, gece fazında) -->
+<button class="suikast-btn" id="SABOTAJ_BTN_FLOAT" onclick="toggleSabotage()" title="Sabotaj oyu ver" style="background:linear-gradient(135deg,#5e2c1c,#8e3a1a);border-color:#a04020;display:none">🚨</button>
+
+<!-- Floating Mini Oyun butonu (gündüz, eğlence) -->
+<button class="suikast-btn" id="MINIGAME_BTN_FLOAT" onclick="openFakeMinigame()" title="Mini Oyun (Eğlence)" style="background:linear-gradient(135deg,#1e6091,#2980b9);border-color:#3498db;display:none;left:auto;right:14px;bottom:70px">🎮</button>
+
+<!-- Engizitör Modal -->
+<div class="suikast-modal" id="ENGIZITOR_MODAL">
+<div class="suikast-modal-content" style="position:relative">
+<button class="suikast-modal-close" onclick="Q('ENGIZITOR_MODAL').classList.remove('sh')">✕</button>
+<div class="suikast-modal-title" style="color:#bb8fce">⚖️ ENGİZİTÖR İNFAZI</div>
+<div style="font-size:.78rem;color:var(--dim);margin-bottom:8px;text-align:center">
+Bu butona basıp infaz edersen herkes Engizitör olduğunu öğrenir.<br>
+Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
+</div>
+<div class="lbl">Hedef seç:</div>
+<div id="ENGIZITOR_TARGETS" style="display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto"></div>
+<button class="b b1 bs bw mt12" id="ENGIZITOR_CONFIRM" onclick="confirmEngizitor()" disabled>⚖️ İNFAZ ET (GERİ ALINAMAZ!)</button>
+</div>
+</div>
+
+<!-- Sabotaj Mini Oyun Overlay -->
+<div class="sabo-overlay" id="SABO_OV">
+  <div class="sabo-content">
+    <div class="sabo-header">
+      <div class="sabo-icon">🚨</div>
+      <div class="sabo-title">SABOTAJ!</div>
+      <div class="sabo-sub" id="SABO_SUB">Mini oyunu çöz, kazanırsan +5 altın!</div>
+      <div id="SABO_COUNTDOWN" style="font-size:.82rem;font-weight:700;text-align:center;margin:4px 0 0;letter-spacing:.5px"></div>
+    </div>
+    <div id="SABO_BODY"></div>
+    <button class="b bs mt8" id="SABO_SKIP" onclick="sabotageSkip()" style="background:rgba(255,255,255,.05);color:var(--dim);border:1px solid var(--brd);width:100%">Geç (kaybet)</button>
+  </div>
+</div>
+
+<!-- Hata Bildir artık ayarlar panelinde -->
+<button class="report-btn" id="REPORT_BTN" onclick="openReportModal()" title="Hata Bildir" style="display:none!important">🐛</button>
+
+<!-- Suikast Modal -->
+<div class="suikast-modal" id="SUIKAST_MODAL">
+<div class="suikast-modal-content" style="position:relative">
+<button class="suikast-modal-close" onclick="closeSuikastModal()">✕</button>
+<div class="suikast-modal-title">🗡️ SUİKAST GİRİŞİMİ</div>
+<div style="font-size:.78rem;color:var(--dim);text-align:center;margin-bottom:10px">
+  Doğru tahmin → hedef anında ölür.<br>Yanlış tahmin → SEN anında ölürsün!
+</div>
+<div class="lbl">Hedef seç:</div>
+<div class="vg" id="SUIKAST_TARGETS" style="margin-bottom:10px"></div>
+<div class="lbl mt8">Tahmin ettiğin rol:</div>
+<div class="rgg" id="SUIKAST_ROLES"></div>
+<button class="b b1 bs bw mt12" id="SUIKAST_DO_BTN" onclick="doSuikast()" disabled>🗡️ SUİKAST!</button>
+<div id="SUIKAST_STATUS" style="text-align:center;margin-top:8px;font-size:.78rem;color:var(--dim)"></div>
+</div>
+</div>
+<!-- Giriş/Kayıt Başarı Animasyonu -->
+<div id="AUTH_SUCCESS_OV">
+  <div class="auth-success-ring" id="AUTH_SUCCESS_ICO">✓</div>
+  <div class="auth-success-txt" id="AUTH_SUCCESS_TXT">Giriş Başarılı</div>
+  <div class="auth-success-sub" id="AUTH_SUCCESS_SUB">Hoş geldin!</div>
+</div>
+
+<div class="hpan" id="HP">
+<div class="hph"><h3>Geçmiş Aksiyonlar</h3><button class="hcl" onclick="Q('HP').classList.remove('op')">✕</button></div>
+<div id="HC"></div>
+</div>
+
+<div class="app">
+<div class="hdr">
+<div class="logo">AZAP</div>
+<div class="logo-s">Sosyal Dedüksiyon</div>
+</div>
+
+<!-- Oyun içi butonlar artık ayarlar panelinde -->
+<div class="game-actions" id="GAME_ACTIONS" style="display:none!important"></div>
+<!-- Hareketli lobi arka planı -->
+<div id="LOBBY_BG">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+</div>
+
+<!-- Rejoin Modal -->
+<div id="REJOIN_MODAL">
+  <div class="rejoin-card">
+    <div class="rejoin-icon">🎮</div>
+    <div class="rejoin-title">Devam Edecek misin?</div>
+    <div class="rejoin-sub">En son <strong id="REJOIN_UNAME"></strong> adıyla bu odada kalmıştın:</div>
+    <div class="rejoin-code" id="REJOIN_CODE"></div>
+    <div class="rejoin-sub" style="margin-bottom:18px;font-size:.74rem">Oyuna geri dönmek istiyor musun?</div>
+    <div class="rejoin-btns">
+      <button class="rejoin-yes" onclick="doRejoin()">⚔️ Geri Dön</button>
+      <button class="rejoin-no" onclick="dismissRejoin()">✕ Hayır</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Aurora Arka Plan -->
+<div id="AURORA_BG">
+  <div class="aurora-blob ab1"></div>
+  <div class="aurora-blob ab2"></div>
+  <div class="aurora-blob ab3"></div>
+  <div class="star-field" id="STAR_FIELD"></div>
+</div>
+
+<!-- Auth AI Arka Plan -->
+<div id="AI_AUTH_BG"></div>
+
+<!-- Auth -->
+<div class="scr on" id="S0">
+<div class="auth-card">
+  <div class="auth-brand">
+    <img class="auth-brand-favicon" src="a.png?v=3" alt="AZAP" onerror="this.style.display='none'">
+    <div class="auth-brand-logo">AZAP</div>
+    <div class="auth-brand-sub">Sosyal Dedüksiyon</div>
+  </div>
+  <div class="auth-tabs">
+    <button class="auth-tab on" id="TL" onclick="setAM('login')">Giriş Yap</button>
+    <button class="auth-tab" id="TR" onclick="setAM('register')">Kayıt Ol</button>
+  </div>
+  <div class="auth-fields">
+    <div class="auth-field-wrap">
+      <span class="field-icon">👤</span>
+      <input class="auth-inp" id="AU" placeholder="Kullanıcı adı" maxlength="16" autocomplete="off">
+    </div>
+    <div class="auth-field-wrap">
+      <span class="field-icon">🔒</span>
+      <input class="auth-inp" id="AP" placeholder="Şifre" type="password" maxlength="32">
+    </div>
+    <!-- Sadece giriş modunda görünür -->
+    <div id="AUTH_LOGIN_EXTRAS">
+      <label class="auth-remember">
+        <input type="checkbox" id="REMEMBER_ME" checked> Beni hatırla (bu cihazda otomatik giriş)
+      </label>
+    </div>
+    <!-- Sadece kayıt modunda görünür -->
+    <div id="AUTH_REG_EXTRAS" style="display:none;flex-direction:column;gap:8px">
+      <label class="auth-terms">
+        <input type="checkbox" id="TERMS_1">
+        <span><a href="https://azap.online/yasal/kullanim-kosullari" target="_blank">Kullanım Koşulları ve Üyelik Sözleşmesi</a>'ni okudum, kabul ediyorum.</span>
+      </label>
+      <label class="auth-terms">
+        <input type="checkbox" id="TERMS_2">
+        <span><a href="https://azap.online/yasal/kvkk" target="_blank">Gizlilik Politikası ve KVKK Aydınlatma Metni</a>'ni okudum, kabul ediyorum.</span>
+      </label>
+      <label class="auth-terms">
+        <input type="checkbox" id="TERMS_3">
+        <span><a href="https://azap.online/yasal/mesafeli-satis" target="_blank">Mesafeli Satış Sözleşmesi</a>'ni okudum, kabul ediyorum.</span>
+      </label>
+    </div>
+  </div>
+  <button class="auth-submit" id="AB" onclick="doAuth()">Giriş Yap</button>
+  <div class="auth-divider">veya</div>
+  <button class="auth-guide-btn" onclick="openModal('MDL_GUIDE');renderGuide()">📜 AZAP Rehberi</button>
+</div>
+</div>
+
+<!-- Entry -->
+<div class="scr" id="S1">
+<div id="TOP_COINS" class="entry-coins">
+  <span>💰 Altın:</span>
+  <span class="ec-val" id="TOP_COIN_VAL">0</span>
+</div>
+<div class="entry">
+<div class="entry-card">
+<div class="tc mb8" style="font-size:.85rem;color:var(--dim)">
+<span id="WAV_SLOT" style="display:inline-block;vertical-align:middle;margin-right:6px"></span>
+Hoş geldin, <strong id="WN"></strong>
+</div>
+<div class="grp"><input class="inp" id="IN" placeholder="Oyun içi isim..." maxlength="12" autocomplete="off"></div>
+<div class="grp"><button class="lg-btn lg-btn-primary" onclick="createRoom()">
+  <span class="lg-btn-icon">⚔️</span> Oda Kur
+</button></div>
+<div class="sep">veya</div>
+<div class="grp">
+<input class="inp code-inp" id="IC" placeholder="••••" maxlength="4">
+<button class="lg-btn lg-btn-primary" style="margin-top:8px" onclick="joinRoom()"><span class="lg-btn-icon">➕</span> Katıl</button>
+<div class="lg-btn-row" style="margin-top:8px">
+  <button class="lg-btn" onclick="spectate()"><span class="lg-btn-icon">👁️</span> İzle</button>
+</div>
+</div>
+<div class="lg-btn-row" style="margin-top:4px">
+  <button class="lg-btn" onclick="openProfile()">
+    <span class="lg-btn-icon">👤</span> Profil
+  </button>
+  <button class="lg-btn" onclick="openModal('MDL_GUIDE');renderGuide()">
+    <span class="lg-btn-icon">📜</span> Rehber
+  </button>
+</div>
+<div class="lg-btn-row" style="margin-top:0">
+  <button class="lg-btn" onclick="openInventoryModal()">
+    Envanter
+  </button>
+  <button class="lg-btn" id="TOP_SHOP_BTN" onclick="openShopModal()">
+    <span class="lg-btn-icon">🛒</span> Mağaza
+  </button>
+</div>
+<div style="margin-top:0">
+  <button class="lg-btn" style="width:100%;border-color:rgba(192,57,43,.3);color:#e8a0a0" onclick="doLogout()">
+    <span class="lg-btn-icon">🚪</span> Çıkış
+  </button>
+</div>
+</div>
+</div>
+<div id="MUSIC_BAR" style="display:none">
+  <div class="music-radio-pill">
+    <div class="music-radio-live"></div>
+    <span class="music-radio-label">AZAP Radio</span>
+    <button id="MUSIC_TOGGLE" class="music-radio-btn" onclick="toggleMusic()" title="Müzik Aç/Kapat">
+      <svg id="MUSIC_ICO_ON" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8.14v7.72A4.5 4.5 0 0016.5 12zM14 3.23v2.06a7 7 0 010 13.42v2.06a9 9 0 000-17.54z"/></svg>
+      <svg id="MUSIC_ICO_OFF" style="display:none" viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0014 8.14v2.12l2.45 2.45c.03-.2.05-.4.05-.61zm2.5 0a7 7 0 01-.94 3.49l1.51 1.51A9 9 0 0021 12a9 9 0 00-7-8.77v2.06A7 7 0 0119 12zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a9 9 0 003.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+    </button>
+    <button id="MUSIC_SKIP" class="music-radio-btn" onclick="radioSkipAdmin()" title="Şarkı Geç (Admin)" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+    </button>
+  </div>
+</div>
+<div class="entry-footer">⛧ AZAP — by Azat Akdağ ⛧</div>
+<div class="legal-footer">
+  <a href="https://azap.online/yasal/kullanim-kosullari" target="_blank">Kullanım Koşulları</a>
+  <span class="lf-sep">·</span>
+  <a href="https://azap.online/yasal/kvkk" target="_blank">Gizlilik & KVKK</a>
+  <span class="lf-sep">·</span>
+  <a href="https://azap.online/yasal/mesafeli-satis" target="_blank">Mesafeli Satış</a>
+  <span class="lf-sep">·</span>
+  <a href="https://azap.online/yasal/iptal-iade" target="_blank">İptal & İade</a>
+  <span class="lf-sep">·</span>
+  <a href="https://azap.online/iletisim" target="_blank">İletişim</a>
+</div>
+</div>
+
+<!-- Lobby -->
+<div class="scr" id="S2"><div class="scroll">
+<div class="lbox"><div class="rlbl">Oda Kodu</div><div class="rcode" id="LC">----</div></div>
+<ul class="pl" id="LP"></ul>
+<div id="LS"></div>
+<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+<button class="b bs" style="flex:1;min-width:45%;border:1px solid var(--brd);color:var(--txt);background:var(--bg2)" onclick="openProfile()">👤 Profil</button>
+<button class="b bs" style="flex:1;min-width:45%;border:1px solid var(--brd);color:var(--txt);background:var(--bg2)" onclick="openInventoryModal()">🎒 Envanter</button>
+<button class="b bs" style="flex:1;min-width:45%;border:1px solid var(--brd);color:var(--txt);background:var(--bg2)" onclick="openShopModal()">🛒 Mağaza</button>
+<button class="b bs" style="flex:1;min-width:45%;border:1px solid var(--brd);color:var(--txt);background:var(--bg2)" onclick="openModal('MDL_GUIDE');renderGuide()">📜 Rehber</button>
+</div>
+<button class="b b2 bs" style="width:100%;margin-top:6px" onclick="leaveRoom()">↩️ Lobiden Çık</button>
+
+<!-- ALTIN HAVUZU PANELİ - login + oyuncu olan herkese görünür -->
+<div id="BET_PANEL" style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:6px;padding:10px;margin-top:10px;display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <div class="st" style="color:var(--gold);margin:0">💰 Altın Havuzu (opsiyonel)</div>
+    <span style="font-size:.74rem;color:var(--gold);font-weight:600" id="BET_MY_COINS">💰 0</span>
+  </div>
+  <div style="font-size:.74rem;color:var(--dim);margin-bottom:6px;line-height:1.4">
+    Altın yatır. Oyunu kazanırsan tüm havuzu kazananlarla paylaşırsın (yatırdığın oran kadar pay alırsın). Kaybedersen kaybolur. Min 5.
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+    <input class="inp" id="BET_AMOUNT" type="number" min="5" placeholder="Miktar" style="flex:1;padding:6px 8px;font-size:.85rem">
+    <button class="b bs" style="background:var(--gold);color:#000;border:none;font-weight:600" onclick="placeBet()">💰 Yatır</button>
+    <button class="b bs" style="background:#c0392b;color:#fff;border:none;font-weight:700;white-space:nowrap" onclick="allIn()">ALL-IN</button>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:.78rem">
+    <span>Yatırdığım: <strong id="MY_BET" style="color:var(--gold)">0</strong></span>
+    <span>Toplam havuz: <strong id="BET_POOL" style="color:var(--gold)">0</strong></span>
+  </div>
+  <button class="b bs mt8" style="width:100%;border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem;display:none" id="BET_CANCEL_BTN" onclick="cancelBet()">Altını Geri Çek</button>
+  <div id="BET_LIST" style="margin-top:8px;font-size:.72rem;color:var(--dim)"></div>
+</div>
+
+<!-- ADMIN BOT PANELİ (sadece admin + lider'e görünür) -->
+<div class="sbox" id="BOT_PANEL" style="display:none;background:rgba(187,143,206,.06);border:1px solid rgba(187,143,206,.25)">
+<div class="st" style="color:#bb8fce">🤖 Admin · Bot Yönetimi</div>
+<div style="font-size:.72rem;color:var(--dim);margin-bottom:8px">Test amaçlı yapay zeka botları ekle. Liderin oyundan tamamen çıkması ile birlikte botlar otomatik atılır ve oda kapanır.</div>
+<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+  <input class="inp" id="BOT_COUNT" type="number" min="1" max="20" value="1" style="width:70px;padding:6px 8px;font-size:.85rem">
+  <button class="b bs" style="flex:1;background:#bb8fce;color:#000;border:none;font-weight:600;min-width:120px" onclick="addBots()">🤖 Bot Ekle</button>
+  <button class="b bs" style="border:1px solid var(--hain);color:var(--hain);background:transparent;font-size:.74rem" onclick="removeAllBots()" id="BOT_REM">Tümünü At</button>
+</div>
+<div id="BOT_INFO" style="margin-top:6px;font-size:.72rem;color:#bb8fce"></div>
+</div>
+
+<!-- MK MOD SEÇİCİ (sadece lider görür) -->
+<div id="MK_MODE_PANEL" style="display:none;margin-top:8px">
+  <button id="MK_MODE_BTN" onclick="toggleMKMode()" class="b bs" style="width:100%;font-size:.78rem;border:1px solid rgba(0,200,255,.35);color:rgba(0,200,255,.85);background:rgba(0,200,255,.06)">
+    ⬡ Oyun Modu: Standart AZAP
+  </button>
+</div>
+
+<div class="sbox" id="SP2" style="display:none">
+<div class="st">⚙️ Ayarlar</div>
+
+<!-- STANDART AZAP AYARLARI -->
+<div id="SP2_AZAP">
+<div class="srow"><span>🧠 Delilik</span><input type="range" min="0" max="50" value="15" id="SI" oninput="uSet()"><span class="sval" id="VI">%15</span></div>
+<div class="srow"><span>🌙 Gece</span><input type="range" min="10" max="120" value="20" step="5" id="SN" oninput="uSet()"><span class="sval" id="VN">20s</span></div>
+<div class="srow"><span>☀️ Tartışma</span><input type="range" min="10" max="120" value="20" step="5" id="SD" oninput="uSet()"><span class="sval" id="VD">20s</span></div>
+<div class="srow"><span>🗳️ Oylama</span><input type="range" min="30" max="240" value="90" step="10" id="SV" oninput="uSet()"><span class="sval" id="VV">90s</span></div>
+<div class="st mt8">Takım Sayıları</div>
+<div id="MCA">
+<div class="srow"><span>🧛 Hain</span><input type="range" min="1" max="4" value="1" id="HC2" oninput="uSet()"><span class="sval" id="VH">1</span></div>
+<div class="srow"><span>⚖️ Tarafsız</span><input type="range" min="0" max="4" value="0" id="TC2" oninput="uSet()"><span class="sval" id="VT">0</span></div>
+</div>
+<div class="st mt8">Hain Öldürme</div>
+<div class="srow" style="gap:10px">
+<label style="font-size:.78rem;cursor:pointer"><input type="radio" name="hkm" value="multi" checked onchange="uSet()"> Çoklu</label>
+<label style="font-size:.78rem;cursor:pointer"><input type="radio" name="hkm" value="single" onchange="uSet()"> Tek kill</label>
+</div>
+<div class="st mt8">Rol Atama</div>
+<div class="srow" style="gap:10px">
+<label style="font-size:.78rem;cursor:pointer"><input type="radio" name="rsm" value="auto" checked onchange="uSet()"> Otomatik</label>
+<label style="font-size:.78rem;cursor:pointer"><input type="radio" name="rsm" value="pick" onchange="uSet()"> Oyuncular seçsin</label>
+</div>
+<div class="st mt8">Roller</div>
+<div class="rgrid" id="RG"></div>
+</div>
+
+<!-- MATRIX KRALLIĞI BİLGİ PANELİ -->
+<div id="SP2_MK" style="display:none">
+<div style="background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.2);border-radius:8px;padding:10px;margin-bottom:10px">
+  <div style="font-family:'Fira Code',monospace;font-size:.65rem;letter-spacing:2px;color:rgba(0,200,255,.7);margin-bottom:6px">MATRIX KRALLIĞI</div>
+  <div style="font-size:.72rem;color:var(--dim);line-height:1.6">
+    Kart bazlı sosyal dedüksiyon. Oyun başladığında roller gizlice telefona düşer.<br>
+    <strong style="color:var(--txt)">Şövalyeler</strong> — 5 Matrix kartı veya Kral'ı idam etmek için<br>
+    <strong style="color:#c0392b">Asiler</strong> — 6 Asi kartı veya Kral'ı Yaver olarak onaylatmak için
+  </div>
+</div>
+<div style="font-size:.72rem;color:var(--dim);line-height:1.7">
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>5 kişi</span><span>3 Şövalye · 1 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>6 kişi</span><span>4 Şövalye · 1 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>7 kişi</span><span>4 Şövalye · 2 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>8 kişi</span><span>5 Şövalye · 2 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>9 kişi</span><span>5 Şövalye · 3 Asi · 1 Kral</span></div>
+  <div style="display:flex;justify-content:space-between;padding:3px 0"><span>10 kişi</span><span>6 Şövalye · 3 Asi · 1 Kral</span></div>
+</div>
+<div style="margin-top:8px;font-size:.68rem;color:rgba(0,200,255,.5);font-family:'Fira Code',monospace;text-align:center;letter-spacing:1px">Min 5 · Max 10 oyuncu</div>
+</div>
+
+<button class="b b1 bw mt12" id="BS" onclick="startGame()">Oyunu Başlat</button>
+</div>
+</div></div>
+
+<!-- Role Selection -->
+<div class="scr" id="S_RS"><div class="scroll">
+<div class="pb"><div class="pi2">🎲</div><div class="pt">Rol Seçimi</div><div class="ps" id="RS_SUB"></div></div>
+<div class="rs-progress">
+<div style="font-size:.82rem;color:var(--dim)" id="RS_PROG_TXT">0 / 0 seçti</div>
+<div class="rs-progress-bar"><div class="rs-progress-fill" id="RS_PROG_FILL" style="width:0%"></div></div>
+</div>
+<div class="rs-current" id="RS_CURRENT" style="display:none"></div>
+<div id="RS_MY_OPTIONS" style="display:none">
+<div class="lbl tc mt8">Sıra sende! 3 rolden birini seç:</div>
+<div class="rs-options" id="RS_OPT_LIST"></div>
+</div>
+<div id="RS_MY_PICK_DISPLAY"></div>
+<div class="lbl mt12">Tamamlanan Seçimler</div>
+<div class="rs-completed-list" id="RS_LIST"></div>
+</div></div>
+
+<!-- Role Reveal -->
+<div class="scr" id="S3"><div class="scroll">
+<div class="pb"><div class="pi2">🎭</div><div class="pt">Rolün</div><div class="ps">Detaylıca oku!</div></div>
+<div class="rc"><div class="rc-in">
+<div class="em" id="RE"></div><div class="rn" id="RN"></div><div class="rtag" id="RT"></div><div class="rd" id="RD"></div>
+</div></div>
+<div id="RX"></div>
+</div></div>
+
+<!-- President Vote -->
+<div class="scr" id="S_PV"><div class="scroll">
+<div class="pb"><div class="pi2">👑</div><div class="pt" style="color:var(--hi)">Başkan Seçimi</div><div class="ps">Toplantıyı kim yönetsin?</div></div>
+<div class="lbl tc">Önemli bir rol değil — sadece tartışmayı organize eder.</div>
+<div class="vg mt8" id="PV_GRID"></div>
+</div></div>
+
+<!-- Night -->
+<div class="scr" id="S4"><div class="scroll">
+<div class="pb"><div class="pi2">🌙</div><div class="pt" style="color:var(--hain)">Gece</div><div class="ps" id="NR"></div></div>
+<div class="rc" style="padding:9px"><div class="rc-in" style="display:flex;align-items:center;gap:8px">
+<span style="font-size:1.5rem" id="NE"></span><span class="rn" style="font-size:.88rem" id="NN"></span>
+</div></div>
+<div class="lbl" id="AL"></div>
+<div class="tl" id="NTL"></div>
+<div id="EA"></div>
+<div class="abtn" id="AB2" style="display:none">
+<button class="b bk" id="BK" onclick="conf('kill')" disabled>🗡️ Öldür</button>
+<button class="b ba" id="BA" onclick="conf('ability')" disabled>✨ Yetenek</button>
+</div>
+<div id="SAA" style="display:none"><button class="b b1 bw mt12" id="BSA" onclick="conf('single')" disabled>Onayla</button></div>
+<div id="HCA"></div>
+</div></div>
+
+<!-- Report -->
+<div class="scr" id="S5"><div class="scroll">
+<div class="pb"><div class="pi2">🌅</div><div class="pt">Sabah Raporu</div><div class="ps" id="RR"></div></div>
+<div class="reps" id="RL"></div>
+<div style="text-align:center;padding:8px 0 4px">
+  <button class="b bs" style="font-size:.8rem;padding:6px 16px;opacity:.8" onclick="openHistoryModal()">� Geçmiş Raporlar</button>
+</div>
+</div></div>
+
+<!-- Day -->
+<div class="scr" id="S6"><div class="scroll">
+<div class="pb"><div class="pi2">☀️</div><div class="pt" style="color:var(--hi)">Tartışma</div><div class="ps" id="DAY_PS">Konuşun, tartışın!</div></div>
+<div style="text-align:right;padding:0 12px 4px"><button class="b bs" style="font-size:.72rem;padding:4px 10px;opacity:.7" onclick="openHistoryModal()">� Geçmiş</button></div>
+<div id="SM"></div><div id="DA" class="mb8"></div>
+<ul class="pl" id="DP"></ul>
+</div></div>
+
+<!-- Vote -->
+<div class="scr" id="S7"><div class="scroll">
+<div class="pb"><div class="pi2">🗳️</div><div class="pt" style="color:var(--hi)">Oylama</div><div class="ps">Kimi itmek istiyorsun?</div></div>
+<div class="vg" id="VG"></div>
+</div></div>
+
+<!-- Vote Result -->
+<div class="scr" id="S8"><div class="scroll">
+<div class="goc"><div class="gem" id="VRE">⚖️</div><div class="gt" id="VRT"></div><div class="gm" id="VRM"></div></div>
+</div></div>
+
+<!-- Matrix Krallığı Oyun Ekranı -->
+<div class="scr" id="S_MK"><div class="scroll" style="padding:10px 10px 60px">
+<div id="MK_CONTENT"></div>
+</div></div>
+
+<!-- Game Over -->
+<div class="scr" id="S9"><div class="scroll">
+<div class="goc"><div class="gem" id="GE">🏆</div><div class="gt" id="GT"></div><div class="gm" id="GM"></div></div>
+<div class="winners-box" id="WIN_BOX" style="display:none">
+<div class="winners-title">🏆 Kazananlar 🏆</div>
+<div id="WIN_LIST"></div>
+</div>
+<div class="lbl mt12">Tüm Roller</div>
+<div class="gor" id="GR"></div>
+<div style="display:flex;gap:7px;margin-top:12px">
+<button class="b b2" style="flex:1" onclick="leaveAfterGame()">Çıkış</button>
+<button class="b b1" style="flex:1" id="BNG" onclick="newGame()" style="display:none">Yeni Oyun</button>
+</div>
+<div id="BNG_WAIT" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(255,200,50,.08);border:1px solid rgba(255,200,50,.3);border-radius:8px;color:#f5c842;font-size:.82rem;text-align:center;letter-spacing:.5px;animation:pulse 2s ease-in-out infinite">⏳ Lider yeni oyunu bekliyor...</div>
+</div></div>
+
+<!-- MVP Vote -->
+<div class="scr" id="S_MV"><div class="scroll">
+<div class="pb"><div class="pi2">❤️</div><div class="pt" style="color:#ff5577">En İyi Oyuncu</div><div class="ps">Bu oyunu en iyi kim oynadı?</div></div>
+<div class="lbl tc">Onurlandırın! Kendinize oy veremezsiniz.</div>
+<div class="vg mt8" id="MV_GRID"></div>
+</div></div>
+
+<!-- MVP Result -->
+<div class="scr" id="S_MVR"><div class="scroll">
+<div class="mvp-card" id="MVR_CARD">
+<div class="mvp-emoji">❤️</div>
+<div class="mvp-title">EN İYİ OYUNCU</div>
+<div id="MVR_AV" style="margin:10px 0"></div>
+<div class="mvp-name" id="MVR_NAME">-</div>
+<div class="mvp-votes" id="MVR_VOTES">-</div>
+</div>
+<div class="lbl tc">Tüm Oylar</div>
+<div class="mvp-tally" id="MVR_TALLY"></div>
+<div style="display:flex;gap:7px;margin-top:14px">
+<button class="b b2" style="flex:1" onclick="leaveAfterGame()">Çıkış</button>
+<button class="b b1" style="flex:1" id="BNG2" onclick="newGame()" style="display:none">Yeni Oyun</button>
+</div>
+<div id="BNG2_WAIT" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(255,200,50,.08);border:1px solid rgba(255,200,50,.3);border-radius:8px;color:#f5c842;font-size:.82rem;text-align:center;letter-spacing:.5px;animation:pulse 2s ease-in-out infinite">⏳ Lider yeni oyunu bekliyor...</div>
+</div></div>
+
+<!-- Spectator -->
+<div class="scr" id="S10"><div class="scroll">
+<div class="pb"><div class="pi2">👁️</div><div class="pt">İzleyici</div><div class="ps" id="SPH"></div></div>
+<div id="SPP"></div>
+<div class="st mt12">Oyun Logu</div>
+<div class="slog" id="SLG"></div>
+<button class="b b2 bs bw mt8" onclick="leaveRoom()">↩️ İzleyiciden Çık</button>
+</div></div>
+</div>
+
+<div class="toast" id="T"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://azap.online/vendor/three/build/three.module.js",
+    "three/addons/": "https://azap.online/vendor/three/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { RGBShiftShader } from 'three/addons/shaders/RGBShiftShader.js';
+
+let aiHeroCleanup = null;
+
+function mountAiHeroBackground(container) {
+  if (!container) return null;
+  while (container.firstChild) container.removeChild(container.firstChild);
+
+  const renderer = new THREE.WebGLRenderer({
+    antialias: false,
+    alpha: false,
+    powerPreference: 'high-performance'
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setClearColor(0x000000, 1);
+  container.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+  const camera = new THREE.OrthographicCamera();
+
+  const renderPass = new RenderPass(scene, camera);
+  const bloom = new UnrealBloomPass(
+    new THREE.Vector2(container.clientWidth, container.clientHeight),
+    0.35,
+    0.8,
+    0.15
+  );
+  const rgbShift = new ShaderPass(RGBShiftShader);
+  rgbShift.uniforms.amount.value = 0.0015;
+  rgbShift.uniforms.angle.value = Math.PI / 4;
+
+  const composer = new EffectComposer(renderer);
+  composer.addPass(renderPass);
+  composer.addPass(bloom);
+  composer.addPass(rgbShift);
+
+  const GRID = { cols: 120, rows: 120, jitter: 0.3, hexOffset: 0.5, dotRadius: 0.03, spacing: 0.6 };
+  const total = GRID.cols * GRID.rows;
+  const geometry = new THREE.CircleGeometry(GRID.dotRadius, 8);
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const dots = new THREE.InstancedMesh(geometry, material, total);
+  dots.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  scene.add(dots);
+
+  const basePos = new Float32Array(total * 2);
+  const distArr = new Float32Array(total);
+  const xOffset = (GRID.cols - 1) * GRID.spacing * 0.5;
+  const yOffset = (GRID.rows - 1) * GRID.spacing * 0.5;
+  const dummy = new THREE.Object3D();
+
+  let idx = 0;
+  for (let r = 0; r < GRID.rows; r++) {
+    for (let c = 0; c < GRID.cols; c++, idx++) {
+      let x = c * GRID.spacing - xOffset;
+      let y = r * GRID.spacing - yOffset;
+      y += (c % 2) * GRID.hexOffset * GRID.spacing;
+      x += (Math.random() - 0.5) * GRID.jitter;
+      y += (Math.random() - 0.5) * GRID.jitter;
+      basePos[idx * 2] = x;
+      basePos[idx * 2 + 1] = y;
+      const len = Math.hypot(x, y);
+      const ang = Math.atan2(y, x);
+      const oct = 0.5 * Math.cos(ang * 8.0);
+      distArr[idx] = len + oct * 0.75;
+      dummy.position.set(x, y, 0);
+      dummy.updateMatrix();
+      dots.setMatrixAt(idx, dummy.matrix);
+    }
+  }
+
+  function roundedSquareWave(t, delta, a, f) {
+    return ((2 * a) / Math.PI) * Math.atan(Math.sin(2 * Math.PI * t * f) / delta);
+  }
+
+  const _t0 = performance.now();
+  const clock = { getElapsedTime: () => (performance.now() - _t0) / 1000 };
+  const mat = new THREE.Matrix4();
+  const pos = new THREE.Vector3();
+  let animationFrameId = 0;
+
+  function animate() {
+    animationFrameId = requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+    const speed = 0.5;
+    const amp = 0.75;
+    const freq = 0.3;
+    const falloff = 0.035;
+    const phase = (Math.sin(2 * Math.PI * t * freq) + 1) * 0.5;
+    rgbShift.uniforms.amount.value = 0.001 + phase * 0.0025;
+
+    for (let i = 0; i < total; i++) {
+      const x0 = basePos[i * 2];
+      const y0 = basePos[i * 2 + 1];
+      const dist = distArr[i];
+      const localDelta = THREE.MathUtils.lerp(0.05, 0.2, Math.min(1.0, dist / 70.0));
+      const tt = t * speed - dist * falloff;
+      const k = 1 + roundedSquareWave(tt, localDelta, amp, freq);
+      pos.set(x0 * k, y0 * k, 0);
+      mat.set(
+        1, 0, 0, pos.x,
+        0, 1, 0, pos.y,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      dots.setMatrixAt(i, mat);
+    }
+    dots.instanceMatrix.needsUpdate = true;
+    composer.render();
+  }
+
+  function resizeCamera() {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    const aspect = w / h;
+    const worldHeight = 10;
+    const worldWidth = worldHeight * aspect;
+    camera.left = -worldWidth / 2;
+    camera.right = worldWidth / 2;
+    camera.top = worldHeight / 2;
+    camera.bottom = -worldHeight / 2;
+    camera.near = -100;
+    camera.far = 100;
+    camera.position.set(0, 0, 10);
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    composer.setSize(w, h);
+    if (rgbShift.uniforms.resolution) rgbShift.uniforms.resolution.value.set(w, h);
+    bloom.setSize(w, h);
+  }
+
+  const observer = new ResizeObserver(resizeCamera);
+  observer.observe(container);
+  resizeCamera();
+  animate();
+
+  return function cleanupAiHeroBackground() {
+    observer.disconnect();
+    window.cancelAnimationFrame(animationFrameId);
+    while (container.firstChild) container.removeChild(container.firstChild);
+    geometry.dispose();
+    material.dispose();
+    renderer.dispose();
+    composer.dispose();
+  };
+}
+
+window.startThreeAiAuthBg = function startThreeAiAuthBg() {
+  if (aiHeroCleanup) return;
+  aiHeroCleanup = mountAiHeroBackground(document.getElementById('AI_AUTH_BG'));
+};
+
+window.stopThreeAiAuthBg = function stopThreeAiAuthBg() {
+  if (!aiHeroCleanup) return;
+  aiHeroCleanup();
+  aiHeroCleanup = null;
+};
+
+if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.getElementById('S0')?.classList.contains('on')) {
+  window.startThreeAiAuthBg();
+}
+</script>
+<script src="app.js?v=20260720b"></script>
+</body>
+</html>
