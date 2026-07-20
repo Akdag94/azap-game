@@ -1,0 +1,27 @@
+# EAS Build arşivine girmeyecek dosyalar — yükleme boyutunu küçültür.
+# (EAS, azap-mobile git repo içinde olduğu için TÜM repo'yu paketler;
+#  radyo MP3'leri vb. buluta taşımanın anlamı yok.)
+
+# Ağır ve gereksiz içerik
+public/radio/
+public/favicon.svg
+public/favicon.png
+data/
+node_modules/
+azap-mobile/node_modules/
+
+# Sunucu/web tarafı — mobil build'e gerekmez
+server/
+tests/
+ios/
+.github/
+DEPLOYMENT.md
+SECURITY.md
+ROLLER_REHBERI.md
+make-admin.js
+
+# Çeşitli
+*.rar
+*.zip
+*.log
+.git/
