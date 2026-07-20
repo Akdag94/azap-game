@@ -22,7 +22,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Sacramento&family=Caveat:wght@400;700&family=Pacifico&family=Kaushan+Script&display=swap" rel="stylesheet">
 <script src="https://azap.online/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="style.css?v=20260720c">
+<link rel="stylesheet" href="style.css?v=20260720d">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -609,7 +609,8 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
     </div>
     <div class="auth-field-wrap">
       <span class="field-icon">🔒</span>
-      <input class="auth-inp" id="AP" placeholder="Şifre" type="password" maxlength="32">
+      <input class="auth-inp" id="AP" placeholder="Şifre" type="password" maxlength="32" style="padding-right:44px">
+      <button type="button" id="AP_TOGGLE" onclick="togglePw('AP','AP_TOGGLE')" aria-label="Şifreyi göster/gizle" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim);font-size:1.1rem;cursor:pointer;padding:4px;line-height:1">👁️</button>
     </div>
     <!-- Sadece giriş modunda görünür -->
     <div id="AUTH_LOGIN_EXTRAS">
@@ -1133,6 +1134,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="app.js?v=20260720c"></script>
+<script src="app.js?v=20260720d"></script>
 </body>
 </html>

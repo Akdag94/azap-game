@@ -533,6 +533,14 @@ function updateMusicUI(){
 function loadYouTubeAPI(){} // compat stub
 function tryStartMusicNow(){ applyMusicForCurrentScreen(); }
 
+// Şifre göster/gizle
+function togglePw(inputId, btnId){
+  const inp=Q(inputId); if(!inp) return;
+  const show = inp.type==='password';
+  inp.type = show ? 'text' : 'password';
+  const btn=Q(btnId); if(btn) btn.textContent = show ? '🙈' : '👁️';
+}
+
 // ── AUTH ──
 function setAM(m){
   AM=m;
