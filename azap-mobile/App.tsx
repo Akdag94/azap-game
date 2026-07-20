@@ -23,12 +23,14 @@ const SERVER = 'https://azap.online';
 const REMOTE_FALLBACK = `${SERVER}/?platform=ios`;
 
 // Gömülü web istemcisi dosyaları (node ../ios/sync-web-assets.js üretir)
+// NOT: .js/.json dosyaları Metro'da KAYNAK MODÜL olur (çalıştırılır) — bu yüzden
+// asset-güvenli .txt kopyalarını require edip runtime'da doğru adla yazıyoruz.
 const WEB_ASSETS: Array<[string, number]> = [
-  ['index.html', require('./webassets/index.html')],
-  ['app.js', require('./webassets/app.js')],
+  ['index.html', require('./webassets/index.html.txt')],
+  ['app.js', require('./webassets/app.js.txt')],
   ['style.css', require('./webassets/style.css')],
   ['a.png', require('./webassets/a.png')],
-  ['manifest.json', require('./webassets/manifest.json')],
+  ['manifest.json', require('./webassets/manifest.json.txt')],
 ];
 
 // Uygulama açıkken de bildirim banner'ı göster

@@ -61,4 +61,18 @@ html = html.replace(/"\/vendor\//g, `"${SERVER}/vendor/`);
 
 OUTS.forEach(o => fs.writeFileSync(path.join(o, 'index.html'), html));
 console.log('dönüştürüldü: index.html');
+
+// 3) Expo/Metro için: .js ve .json Metro tarafından KAYNAK MODÜL sanılıp
+// çalıştırılır (asset olmaz). Bu yüzden Expo hedefinde bu dosyaların ayrıca
+// asset-güvenli (.txt) kopyalarını üret. App.tsx bunları require edip
+// runtime'da doğru adla (app.js / manifest.json) cache'e yazar.
+const expoOut = path.join(ROOT, 'azap-mobile', 'webassets');
+if (fs.existsSync(expoOut)) {
+  fs.copyFileSync(path.join(PUB, 'app.js'), path.join(expoOut, 'app.js.txt'));
+  fs.copyFileSync(path.join(PUB, 'manifest.json'), path.join(expoOut, 'manifest.json.txt'));
+  // index.html'i de .txt ver (html Metro'da asset ama garantiye alalım — App.tsx .txt kullanır)
+  fs.writeFileSync(path.join(expoOut, 'index.html.txt'), html);
+  console.log('Expo asset kopyaları: app.js.txt, manifest.json.txt, index.html.txt');
+}
+
 OUTS.forEach(o => console.log(`✅ WebAssets hazır → ${o}`));

@@ -795,14 +795,22 @@ function _nativePost(bridge, payload) {
 }
 
 function applyIosShopRestrictions(){
-  if(!IS_IOS_APP) return;
-  // iOS'ta satın alımlar StoreKit (Apple IAP) üzerinden yapılır.
-  // Bağış sekmesi iOS'ta yok; altın/premium görünür ama ödeme native köprüden geçer.
-  document.querySelectorAll('.shop-tab').forEach(b=>{
-    if(b.dataset.tab==='donate') b.style.display='none';
-  });
-  // Web ödeme onay kutuları IAP akışında geçersiz — gizle
+  // TÜM gerçek para satın alımları YALNIZCA uygulama içi (Apple IAP) ile yapılır.
+  // - Tarayıcı (web): altın/premium/bağış sekmeleri KAPALI → sadece coin ile eşya alınır.
+  // - iOS uygulaması: altın/premium açık (IAP köprüsü), bağış kapalı.
   const cons=Q('SHOP_CONSENTS'); if(cons) cons.style.display='none';
+  const tabs=document.querySelectorAll('.shop-tab');
+  if(IS_IOS_APP){
+    tabs.forEach(b=>{ if(b.dataset.tab==='donate') b.style.display='none'; });
+  } else {
+    // Web: gerçek para gerektiren tüm sekmeleri gizle
+    tabs.forEach(b=>{ if(['gold','premium','donate'].includes(b.dataset.tab)) b.style.display='none'; });
+  }
+}
+// Mağazada gösterilecek varsayılan sekme (gerçek para sekmesi kapalıysa eşyalara düş)
+function _defaultShopTab(){
+  if(IS_IOS_APP) return 'gold';
+  return 'items';
 }
 
 // ── PUSH BİLDİRİM KÖPRÜSÜ (iOS) ──
@@ -932,6 +940,10 @@ async function shopBuy(packageId){
     }
     return;
   }
+  // Web'de gerçek para satın alımları kapalı — tüm satın alımlar AZAP uygulamasından
+  toast('💳 Altın ve premium satın alımları yalnızca AZAP mobil uygulamasından yapılır.',1);
+  return;
+  /* eslint-disable no-unreachable */
   if(!user){toast('Giriş yap!',1);return;}
   const pkg = _shopPackages?.[packageId];
   if(!pkg){toast('Paket yok',1);return;}
@@ -961,7 +973,10 @@ async function shopBuy(packageId){
 }
 
 async function shopDonate(){
-  if(IS_IOS_APP){toast('iOS uygulamasında bağış App Store üzerinden yapılır.',1);return;}
+  // Bağış/gerçek para akışı web'de kapalı; tüm satın alımlar AZAP uygulamasından
+  toast('💳 Satın alımlar yalnızca AZAP mobil uygulamasından yapılır.',1);
+  return;
+  /* eslint-disable no-unreachable */
   if(!user){toast('Giriş yap!',1);return;}
   const amt = parseFloat(Q('SHOP_DONATE_AMOUNT').value);
   if(!amt || amt < 5){toast('Min 5 TL!',1);return;}
@@ -1030,8 +1045,8 @@ async function openShopModal(){
     if(r){user=r;}
     updateShopHeader();
     openModal('MDL_SHOP');
-    shopSwitchTab('gold');
     applyIosShopRestrictions();
+    shopSwitchTab(_defaultShopTab());
   });
 }
 
