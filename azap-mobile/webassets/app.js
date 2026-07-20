@@ -129,6 +129,22 @@ const io2=io(SERVER_BASE||undefined,{
   timeout: 20000,
   transports: ['websocket', 'polling']
 });
+
+// iOS GÖMÜLÜ İSTEMCİ GÜVENLİK AĞI:
+// Uygulama yerel dosyalardan (file://) açıldığında, sunucuya belirli sürede
+// bağlanamazsa doğrudan sunucudan yükle. Böylece gömülü tarafta bir sorun
+// olsa bile uygulama her koşulda çalışır (web'de giriş kanıtlı çalışıyor).
+(function _embeddedConnectWatchdog(){
+  try{
+    if(location.protocol!=='file:') return;   // sadece gömülü (native) istemci
+    if(!SERVER_BASE) return;
+    let fell=false;
+    const goRemote=()=>{ if(fell) return; fell=true; try{ location.href = SERVER_BASE + '/?platform=ios'; }catch(e){} };
+    // 7 sn içinde socket bağlanmadıysa sunucudan yükle
+    setTimeout(()=>{ if(!io2.connected) goRemote(); }, 7000);
+  }catch(e){}
+})();
+
 let me,gs,ps,sel1,sel2,selG,voted,nsent,isSpec=false,isDead=false,AM='login',user=null,deathOk=false,lastDead=new Set(),_lastSpec=null;
 let mvpVoted=null;
 let mks=null,mkps=null; // Matrix Krallığı public/private state
