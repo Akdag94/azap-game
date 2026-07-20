@@ -1124,8 +1124,11 @@ function _shopItemCard(id, item, owned, isExclusive){
     actionBtn='<button class="ci-buy owned-btn">✓ Envanterinde</button>';
   } else if(isExclusive){
     actionBtn='<button class="ci-buy disabled" disabled style="opacity:.6;cursor:not-allowed;background:linear-gradient(135deg,rgba(233,30,99,.15),rgba(187,143,206,.15));border:1px solid rgba(233,30,99,.3);color:#ffb3d9">🔒 Özel</button>';
+  } else if(canBuy){
+    actionBtn=`<button class="ci-buy buy" onclick="shopBuyCosmetic('${id}')">💰 ${item.price} · Satın Al</button>`;
   } else {
-    actionBtn=`<button class="ci-buy buy${canBuy?'':' disabled'}" ${canBuy?`onclick="shopBuyCosmetic('${id}')"`:'disabled style="opacity:.5;cursor:not-allowed"'}>Satın Al</button>`;
+    // Yetersiz altın — net göster
+    actionBtn=`<button class="ci-buy disabled" disabled style="opacity:.55;cursor:not-allowed">💰 Yetersiz Altın</button>`;
   }
   return `<div class="ci-card${owned?' owned':''}${isExclusive?' exclusive':''}">
     <div class="ci-preview">${cosmeticPreviewHTML(id,item)}</div>
@@ -1163,7 +1166,7 @@ async function renderShopItems(){
   const ownedIds = new Set((user?.inventory||[]).map(it=>typeof it==='string'?it:it.id));
 
   const petSubEl = Q('SHOP_PET_SUBFILTER');
-  if(petSubEl) petSubEl.style.display = cat==='pet' ? 'flex' : 'none';
+  if(petSubEl) petSubEl.style.display = cat==='pet' ? 'block' : 'none';
 
   // Pet kategorisi + alt kategori → gruplu gösterim
   if(cat==='pet' && sub==='all' && !search){
@@ -1254,7 +1257,7 @@ function invFilter(cat){
     b.classList.toggle('active', b.dataset.cat===(_invCat||'all'));
   });
   const petSubEl = Q('INV_PET_SUBFILTER');
-  if(petSubEl) petSubEl.style.display = _invCat==='pet' ? 'flex' : 'none';
+  if(petSubEl) petSubEl.style.display = _invCat==='pet' ? 'block' : 'none';
   document.querySelectorAll('#INV_PET_SUBFILTER .ci-subfilter-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.sub===(_invPetSub||'all'));
   });
@@ -1332,7 +1335,7 @@ async function renderInventory(){
   const search = (Q('INV_SEARCH')?.value||'').toLowerCase();
   // Pet subfilter bar visibility
   const petSubEl = Q('INV_PET_SUBFILTER');
-  if(petSubEl) petSubEl.style.display = cat==='pet' ? 'flex' : 'none';
+  if(petSubEl) petSubEl.style.display = cat==='pet' ? 'block' : 'none';
 
   const filtered = items.filter(it=>{
     const info = _cosmeticCatalog?.[it.id];

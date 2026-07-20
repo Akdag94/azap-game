@@ -21,7 +21,7 @@
 <link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Sacramento&family=Caveat:wght@400;700&family=Pacifico&family=Kaushan+Script&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="/style.css?v=20260720f">
+<link rel="stylesheet" href="/style.css?v=20260720g">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -134,7 +134,6 @@
 <div class="shop-tabs">
   <button class="shop-tab active" data-tab="gold" onclick="shopSwitchTab('gold')">💰 Altın</button>
   <button class="shop-tab" data-tab="premium" onclick="shopSwitchTab('premium')">👑 Premium</button>
-  <button class="shop-tab" data-tab="donate" onclick="shopSwitchTab('donate')">💝 Bağış</button>
   <button class="shop-tab" data-tab="items" onclick="shopSwitchTab('items')">🎨 Eşyalar</button>
 </div>
 
@@ -191,16 +190,16 @@
       <button class="ci-filter-btn" data-cat="pet" onclick="shopFilterItems('pet')">🐾 Pet</button>
       <button class="ci-filter-btn" data-cat="font" onclick="shopFilterItems('font')">✒️ Yazı Tipi</button>
     </div>
-    <div id="SHOP_PET_SUBFILTER" style="display:none" class="ci-subfilter">
-      <button class="ci-subfilter-btn active" data-sub="all" onclick="shopFilterPetSub('all')">Tümü</button>
-      <button class="ci-subfilter-btn" data-sub="farm" onclick="shopFilterPetSub('farm')">🐾 Evcil</button>
-      <button class="ci-subfilter-btn" data-sub="wild" onclick="shopFilterPetSub('wild')">🦁 Vahşi</button>
-      <button class="ci-subfilter-btn" data-sub="bird" onclick="shopFilterPetSub('bird')">🦅 Kuşlar</button>
-      <button class="ci-subfilter-btn" data-sub="sea" onclick="shopFilterPetSub('sea')">🐬 Deniz</button>
-      <button class="ci-subfilter-btn" data-sub="reptile" onclick="shopFilterPetSub('reptile')">🐊 Sürüngenler</button>
-      <button class="ci-subfilter-btn" data-sub="insect" onclick="shopFilterPetSub('insect')">🐝 Böcekler</button>
-      <button class="ci-subfilter-btn" data-sub="special" onclick="shopFilterPetSub('special')">🌟 Özel</button>
-    </div>
+    <select id="SHOP_PET_SUBFILTER" class="ci-subselect" style="display:none" onchange="shopFilterPetSub(this.value)">
+      <option value="all">🐾 Tüm Petler</option>
+      <option value="farm">🐾 Evcil & Çiftlik</option>
+      <option value="wild">🦁 Vahşi & Büyük</option>
+      <option value="bird">🦅 Kuşlar</option>
+      <option value="sea">🐬 Deniz & Su</option>
+      <option value="reptile">🐊 Sürüngenler</option>
+      <option value="insect">🐝 Böcekler</option>
+      <option value="special">🌟 Özel</option>
+    </select>
     <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
       <input class="ci-search" id="SHOP_ITEM_SEARCH" placeholder="Eşya ara..." oninput="shopFilterItems()" style="flex:1;margin:0">
       <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--dim);white-space:nowrap;cursor:pointer">
@@ -233,16 +232,16 @@
   <button class="ci-filter-btn" data-cat="pet" onclick="invFilter('pet')">🐾 Pet</button>
   <button class="ci-filter-btn" data-cat="font" onclick="invFilter('font')">✒️ Yazı Tipi</button>
 </div>
-<div id="INV_PET_SUBFILTER" style="display:none" class="ci-subfilter">
-  <button class="ci-subfilter-btn active" data-sub="all" onclick="invFilterPetSub('all')">Tümü</button>
-  <button class="ci-subfilter-btn" data-sub="farm" onclick="invFilterPetSub('farm')">🐾 Evcil</button>
-  <button class="ci-subfilter-btn" data-sub="wild" onclick="invFilterPetSub('wild')">🦁 Vahşi</button>
-  <button class="ci-subfilter-btn" data-sub="bird" onclick="invFilterPetSub('bird')">🦅 Kuşlar</button>
-  <button class="ci-subfilter-btn" data-sub="sea" onclick="invFilterPetSub('sea')">🐬 Deniz</button>
-  <button class="ci-subfilter-btn" data-sub="reptile" onclick="invFilterPetSub('reptile')">🐊 Sürüngenler</button>
-  <button class="ci-subfilter-btn" data-sub="insect" onclick="invFilterPetSub('insect')">🐝 Böcekler</button>
-  <button class="ci-subfilter-btn" data-sub="special" onclick="invFilterPetSub('special')">🌟 Özel</button>
-</div>
+<select id="INV_PET_SUBFILTER" class="ci-subselect" style="display:none" onchange="invFilterPetSub(this.value)">
+  <option value="all">🐾 Tüm Petler</option>
+  <option value="farm">🐾 Evcil & Çiftlik</option>
+  <option value="wild">🦁 Vahşi & Büyük</option>
+  <option value="bird">🦅 Kuşlar</option>
+  <option value="sea">🐬 Deniz & Su</option>
+  <option value="reptile">🐊 Sürüngenler</option>
+  <option value="insect">🐝 Böcekler</option>
+  <option value="special">🌟 Özel</option>
+</select>
 <input class="ci-search" id="INV_SEARCH" placeholder="Eşya ara..." oninput="invFilter()">
 <div id="PROF_INVENTORY" class="ci-grid"></div>
 </div></div>
@@ -1125,6 +1124,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="/app.js?v=20260720f"></script>
+<script src="/app.js?v=20260720g"></script>
 </body>
 </html>
