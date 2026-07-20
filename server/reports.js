@@ -13,7 +13,9 @@ function write(d) { fs.writeFileSync(DB, JSON.stringify(d, null, 2)); }
 
 module.exports = {
   // Yeni rapor oluştur. screenshot dataUrl ise dosyaya kaydedilir.
-  create({ username, description, screenshot }) {
+  // type: 'bug' (varsayılan) | 'player' (oyuncu şikayeti — App Store 1.2 UGC gereksinimi)
+  // reportedUser: şikayet edilen oyuncunun adı (type='player' için)
+  create({ username, description, screenshot, type, reportedUser }) {
     if (!description || description.trim().length < 5) {
       return { success: false, error: 'Açıklama en az 5 karakter olmalı.' };
     }
@@ -45,6 +47,8 @@ module.exports = {
     }
     const report = {
       id,
+      type: type === 'player' ? 'player' : 'bug',
+      reportedUser: (type === 'player' && reportedUser) ? String(reportedUser).slice(0, 32) : null,
       username: username || 'anonim',
       description: description.trim(),
       screenshot: screenshotPath,

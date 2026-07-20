@@ -70,7 +70,18 @@ const pages = {
   <li>Hesabınızı başkasıyla paylaşmamak.</li>
 </ul>
 
-<h2>5. Fikri Mülkiyet</h2>
+<h2>5. Kullanıcı İçeriği ve Sıfır Tolerans Politikası</h2>
+<p>${SITE_NAME}, kullanıcıların birbiriyle sesli sohbet, mesaj, kullanıcı adı ve profil fotoğrafı (avatar) aracılığıyla etkileşime girdiği bir platformdur. Uygunsuz içeriğe ve kötüye kullanan kullanıcılara karşı <strong>sıfır tolerans</strong> uygulanır.</p>
+<ul>
+  <li><strong>Yasaktır:</strong> hakaret, tehdit, taciz, cinsel/müstehcen içerik, nefret söylemi, ırkçılık, zorbalık, spam ve yanıltıcı kimlik.</li>
+  <li><strong>Şikayet:</strong> Her kullanıcı, oyun içi Ayarlar menüsündeki 🚩 simgesiyle başka bir oyuncuyu anında şikayet edebilir.</li>
+  <li><strong>Engelleme:</strong> Kullanıcı, rahatsız edici bir oyuncunun sesini oyun içinden kısarak/susturarak etkileşimi durdurabilir.</li>
+  <li><strong>İnceleme:</strong> Bize ulaşan şikayetler <strong>24 saat içinde</strong> incelenir; kuralları ihlal eden içerik kaldırılır ve ihlal eden kullanıcının hesabı askıya alınır veya kalıcı olarak kapatılır.</li>
+  <li>Uygunsuz kullanıcı adı veya avatar tespit edilirse uyarısız kaldırılır.</li>
+</ul>
+<p>İhlalleri <a href="mailto:${EMAIL}">${EMAIL}</a> adresine de bildirebilirsiniz.</p>
+
+<h2>6. Fikri Mülkiyet</h2>
 <p>Platform üzerindeki tüm içerik, tasarım ve yazılım <strong>${OWNER}</strong>'a aittir. İzinsiz kopyalanamaz veya dağıtılamaz.</p>
 
 <h2>6. Sorumluluk Sınırlaması</h2>

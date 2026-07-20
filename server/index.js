@@ -3290,6 +3290,24 @@ io.on('connection', (socket) => {
     cb?.(result);
   });
 
+  // ── OYUNCU ŞİKAYETİ (App Store 1.2 — UGC kötüye kullanım bildirimi) ──
+  socket.on('player:report', ({ reportedUser, reason } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ success: false, error: 'Önce giriş yap!' });
+    if (typeof reportedUser !== 'string' || !reportedUser.trim()) {
+      return cb?.({ success: false, error: 'Şikayet edilecek oyuncu seçilmeli' });
+    }
+    const desc = `[OYUNCU ŞİKAYETİ] Şikayet edilen: ${reportedUser}\nSebep: ${(reason || 'belirtilmedi').slice(0, 500)}`;
+    const result = Reports.create({
+      username: u,
+      type: 'player',
+      reportedUser: reportedUser.trim(),
+      description: desc
+    });
+    if (result.success) console.log(`[Şikayet] ${u} → ${reportedUser}: ${(reason || '').slice(0, 60)}`);
+    cb?.(result.success ? { success: true } : result);
+  });
+
   // ── ADMIN HANDLERLARI ──
   // Tüm admin işlemleri admin kontrolünden geçer
   function requireAdmin(cb) {

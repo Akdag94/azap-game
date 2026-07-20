@@ -607,7 +607,9 @@ function doAuth(){
   if(!u||!p)return toast('Alanları doldur!',1);
   if(AM==='register'){
     const t1=document.getElementById('TERMS_1'),t2=document.getElementById('TERMS_2'),t3=document.getElementById('TERMS_3');
-    if(!t1?.checked||!t2?.checked||!t3?.checked) return toast('Kayıt için tüm sözleşmeleri onaylamalısın!',1);
+    // iOS uygulamasında ödeme Apple üzerinden yapıldığı için Mesafeli Satış (t3) gerekmez
+    const needT3 = !IS_IOS_APP;
+    if(!t1?.checked||!t2?.checked||(needT3 && !t3?.checked)) return toast('Kayıt için sözleşmeleri onaylamalısın!',1);
   }
   const rememberMe = AM==='login' && Q('REMEMBER_ME')?.checked;
   io2.emit(AM==='login'?'auth:login':'auth:register',{username:u,password:p,rememberMe},r=>{
@@ -787,6 +789,15 @@ const IS_IOS_APP = (() => {
   } catch {}
   return /AzapiOS/i.test(navigator.userAgent);
 })();
+
+// iOS uygulamasında: ödeme Apple IAP ile yapıldığından Türkiye'ye özgü mesafeli
+// satış / iptal-iade metinleri gereksiz ve kafa karıştırıcı — gizle.
+// (Kullanım Koşulları + Gizlilik/KVKK + İletişim iOS'ta da görünür kalır.)
+function applyIosLegalRestrictions(){
+  if(!IS_IOS_APP) return;
+  const t3=document.getElementById('TERMS_3_ROW'); if(t3){ t3.style.display='none'; const cb=document.getElementById('TERMS_3'); if(cb) cb.checked=true; }
+  document.querySelectorAll('.lf-pay').forEach(el=>{ el.style.display='none'; });
+}
 
 // Native köprüye mesaj gönder — hem WKWebView (webkit.messageHandlers)
 // hem React Native WebView (ReactNativeWebView.postMessage) desteklenir
@@ -3952,9 +3963,11 @@ function amLoadReports(){
         const date=new Date(rp.createdAt).toLocaleString('tr-TR');
         const escaped=rp.description.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         const imgHtml=rp.screenshot?`<img class="am-report-img" src="/admin/screenshot/${rp.screenshot}?token=${token}" onclick="window.open(this.src,'_blank')">`:'';
-        return `<div class="am-report${rp.status==='closed'?' closed':''}">
+        const isPlayer=rp.type==='player';
+        const badge=isPlayer?`<span style="background:rgba(192,57,43,.2);color:#ff8a80;font-size:.6rem;padding:1px 6px;border-radius:4px;font-weight:700">🚩 OYUNCU: ${(rp.reportedUser||'?')}</span>`:`<span style="background:rgba(120,120,140,.15);color:var(--dim);font-size:.6rem;padding:1px 6px;border-radius:4px">🐛 HATA</span>`;
+        return `<div class="am-report${rp.status==='closed'?' closed':''}"${isPlayer?' style="border-color:rgba(192,57,43,.4)"':''}>
           <div class="am-report-hdr">
-            <span><span class="am-report-user">${rp.username}</span> <span style="font-family:'Fira Code',monospace;font-size:.6rem;opacity:.5">#${rp.id}</span></span>
+            <span>${badge} <span class="am-report-user">${rp.username}</span></span>
             <span>${date}</span>
           </div>
           <div class="am-report-desc">${escaped}</div>
@@ -4969,6 +4982,7 @@ function toggleVoiceEnabled(on){
     stopVoice();
   }
   updateVoicePanelVisibility();
+  if (typeof _syncVoiceSettingsUI === 'function') _syncVoiceSettingsUI();
 }
 
 function updateVoicePanelVisibility(){
@@ -5340,10 +5354,8 @@ function toggleVoiceSettings(){
       const pct = Math.round(saved * 100);
       const icon = pct === 0 ? '🔇' : pct < 50 ? '🔉' : '🔊';
       const div = document.createElement('div');
-      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 6px;background:rgba(255,255,255,.03);border-radius:6px';
-      div.innerHTML = `<span style="font-size:.78rem;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span><span class="vs-vol-icon" style="font-size:.7rem">${icon}</span><input type="range" min="0" max="100" value="${pct}" style="flex:1;height:4px" oninput="setPlayerVolume('${p.id}',this.value/100);this.previousElementSibling.textContent=this.value==0?'🔇':this.value<50?'🔉':'🔊'"><span style="font-size:.65rem;color:var(--dim);min-width:25px">${pct}%</span>`;
-      // Update percentage on input
-      div.querySelector('input').addEventListener('input', function(){ this.nextElementSibling.textContent = this.value + '%'; });
+      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,.03);border-radius:8px';
+      div.innerHTML = `<span style="font-size:.82rem;min-width:64px;flex:0 0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span><span class="vs-vol-icon" style="font-size:.8rem">${icon}</span><input type="range" min="0" max="100" value="${pct}" style="flex:1;height:5px;accent-color:var(--hi)" oninput="setPlayerVolume('${p.id}',this.value/100);this.previousElementSibling.textContent=this.value==0?'🔇':this.value<50?'🔉':'🔊'"><button title="Şikayet et" onclick="reportPlayer('${esc(p.name).replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--hain);font-size:1rem;cursor:pointer;padding:2px 4px;flex:0 0 auto">🚩</button>`;
       container.appendChild(div);
     });
     if (!container.children.length) {
@@ -5357,11 +5369,34 @@ function toggleVoiceSettings(){
     sensSlider.value = Math.max(1, Math.min(10, current));
     Q('VSETTINGS_MIC_SENS_VAL').textContent = sensSlider.value;
   }
-  // Voice toggle buton metni
-  const vToggle = Q('VSETTINGS_VOICE_TOGGLE');
-  if (vToggle) vToggle.textContent = VOICE.enabled ? '🎙️ Sesli Sohbeti Kapat' : '🎙️ Sesli Sohbeti Aç';
+  _syncVoiceSettingsUI();
   openModal('MDL_VSETTINGS');
 }
+
+// Ayar modalındaki switch + bloklar sesli sohbet durumuna göre güncellenir
+function _syncVoiceSettingsUI(){
+  const sw = Q('VSETTINGS_VOICE_SW');
+  if (sw) sw.classList.toggle('on', !!VOICE.enabled);
+  // Sesli sohbet kapalıysa mikrofon/oyuncu ses blokları anlamsız → gizle
+  const micBlock = Q('VSETTINGS_MIC_BLOCK');
+  const plBlock = Q('VSETTINGS_PLAYERS_BLOCK');
+  const show = VOICE.enabled ? 'block' : 'none';
+  if (micBlock) micBlock.style.display = show;
+  if (plBlock) plBlock.style.display = show;
+}
+
+// Oyuncu şikayeti (App Store 1.2 — kötüye kullanım bildirimi)
+function reportPlayer(name){
+  if(!name) return;
+  const reason = prompt(`🚩 "${name}" adlı oyuncuyu şikayet et\n\nSebep (küfür, taciz, uygunsuz içerik vb.):`);
+  if(reason===null) return; // iptal
+  if(!reason.trim()){ toast('Şikayet sebebi gir.',1); return; }
+  io2.emit('player:report',{reportedUser:name,reason:reason.trim()},r=>{
+    if(r&&r.success) toast('🚩 Şikayetin alındı. En kısa sürede incelenecek. Sesini kısarak oyuncuyu susturabilirsin.');
+    else toast((r&&r.error)||'Şikayet gönderilemedi.',1);
+  });
+}
+window.reportPlayer = reportPlayer;
 
 function setMicSensitivity(val){
   val = parseInt(val) || 5;
@@ -5397,6 +5432,10 @@ window.voiceDebug = function(){
   if (cb) cb.checked = VOICE.enabled;
   _makeDraggable(Q('VOICE_PANEL'));
 })();
+
+// iOS uygulamasında ödeme-ilişkili yasal öğeleri gizle (sayfa hazır olunca)
+if (document.readyState !== 'loading') applyIosLegalRestrictions();
+else document.addEventListener('DOMContentLoaded', applyIosLegalRestrictions);
 
 function _makeDraggable(el){
   if (!el) return;
