@@ -22,7 +22,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Sacramento&family=Caveat:wght@400;700&family=Pacifico&family=Kaushan+Script&display=swap" rel="stylesheet">
 <script src="https://azap.online/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="style.css?v=20260720d">
+<link rel="stylesheet" href="style.css?v=20260720e">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -216,31 +216,11 @@
 
 </div>
 
-<!-- Ödeme Öncesi Zorunlu Onaylar -->
-<div id="SHOP_CONSENTS" style="margin-top:10px;padding:10px;background:rgba(0,0,0,.25);border:1px solid var(--brd);border-radius:6px;font-size:.7rem;color:var(--dim);line-height:1.8">
-  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
-    <input type="checkbox" id="CHK_KVKK" style="margin-top:2px">
-    <span><a href="https://azap.online/yasal/kvkk" target="_blank" style="color:var(--hi);text-decoration:underline">KVKK Aydınlatma Metni</a>'ni okudum, kabul ediyorum.</span>
-  </label>
-  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
-    <input type="checkbox" id="CHK_MSS" style="margin-top:2px">
-    <span><a href="https://azap.online/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a>'ni okudum, kabul ediyorum.</span>
-  </label>
-  <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-bottom:4px">
-    <input type="checkbox" id="CHK_CAYMA" style="margin-top:2px">
-    <span>Dijital içeriğin <strong>anında teslim</strong> edileceğini ve teslim sonrası <a href="https://azap.online/yasal/iptal-iade" target="_blank" style="color:var(--hi);text-decoration:underline">cayma hakkından feragat</a> ettiğimi onayıyorum.</span>
-  </label>
-</div>
-<div style="margin-top:8px;padding:8px;background:rgba(0,0,0,.15);border-radius:5px;font-size:.68rem;color:var(--dim);text-align:center;line-height:1.6">
-  🔒 Tüm ödemeler PCI-DSS uyumlu lisanslı ödeme sağlayıcısı üzerinden <strong>3D Secure</strong> ile işlenir. Kart bilgilerin AZAP'ta saklanmaz.<br>
-  <span style="display:inline-flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 131.39 86.9" style="height:24px;width:auto"><rect width="131.39" height="86.9" rx="8" fill="#1a1f71"/><circle cx="47.54" cy="43.45" r="21.24" fill="#eb001b"/><circle cx="83.85" cy="43.45" r="21.24" fill="#f79e1b"/><path d="M65.7 26.97a21.2 21.2 0 0 0-7.92 16.48c0 6.63 3.04 12.55 7.92 16.48a21.2 21.2 0 0 0 7.92-16.48c0-6.63-3.04-12.55-7.92-16.48z" fill="#ff5f00"/></svg>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 471" style="height:20px;width:auto"><path d="M0 40C0 17.9 17.9 0 40 0h670c22.1 0 40 17.9 40 40v391c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V40z" fill="#1a1f71"/><path d="M278.2 334.2l33.4-207h53.3l-33.4 207zM524.3 130.8c-10.5-4-27-8.3-47.6-8.3-52.4 0-89.3 27.8-89.6 67.7-.3 29.5 26.3 45.9 46.4 55.7 20.6 10 27.5 16.4 27.4 25.4-.1 13.7-16.4 20-31.6 20-21.1 0-32.4-3.1-49.7-10.7l-6.8-3.3-7.4 45.8c12.3 5.7 35.1 10.7 58.8 10.9 55.8 0 92-27.5 92.4-70.1.2-23.4-13.9-41.2-44.5-55.9-18.5-9.5-29.9-15.9-29.8-25.5 0-8.5 9.6-17.6 30.4-17.6 17.4-.3 30 3.7 39.8 7.8l4.8 2.4 7.2-44.3zm137.9-3.5h-41c-12.7 0-22.2 3.7-27.8 17l-78.8 188h55.7s9.1-25.3 11.2-30.8h68.1c1.6 7.2 6.5 30.8 6.5 30.8h49.3l-43.2-205zm-65.5 132.4c4.4-11.9 21.2-57.7 21.2-57.7-.3.5 4.4-11.9 7.1-19.7l3.6 17.8s10.2 49 12.3 59.6h-44.2zM232.8 127.3l-52 141.2-5.6-28.4c-9.6-32.6-39.6-68-73.2-85.7l47.5 179.7h56.2l83.5-207h-56.4z" fill="#fff"/><path d="M131.3 127.3H46.6l-.7 4.2c66.7 17 110.8 58.1 129.1 107.5l-18.6-94.7c-3.2-12.9-12.5-16.6-25.1-17z" fill="#f9a533"/></svg>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" style="height:20px;width:auto"><rect width="200" height="60" rx="6" fill="#003087"/><text x="100" y="40" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="28" fill="#fff" letter-spacing="4">TROY</text><rect x="12" y="8" width="10" height="44" rx="3" fill="#e30613"/><rect x="26" y="8" width="10" height="44" rx="3" fill="#009639"/></svg>
-  </span><br>
-  <a href="https://azap.online/yasal/mesafeli-satis" target="_blank" style="color:var(--hi);text-decoration:underline">Mesafeli Satış Sözleşmesi</a> &nbsp;·&nbsp;
-  <a href="https://azap.online/yasal/iptal-iade" target="_blank" style="color:var(--hi);text-decoration:underline">İptal &amp; İade Koşulları</a> &nbsp;·&nbsp;
-  <a href="https://azap.online/yasal/kvkk" target="_blank" style="color:var(--hi);text-decoration:underline">KVKK</a>
+<!-- Ödeme onayları (web'de gizli; iOS'ta satın alım Apple IAP ile) -->
+<div id="SHOP_CONSENTS" style="display:none">
+  <input type="checkbox" id="CHK_KVKK">
+  <input type="checkbox" id="CHK_MSS">
+  <input type="checkbox" id="CHK_CAYMA">
 </div>
 </div></div>
 
@@ -1134,6 +1114,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="app.js?v=20260720d"></script>
+<script src="app.js?v=20260720e"></script>
 </body>
 </html>
