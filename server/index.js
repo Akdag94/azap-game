@@ -172,10 +172,10 @@ const PAYMENT_PACKAGES = {
   'gold_500': { type: 'coins', amount: 600, price: 79.90, currency: 'TRY', label: '500 + 100 Bonus Altın', emoji: '💰', bonus: 100 },
   'gold_1500': { type: 'coins', amount: 2000, price: 199.90, currency: 'TRY', label: '1500 + 500 Bonus Altın', emoji: '💎', bonus: 500 },
   'gold_5000': { type: 'coins', amount: 7500, price: 499.90, currency: 'TRY', label: '5000 + 2500 Bonus Altın', emoji: '💎', bonus: 2500 },
-  // Premium üyelik
-  'premium_1m': { type: 'premium', days: 30, price: 49.90, currency: 'TRY', label: 'AZAP Premium - 1 Ay', emoji: '👑' },
-  'premium_3m': { type: 'premium', days: 90, price: 129.90, currency: 'TRY', label: 'AZAP Premium - 3 Ay', emoji: '👑', bonus: 'İlk ay ücretsiz' },
-  'premium_12m': { type: 'premium', days: 365, price: 449.90, currency: 'TRY', label: 'AZAP Premium - 1 Yıl', emoji: '👑', bonus: '%24 indirim' }
+  // Premium üyelik (iOS Apple IAP product ID'leri: online.azap.premium30/90/365)
+  'premium30': { type: 'premium', days: 30, price: 49.90, currency: 'TRY', label: 'AZAP Premium - 1 Ay', emoji: '👑' },
+  'premium90': { type: 'premium', days: 90, price: 129.90, currency: 'TRY', label: 'AZAP Premium - 3 Ay', emoji: '👑', bonus: 'İlk ay ücretsiz' },
+  'premium365': { type: 'premium', days: 365, price: 449.90, currency: 'TRY', label: 'AZAP Premium - 1 Yıl', emoji: '👑', bonus: '%24 indirim' }
 };
 
 // Bağış (donate) önerilen miktarlar — kullanıcı kendi miktarını da girebilir
