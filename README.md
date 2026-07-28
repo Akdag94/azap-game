@@ -136,9 +136,7 @@ Lider lobide süre ayarlarını değiştirebilir.
 
 Port değiştirmek: `PORT=8080 npm start`
 
-## 👁️ Admin Hesabı
 
-Admin yetkisine sahip kullanıcılar oyun içinde sol altta 👁️ butonu görür. Tıkladığında **tüm oyuncuların rolleri** kendisine özel olarak gösterilir (diğerleri haberdar olmaz). Admin'in kendisi de oyunda normal bir oyuncu olarak rol alır — sadece ekstra bilgi avantajı vardır.
 
 **Bir kullanıcıyı admin yapmak**:
 
