@@ -30,25 +30,59 @@ async function ensureConnection(): Promise<boolean> {
   }
 }
 
-async function verifyWithServer(username: string, receipt: string, server: string): Promise<boolean> {
+type VerifyResult = { ok: boolean; seen: string[] };
+
+async function verifyWithServer(
+  username: string,
+  receipt: string,
+  server: string,
+  transactionId?: string
+): Promise<VerifyResult> {
   try {
     const res = await fetch(`${server}/api/iap/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, receiptData: receipt }),
+      body: JSON.stringify({ username, receiptData: receipt, transactionId }),
     });
-    if (!res.ok) return false;
+    if (!res.ok) return { ok: false, seen: [] };
     const json = await res.json();
-    return json && json.ok === true;
+    if (!json || json.ok !== true) return { ok: false, seen: [] };
+    return { ok: true, seen: Array.isArray(json.seen) ? json.seen.map(String) : [] };
   } catch {
-    return false;
+    return { ok: false, seen: [] };
   }
+}
+
+/**
+ * Sunucu işlemi receipt'te görene kadar artan beklemeyle tekrar dener.
+ * App Store receipt'i satın alma bittikten birkaç saniye sonra güncellenebiliyor;
+ * tek denemede "başarısız" demek hatalı sonuç veriyordu (App Store 2.1(b) reddi).
+ */
+async function verifyWithRetry(
+  username: string,
+  receipt: string,
+  server: string,
+  transactionId: string
+): Promise<boolean> {
+  const delays = [0, 2000, 4000, 8000];
+  for (const wait of delays) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    const r = await verifyWithServer(username, receipt, server, transactionId);
+    // transactionId biliniyorsa sunucunun onu gerçekten görmüş olması gerekir
+    if (r.ok && (!transactionId || r.seen.includes(transactionId))) return true;
+  }
+  return false;
 }
 
 function receiptOf(p: Purchase | null | undefined): string {
   // iOS'ta transactionReceipt = base64 App Store receipt (sunucu verifyReceipt ile doğrular)
   const anyP = p as any;
   return (anyP && (anyP.transactionReceipt || anyP.purchaseToken)) || '';
+}
+
+function txIdOf(p: Purchase | null | undefined): string {
+  const anyP = p as any;
+  return String((anyP && (anyP.transactionId ?? anyP.id)) || '');
 }
 
 export async function purchaseIos(
@@ -60,10 +94,14 @@ export async function purchaseIos(
   if (!username) return { ok: false, error: 'Giriş yapmış olman gerekiyor.' };
   if (!(await ensureConnection())) return { ok: false, error: 'App Store bağlantısı kurulamadı.' };
 
+  // Önce kuyrukta kalmış (finish edilmemiş) işlemleri temizle — bunlar
+  // aynı ürünün yeniden satın alınmasını engelleyebiliyor.
+  await settlePending(username, server);
+
   try {
     const products = await fetchProducts({ skus: [productId], type: 'inapp' });
     if (!products || products.length === 0) {
-      return { ok: false, error: `Ürün bulunamadı: ${productId}` };
+      return { ok: false, error: `Ürün şu anda App Store'dan yüklenemedi (${productId}). Bağlantını kontrol edip tekrar dene.` };
     }
 
     const purchase = (await requestPurchase({
@@ -75,20 +113,43 @@ export async function purchaseIos(
     if (!p) return { ok: false, error: 'Satın alma tamamlanmadı.' };
 
     const receipt = receiptOf(p);
-    if (!receipt) return { ok: false, error: 'Receipt alınamadı.' };
+    if (!receipt) return { ok: false, error: 'App Store makbuzu alınamadı. Mağazadaki “Satın Almaları Geri Yükle”ye dokun.' };
 
-    const serverOk = await verifyWithServer(username, receipt, server);
-    if (serverOk) {
+    if (await verifyWithRetry(username, receipt, server, txIdOf(p))) {
       await finishTransaction({ purchase: p, isConsumable: true }).catch(() => {});
       return { ok: true };
     }
     // Sunucu doğrulayamadı: transaction açık kalır, restore ile tekrar denenir
-    return { ok: false, error: 'Sunucu doğrulaması başarısız. Satın alman kaybolmadı — daha sonra otomatik tanımlanacak.' };
+    return { ok: false, error: 'Satın alman alındı, ancak hesabına tanımlanamadı. Birazdan otomatik tanımlanacak; olmazsa mağazadaki “Satın Almaları Geri Yükle”ye dokun.' };
   } catch (e: any) {
     const msg = String(e?.message || e || 'Bilinmeyen hata');
     if (/cancel/i.test(msg)) return { ok: false, error: 'Satın alma iptal edildi.' };
     return { ok: false, error: 'Satın alma hatası: ' + msg };
   }
+}
+
+/**
+ * Kuyrukta bekleyen (finish edilmemiş) işlemleri sunucuya tanımlat ve kapat.
+ * Sessiz çalışır; kaç işlem kapatıldığını döner.
+ */
+async function settlePending(username: string, server: string): Promise<number> {
+  if (!username) return 0;
+  let closed = 0;
+  try {
+    const purchases = (await getAvailablePurchases()) || [];
+    for (const p of purchases) {
+      const receipt = receiptOf(p);
+      if (!receipt) continue;
+      const r = await verifyWithServer(username, receipt, server, txIdOf(p));
+      if (r.ok && (!txIdOf(p) || r.seen.includes(txIdOf(p)))) {
+        await finishTransaction({ purchase: p, isConsumable: true }).catch(() => {});
+        closed++;
+      }
+    }
+  } catch (e) {
+    console.warn('[IAP] bekleyen işlemler kapatılamadı:', e);
+  }
+  return closed;
 }
 
 export async function restoreIos(
@@ -98,17 +159,9 @@ export async function restoreIos(
   if (!username) return { ok: false, error: 'Giriş yapmış olman gerekiyor.' };
   if (!(await ensureConnection())) return { ok: false, error: 'App Store bağlantısı kurulamadı.' };
   try {
-    const purchases = await getAvailablePurchases();
-    const withReceipt = (purchases || []).find((p) => receiptOf(p));
-    if (!withReceipt) return { ok: false, error: 'Geri yüklenecek satın alma bulunamadı.' };
-    const serverOk = await verifyWithServer(username, receiptOf(withReceipt), server);
-    if (serverOk) {
-      for (const p of purchases) {
-        await finishTransaction({ purchase: p, isConsumable: true }).catch(() => {});
-      }
-      return { ok: true };
-    }
-    return { ok: false, error: 'Sunucu doğrulaması başarısız.' };
+    const closed = await settlePending(username, server);
+    if (closed > 0) return { ok: true };
+    return { ok: false, error: 'Tanımlanacak bekleyen satın alma bulunamadı.' };
   } catch (e: any) {
     return { ok: false, error: 'Geri yükleme hatası: ' + String(e?.message || e) };
   }
