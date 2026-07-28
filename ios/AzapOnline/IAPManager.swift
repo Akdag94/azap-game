@@ -176,7 +176,9 @@ final class IAPManager {
         }
         // transactionId verilmediyse (restore) işlem eşleşmesi aranmaz
         guard let txId = transactionId else { return (true, true) }
-        let seen = (json["seen"] as? [String]) ?? []
+        // "seen" alanı yoksa sunucu henüz güncellenmemiştir → eski davranış:
+        // ok:true yeterli. Aksi halde başarılı satın almalar hata sayılırdı.
+        guard let seen = json["seen"] as? [String] else { return (true, true) }
         return (true, seen.contains(txId))
     }
 

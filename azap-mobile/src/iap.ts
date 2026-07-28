@@ -30,7 +30,10 @@ async function ensureConnection(): Promise<boolean> {
   }
 }
 
-type VerifyResult = { ok: boolean; seen: string[] };
+// seen === null → sunucu bu alanı hiç döndürmedi (henüz güncellenmemiş sürüm).
+// Bu durumda eski davranışa düşülür: ok:true yeterli sayılır. Aksi halde
+// sunucu güncellenene kadar BAŞARILI satın almalar da hata olarak raporlanırdı.
+type VerifyResult = { ok: boolean; seen: string[] | null };
 
 async function verifyWithServer(
   username: string,
@@ -44,13 +47,20 @@ async function verifyWithServer(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, receiptData: receipt, transactionId }),
     });
-    if (!res.ok) return { ok: false, seen: [] };
+    if (!res.ok) return { ok: false, seen: null };
     const json = await res.json();
-    if (!json || json.ok !== true) return { ok: false, seen: [] };
-    return { ok: true, seen: Array.isArray(json.seen) ? json.seen.map(String) : [] };
+    if (!json || json.ok !== true) return { ok: false, seen: null };
+    return { ok: true, seen: Array.isArray(json.seen) ? json.seen.map(String) : null };
   } catch {
-    return { ok: false, seen: [] };
+    return { ok: false, seen: null };
   }
+}
+
+/** Sunucu bu işlemi gördü mü? (eski sunucuda seen yok → ok:true yeterli) */
+function confirmed(r: VerifyResult, transactionId: string): boolean {
+  if (!r.ok) return false;
+  if (r.seen === null || !transactionId) return true;
+  return r.seen.includes(transactionId);
 }
 
 /**
@@ -68,8 +78,7 @@ async function verifyWithRetry(
   for (const wait of delays) {
     if (wait) await new Promise((r) => setTimeout(r, wait));
     const r = await verifyWithServer(username, receipt, server, transactionId);
-    // transactionId biliniyorsa sunucunun onu gerçekten görmüş olması gerekir
-    if (r.ok && (!transactionId || r.seen.includes(transactionId))) return true;
+    if (confirmed(r, transactionId)) return true;
   }
   return false;
 }
@@ -140,8 +149,9 @@ async function settlePending(username: string, server: string): Promise<number> 
     for (const p of purchases) {
       const receipt = receiptOf(p);
       if (!receipt) continue;
-      const r = await verifyWithServer(username, receipt, server, txIdOf(p));
-      if (r.ok && (!txIdOf(p) || r.seen.includes(txIdOf(p)))) {
+      const txId = txIdOf(p);
+      const r = await verifyWithServer(username, receipt, server, txId);
+      if (confirmed(r, txId)) {
         await finishTransaction({ purchase: p, isConsumable: true }).catch(() => {});
         closed++;
       }
