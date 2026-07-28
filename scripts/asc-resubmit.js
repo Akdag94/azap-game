@@ -62,7 +62,15 @@ if (!BUILD_NO) { console.error('Kullanım: node scripts/asc-resubmit.js <buildNu
     });
     console.log(`  ${s.id} [${s.attributes.state}] iptal: ${c.ok ? '✓' : '✗ ' + detail(c)}`);
   }
-  await sleep(5000);
+  // Sürüm düzenlenebilir duruma dönene kadar bekle — aksi halde app sürümü
+  // kalemi gönderime eklenemiyor.
+  const EDITABLE = ['PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED'];
+  for (let i = 0; i < 24; i++) {
+    await sleep(5000);
+    const v = (await api('GET', `/v1/apps/${APP}/appStoreVersions?limit=1`)).json.data[0];
+    if (EDITABLE.includes(v.attributes.appStoreState)) { console.log(`  sürüm düzenlenebilir: ${v.attributes.appStoreState}`); break; }
+    if (i === 23) console.log(`  ⚠ sürüm hâlâ ${v.attributes.appStoreState} — yine de denenecek`);
+  }
 
   // ── 3. IAP versiyonlarını topla ─────────────────────────────────────
   console.log('\n=== IAP VERSİYONLARI ===');
