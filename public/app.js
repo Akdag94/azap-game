@@ -837,6 +837,7 @@ function applyIosShopRestrictions(){
   const tabs=document.querySelectorAll('.shop-tab');
   if(IS_IOS_APP){
     tabs.forEach(b=>{ if(b.dataset.tab==='donate') b.style.display='none'; });
+    const rr=Q('SHOP_RESTORE_ROW'); if(rr) rr.style.display='block';
   } else {
     // Web: gerçek para gerektiren tüm sekmeleri gizle
     tabs.forEach(b=>{ if(['gold','premium','donate'].includes(b.dataset.tab)) b.style.display='none'; });
@@ -867,6 +868,17 @@ function _maybeAskPushPermission(){
 io2.on('connect',()=>{
   setTimeout(()=>{ if(_pendingPushToken&&user) window.azapPushToken(_pendingPushToken); },1500);
 });
+
+// Tamamlanmamış satın almaları App Store'dan geri yükle (iOS mağaza sekmesindeki buton)
+function iapRestore(){
+  if(!IS_IOS_APP){ toast('Bu özellik yalnızca AZAP uygulamasında çalışır.',1); return; }
+  if(!user){ toast('Giriş yap!',1); return; }
+  if(_nativePost('iap',{action:'restore',username:user.username})){
+    toast('Satın almalar kontrol ediliyor...');
+  } else {
+    toast('App Store bağlantısı kurulamadı.',1);
+  }
+}
 
 // Native iOS uygulamasından satın alma sonucu döner (WKWebView evaluateJavaScript ile çağrılır)
 window.azapIapResult = function(result){

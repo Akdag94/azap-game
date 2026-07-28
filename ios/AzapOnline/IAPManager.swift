@@ -13,7 +13,15 @@
 //
 //  App Store Connect ürün ID'leri PAYMENT_PACKAGES anahtarlarıyla eşleşmeli:
 //   online.azap.gold_100, online.azap.gold_500, online.azap.gold_1500,
-//   online.azap.gold_5000, online.azap.premium_1m, online.azap.premium_3m
+//   online.azap.gold_5000, online.azap.premium30, online.azap.premium90,
+//   online.azap.premium365
+//
+//  Sağlamlaştırma (App Store 2.1(b) reddi sonrası):
+//   - Receipt dosyası yoksa SKReceiptRefreshRequest ile App Store'dan istenir
+//     (sandbox'ta taze kurulumda receipt gecikmeli yazılır — doğrulama boşa düşüyordu)
+//   - Sunucuya transactionId gönderilir; sunucu o işlemi görene kadar
+//     artan bekleme ile tekrar denenir (receipt yayılma gecikmesi)
+//   - Ürün yüklenemezse sebebi ayırt eden anlaşılır mesaj döner
 //
 
 import Foundation
@@ -26,30 +34,53 @@ final class IAPManager {
     private let serverURL = URL(string: "https://azap.online/api/iap/verify")!
     private var updatesTask: Task<Void, Never>?
 
+    /// Son satın alma/geri yükleme yapan kullanıcı. Uygulama yeniden açıldığında
+    /// bekleyen (finish edilmemiş) işlemleri sunucuya tanımlatmak için gerekli.
+    private var lastUsername: String? {
+        get { UserDefaults.standard.string(forKey: "azap_iap_username") }
+        set { UserDefaults.standard.set(newValue, forKey: "azap_iap_username") }
+    }
+
     private init() {
         // Uygulama açıkken gelen transaction güncellemelerini dinle
         // (kesilen satın almalar, aile paylaşımı, "Onay Bekliyor" sonuçları)
-        updatesTask = Task.detached { [weak self] in
+        updatesTask = Task { [weak self] in
             for await update in Transaction.updates {
                 guard case .verified(let transaction) = update else { continue }
-                // Kullanıcı adı native tarafta saklanmadığı için burada yalnızca
-                // finish etmeyip bir sonraki restore/purchase'ta sunucuya bırakıyoruz.
-                // Sunucu receipt'teki TÜM işlenmemiş işlemleri tanımlar.
-                _ = transaction
-                await self?.noop()
+                await self?.settle(transaction)
+            }
+        }
+        // Uygulama açılışında kuyrukta kalmış işlemleri tanımla.
+        // Bunlar finish edilmezse StoreKit aynı ürünün tekrar satın alınmasını
+        // engelleyebiliyor — App Store incelemesindeki IAP hatasının olası sebebi.
+        Task { [weak self] in
+            for await entitlement in Transaction.unfinished {
+                guard case .verified(let transaction) = entitlement else { continue }
+                await self?.settle(transaction)
             }
         }
     }
 
-    private func noop() async {}
+    /// Bekleyen bir işlemi sunucuya tanımlat; başarılıysa finish et.
+    private func settle(_ transaction: Transaction) async {
+        guard let username = lastUsername, !username.isEmpty else { return }
+        let r = await verifyWithServer(username: username, transactionId: String(transaction.id))
+        if r.ok && r.sawTransaction {
+            await transaction.finish()
+        }
+    }
 
     /// Satın alma başlat + sunucu doğrulaması
     func purchase(productId: String, username: String) async -> (ok: Bool, error: String?) {
         guard !username.isEmpty else { return (false, "Giriş yapmış olman gerekiyor.") }
+        lastUsername = username
+        guard AppStore.canMakePayments else {
+            return (false, "Bu cihazda satın alma kapalı (Ekran Süresi → İçerik ve Gizlilik Kısıtlamaları).")
+        }
         do {
             let products = try await Product.products(for: [productId])
             guard let product = products.first else {
-                return (false, "Ürün bulunamadı: \(productId)")
+                return (false, "Ürün şu anda App Store'dan yüklenemedi (\(productId)). Bağlantını kontrol edip tekrar dene.")
             }
             let result = try await product.purchase()
             switch result {
@@ -57,14 +88,15 @@ final class IAPManager {
                 guard case .verified(let transaction) = verification else {
                     return (false, "Satın alma doğrulanamadı.")
                 }
-                let serverOk = await verifyWithServer(username: username)
-                if serverOk {
+                let txId = String(transaction.id)
+                // Receipt yayılma gecikmesine karşı artan bekleme ile tekrar dene
+                if await verifyWithServerRetrying(username: username, transactionId: txId) {
                     await transaction.finish()
                     return (true, nil)
                 }
                 // Sunucu doğrulayamadı: finish ETME — transaction açık kalır,
                 // uygulama tekrar açıldığında/restore'da yeniden denenir.
-                return (false, "Sunucu doğrulaması başarısız. Satın alma daha sonra otomatik tanımlanacak.")
+                return (false, "Satın alman alındı, ancak hesabına tanımlanamadı. Birazdan otomatik tanımlanacak; olmazsa mağazadaki “Satın Almaları Geri Yükle”ye dokun.")
             case .userCancelled:
                 return (false, "Satın alma iptal edildi.")
             case .pending:
@@ -80,12 +112,20 @@ final class IAPManager {
     /// Önceki satın almaları geri yükle (App Store zorunluluğu: restore butonu)
     func restorePurchases(username: String) async -> (ok: Bool, error: String?) {
         guard !username.isEmpty else { return (false, "Giriş yapmış olman gerekiyor.") }
+        lastUsername = username
+        // Consumable'lar currentEntitlements'ta görünmez — önce kuyrukta
+        // bekleyen (finish edilmemiş) işlemleri tanımlamayı dene.
+        for await unfinished in Transaction.unfinished {
+            if case .verified(let transaction) = unfinished {
+                await settle(transaction)
+            }
+        }
         do {
             try await AppStore.sync()
         } catch {
             return (false, "Geri yükleme başarısız: \(error.localizedDescription)")
         }
-        let serverOk = await verifyWithServer(username: username)
+        let serverOk = await verifyWithServer(username: username, transactionId: nil).ok
         // Sunucu tanımladıysa bekleyen transactionları bitir
         if serverOk {
             for await entitlement in Transaction.currentEntitlements {
@@ -98,25 +138,91 @@ final class IAPManager {
         return (false, "Geri yüklenecek satın alma bulunamadı.")
     }
 
-    /// App Store receipt'ini sunucuya gönder — sunucu Apple'a doğrulatıp hesabı günceller
-    private func verifyWithServer(username: String) async -> Bool {
-        guard let receiptURL = Bundle.main.appStoreReceiptURL,
-              let receiptData = try? Data(contentsOf: receiptURL) else {
-            return false
+    // MARK: - Sunucu doğrulaması
+
+    /// Sunucu işlemi görene kadar artan beklemeyle tekrar dener.
+    /// Sandbox'ta App Store receipt'i satın alma bittikten birkaç saniye sonra
+    /// güncellenebiliyor; tek denemede "başarısız" demek hatalı sonuç veriyordu.
+    private func verifyWithServerRetrying(username: String, transactionId: String) async -> Bool {
+        let delays: [UInt64] = [0, 2, 4, 8]   // saniye
+        for delay in delays {
+            if delay > 0 { try? await Task.sleep(nanoseconds: delay * 1_000_000_000) }
+            let r = await verifyWithServer(username: username, transactionId: transactionId)
+            if r.ok && r.sawTransaction { return true }
         }
+        return false
+    }
+
+    /// App Store receipt'ini sunucuya gönder — sunucu Apple'a doğrulatıp hesabı günceller.
+    /// Dönüş: (ok: sunucu isteği başarılı mı, sawTransaction: verilen işlem receipt'te görüldü mü)
+    private func verifyWithServer(username: String, transactionId: String?) async -> (ok: Bool, sawTransaction: Bool) {
+        guard let receiptBase64 = await loadReceipt() else {
+            return (false, false)
+        }
+        var body: [String: Any] = ["username": username, "receiptData": receiptBase64]
+        if let txId = transactionId { body["transactionId"] = txId }
+
         var request = URLRequest(url: serverURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
-        request.httpBody = try? JSONSerialization.data(withJSONObject: [
-            "username": username,
-            "receiptData": receiptData.base64EncodedString()
-        ])
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               let http = response as? HTTPURLResponse, http.statusCode == 200,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return false
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              (json["ok"] as? Bool) == true else {
+            return (false, false)
         }
-        return (json["ok"] as? Bool) == true
+        // transactionId verilmediyse (restore) işlem eşleşmesi aranmaz
+        guard let txId = transactionId else { return (true, true) }
+        let seen = (json["seen"] as? [String]) ?? []
+        return (true, seen.contains(txId))
     }
+
+    /// Receipt'i oku; dosya yoksa App Store'dan yenilenmesini iste ve tekrar oku.
+    private func loadReceipt() async -> String? {
+        if let data = currentReceiptData() { return data.base64EncodedString() }
+        await ReceiptRefresher.refresh()
+        return currentReceiptData()?.base64EncodedString()
+    }
+
+    private func currentReceiptData() -> Data? {
+        guard let url = Bundle.main.appStoreReceiptURL,
+              FileManager.default.fileExists(atPath: url.path),
+              let data = try? Data(contentsOf: url),
+              !data.isEmpty else { return nil }
+        return data
+    }
+}
+
+/// SKReceiptRefreshRequest sarmalayıcı — taze kurulumda receipt dosyası
+/// henüz yazılmamışsa App Store'dan indirtir.
+private final class ReceiptRefresher: NSObject, SKRequestDelegate {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var request: SKReceiptRefreshRequest?
+
+    static func refresh() async {
+        // Yerel değişken askıya alma boyunca canlı kalır — ek bir static'e gerek yok.
+        await ReceiptRefresher().run()
+    }
+
+    private func run() async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            continuation = c
+            let r = SKReceiptRefreshRequest(receiptProperties: nil)
+            r.delegate = self
+            request = r
+            r.start()
+        }
+    }
+
+    private func finish() {
+        continuation?.resume()
+        continuation = nil
+        request = nil
+    }
+
+    func requestDidFinish(_ request: SKRequest) { finish() }
+    func request(_ request: SKRequest, didFailWithError error: Error) { finish() }
 }

@@ -1260,16 +1260,23 @@ app.post('/api/iap/verify', paymentLimiter || ((r, s, n) => n()), async (req, re
       ...(appleRes.latest_receipt_info || [])
     ];
     const credited = [];
+    // seen: receipt'te görülen TÜM işlem ID'leri. iOS istemcisi kendi transactionId'sini
+    // burada arar — receipt yayılma gecikmesinde "tanımlandı mı?" sorusunu ayırt eder.
+    const seen = [];
     for (const tx of txs) {
       const txId = tx.transaction_id;
-      if (!txId || _iapProcessedTx.has(txId)) continue;
+      if (!txId) continue;
+      seen.push(String(txId));
+      if (_iapProcessedTx.has(txId)) continue;
       const packageId = _iapMapProduct(tx.product_id);
-      if (!packageId) continue; // tanınmayan ürün — atla
+      if (!packageId) { console.warn('[IAP] tanınmayan ürün:', tx.product_id); continue; }
       const r = applyPayment(username, packageId);
       if (r && r.ok !== false) {
         _iapProcessedTx.add(txId);
-        credited.push({ transactionId: txId, productId: tx.product_id, packageId });
+        credited.push({ transactionId: String(txId), productId: tx.product_id, packageId });
         console.log(`[IAP] ${username} → ${packageId} tanımlandı (tx: ${txId})`);
+      } else {
+        console.error('[IAP] applyPayment başarısız:', username, packageId, r && r.error);
       }
     }
     if (credited.length > 0) _iapSaveTx();
@@ -1279,7 +1286,7 @@ app.post('/api/iap/verify', paymentLimiter || ((r, s, n) => n()), async (req, re
     authed.forEach((uname, sid) => {
       if (uname === username && fresh) io.sockets.sockets.get(sid)?.emit('statsUpdate', fresh);
     });
-    res.json({ ok: true, credited, coins: fresh?.coins, premium: fresh?.premium });
+    res.json({ ok: true, credited, seen, coins: fresh?.coins, premium: fresh?.premium });
   } catch (err) {
     console.error('[IAP] /api/iap/verify hata:', err);
     res.status(500).json({ ok: false, error: 'Sunucu hatası' });

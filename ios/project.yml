@@ -30,6 +30,12 @@ targets:
         UIUserInterfaceStyle: Dark
         UIViewControllerBasedStatusBarAppearance: false
         NSMicrophoneUsageDescription: "AZAP, oyun içi sesli sohbet için mikrofonunuza erişir."
+        # Profil fotoğrafı / şikâyet ekran görüntüsü yüklenirken web görünümündeki
+        # <input type="file" accept="image/*"> iOS'ta "Take Photo" ve "Photo Library"
+        # seçeneklerini açar. Bu anahtarlar OLMADAN iOS uygulamayı anında sonlandırır
+        # (TCC ihlali — App Store 2.1(a) reddi bu yüzden geldi).
+        NSCameraUsageDescription: "AZAP, profil fotoğrafı çekmek ve şikâyet bildirimine görüntü eklemek için kameranıza erişir."
+        NSPhotoLibraryUsageDescription: "AZAP, profil fotoğrafı ve şikâyet görüntüsü seçebilmeniz için fotoğraflarınıza erişir."
         ITSAppUsesNonExemptEncryption: false
     entitlements:
       path: AzapOnline/AzapOnline.entitlements

@@ -16,15 +16,15 @@ async function appVer() { return (await api('GET', `/v1/apps/${APP}/appStoreVers
   // ── FAZ 1: premium versiyonları READY_FOR_REVIEW olsun ──
   console.log('FAZ 1: premium versiyonları bekleniyor...');
   let ready = false;
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 60; i++) {
     const iaps = await iapList();
     const prem = iaps.filter(x => PREMIUMS.includes(x.attributes.productId));
     const states = {};
     for (const p of prem) states[p.attributes.productId] = await verState(p.id);
     const allReady = PREMIUMS.every(pid => states[pid] === 'READY_FOR_REVIEW');
-    console.log(`  tur ${i + 1}: ` + PREMIUMS.map(p => p.split('.').pop() + '=' + (states[p] || '?')).join(' '));
+    console.log(`  tur ${i + 1}/60: ` + PREMIUMS.map(p => p.split('.').pop() + '=' + (states[p] || '?')).join(' '));
     if (allReady) { ready = true; break; }
-    await sleep(15000);
+    await sleep(30000);
   }
   if (!ready) { console.log('\n⚠ Premium versiyonları zamanında hazır olmadı. Durduruldu — app’e dokunulmadı.'); return; }
   console.log('✓ Tüm premium versiyonları READY_FOR_REVIEW');
