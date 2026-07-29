@@ -113,15 +113,15 @@ struct AzapWebView: UIViewRepresentable {
             webView?.evaluateJavaScript(js, completionHandler: nil)
         }
 
-        // Mikrofon izni: WKWebView'in kendi ek onay penceresini atla
-        // (iOS sistem izni NSMicrophoneUsageDescription ile zaten sorulur)
+        // Sesli sohbet pasif (App Store 1.2): mikrofon/ses yakalama her zaman reddedilir.
+        // Sadece kamera (profil fotoğrafı) isteğine izin verilir.
         @available(iOS 15.0, *)
         func webView(_ webView: WKWebView,
                      requestMediaCapturePermissionFor origin: WKSecurityOrigin,
                      initiatedByFrame frame: WKFrameInfo,
                      type: WKMediaCaptureType,
                      decisionHandler: @escaping (WKPermissionDecision) -> Void) {
-            decisionHandler(.grant)
+            decisionHandler(type == .camera ? .grant : .deny)
         }
 
         // window.open / target=_blank → aynı webview'de aç (yasal sayfalar vb.)

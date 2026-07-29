@@ -29,7 +29,7 @@ targets:
           - UIInterfaceOrientationPortrait
         UIUserInterfaceStyle: Dark
         UIViewControllerBasedStatusBarAppearance: false
-        NSMicrophoneUsageDescription: "AZAP, oyun içi sesli sohbet için mikrofonunuza erişir."
+        # NSMicrophoneUsageDescription kaldırıldı — sesli sohbet pasife alındı (App Store 1.2)
         # Profil fotoğrafı / şikâyet ekran görüntüsü yüklenirken web görünümündeki
         # <input type="file" accept="image/*"> iOS'ta "Take Photo" ve "Photo Library"
         # seçeneklerini açar. Bu anahtarlar OLMADAN iOS uygulamayı anında sonlandırır

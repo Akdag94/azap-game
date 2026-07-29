@@ -4886,7 +4886,7 @@ io2.on('spec',d=>{
   if(isSpec||isDead){show('S10');renderSpec(d);}
 });
 
-io2.on('hainMsg',({from,msg})=>{const b=Q('HCM');if(b){b.innerHTML+=`<div class="hm"><span class="hs">${from}:</span> ${msg}</div>`;b.parentElement.scrollTop=b.parentElement.scrollHeight;}});
+io2.on('hainMsg',({from,msg})=>{const b=Q('HCM');if(!b)return;if(isBlocked(from))return;b.innerHTML+=`<div class="hm"><span class="hs">${from}:</span> ${msg}</div>`;b.parentElement.scrollTop=b.parentElement.scrollHeight;});
 
 // Bomba patlama efekti
 io2.on('bombExplosion',({victims})=>{
@@ -4993,7 +4993,10 @@ Q('AP').addEventListener('keypress',e=>{if(e.key==='Enter')doAuth()});
 
 // ============================================================
 // SESLİ SOHBET — WebRTC mesh client
+// PASİF: App Store 1.2 (canlı sesli sohbet gereksinimleri) nedeniyle
+// sesli sohbet tamamen devre dışı. VOICE_DISABLED=false yapılırsa geri gelir.
 // ============================================================
+const VOICE_DISABLED = true;
 const VOICE = {
   enabled: false,         // ayardan kullanıcı tercih
   active: false,          // gerçekten getUserMedia aldı mı
@@ -5015,7 +5018,8 @@ const VOICE_VOLUMES = {}; // peerId -> 0..1 ses seviyesi
 
 // localStorage'dan tercihi oku
 try {
-  VOICE.enabled = localStorage.getItem('azap_voice_enabled') === '1';
+  VOICE.enabled = !VOICE_DISABLED && localStorage.getItem('azap_voice_enabled') === '1';
+  if (VOICE_DISABLED) localStorage.removeItem('azap_voice_enabled');
   const savedSens = parseInt(localStorage.getItem('azap_mic_sens'));
   if (savedSens >= 1 && savedSens <= 10) VOICE._speakThr = 0.005 + (10 - savedSens) * 0.0083;
 } catch {}
@@ -5023,6 +5027,7 @@ try {
 function _voiceLog(...a){ try{ console.log('[voice]', ...a); }catch{} }
 
 function toggleVoiceEnabled(on){
+  if (VOICE_DISABLED) { VOICE.enabled = false; stopVoice(); updateVoicePanelVisibility(); return; }
   VOICE.enabled = !!on;
   try { localStorage.setItem('azap_voice_enabled', on ? '1' : '0'); } catch {}
   // Profil modalındaki checkbox ile ayarlar panelindeki toggle senkron kalsın
@@ -5050,6 +5055,7 @@ function updateVoicePanelVisibility(){
 }
 
 async function startVoice(){
+  if (VOICE_DISABLED) return;   // sesli sohbet pasif — mikrofon hiç istenmez
   if (VOICE.active) return;
   if (!VOICE.enabled) return;
   // Spectator → ses yok (şimdilik)
@@ -5402,24 +5408,18 @@ function toggleVoiceSettings(){
     container.innerHTML = '';
     gs.players.forEach(p => {
       if (p.id === me) return; // kendimizi gösterme
-      const saved = VOICE_VOLUMES[p.id] ?? 1;
-      const pct = Math.round(saved * 100);
-      const icon = pct === 0 ? '🔇' : pct < 50 ? '🔉' : '🔊';
+      const nameArg = esc(p.name).replace(/'/g, "\\'");
+      const blocked = isBlocked(p.name);
       const div = document.createElement('div');
       div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,.03);border-radius:8px';
-      div.innerHTML = `<span style="font-size:.82rem;min-width:64px;flex:0 0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span><span class="vs-vol-icon" style="font-size:.8rem">${icon}</span><input type="range" min="0" max="100" value="${pct}" style="flex:1;height:5px;accent-color:var(--hi)" oninput="setPlayerVolume('${p.id}',this.value/100);this.previousElementSibling.textContent=this.value==0?'🔇':this.value<50?'🔉':'🔊'"><button title="Şikayet et" onclick="reportPlayer('${esc(p.name).replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--hain);font-size:1rem;cursor:pointer;padding:2px 4px;flex:0 0 auto">🚩</button>`;
+      div.innerHTML = `<span style="font-size:.82rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${blocked?'opacity:.5;text-decoration:line-through':''}">${esc(p.name)}</span>`
+        + `<button title="Şikâyet et" onclick="reportPlayer('${nameArg}')" style="background:none;border:none;color:var(--hain);font-size:1rem;cursor:pointer;padding:2px 6px;flex:0 0 auto">🚩</button>`
+        + `<button title="${blocked ? 'Engeli kaldır' : 'Engelle'}" onclick="toggleBlockPlayer('${nameArg}')" style="background:none;border:none;font-size:1rem;cursor:pointer;padding:2px 6px;flex:0 0 auto;opacity:${blocked?1:.55}">${blocked ? '✅' : '🚫'}</button>`;
       container.appendChild(div);
     });
     if (!container.children.length) {
       container.innerHTML = '<div style="font-size:.72rem;color:var(--dim);text-align:center;padding:8px">Henüz başka oyuncu yok</div>';
     }
-  }
-  // Mikrofon hassasiyet slider'ı güncelle
-  const sensSlider = Q('VSETTINGS_MIC_SENS');
-  if (sensSlider) {
-    const current = Math.round((0.018 / (VOICE._speakThr || 0.018)) * 5);
-    sensSlider.value = Math.max(1, Math.min(10, current));
-    Q('VSETTINGS_MIC_SENS_VAL').textContent = sensSlider.value;
   }
   _syncVoiceSettingsUI();
   openModal('MDL_VSETTINGS');
@@ -5429,13 +5429,35 @@ function toggleVoiceSettings(){
 function _syncVoiceSettingsUI(){
   const sw = Q('VSETTINGS_VOICE_SW');
   if (sw) sw.classList.toggle('on', !!VOICE.enabled);
-  // Sesli sohbet kapalıysa mikrofon/oyuncu ses blokları anlamsız → gizle
   const micBlock = Q('VSETTINGS_MIC_BLOCK');
+  if (micBlock) micBlock.style.display = VOICE.enabled ? 'block' : 'none';
+  // Oyuncu listesi (şikâyet + engelleme) sesli sohbetten bağımsız — her zaman görünür
   const plBlock = Q('VSETTINGS_PLAYERS_BLOCK');
-  const show = VOICE.enabled ? 'block' : 'none';
-  if (micBlock) micBlock.style.display = show;
-  if (plBlock) plBlock.style.display = show;
+  if (plBlock) plBlock.style.display = 'block';
 }
+
+// ── Oyuncu engelleme (App Store 1.2 — kötüye kullanan oyuncuyu engelleme) ──
+// Engellenen oyuncunun mesajları hiç gösterilmez; tercih cihazda kalıcıdır.
+let BLOCKED = new Set();
+try { BLOCKED = new Set(JSON.parse(localStorage.getItem('azap_blocked') || '[]')); } catch {}
+
+function _saveBlocked(){ try{ localStorage.setItem('azap_blocked', JSON.stringify([...BLOCKED])); }catch{} }
+function isBlocked(name){ return !!name && BLOCKED.has(String(name).toLowerCase()); }
+
+function toggleBlockPlayer(name){
+  if(!name) return;
+  const key = String(name).toLowerCase();
+  if(BLOCKED.has(key)){
+    BLOCKED.delete(key); _saveBlocked();
+    toast(`"${name}" engeli kaldırıldı.`);
+  } else {
+    BLOCKED.add(key); _saveBlocked();
+    toast(`🚫 "${name}" engellendi. Mesajlarını artık görmeyeceksin.`);
+  }
+  if(Q('MDL_VSETTINGS')?.classList.contains('sh')) toggleVoiceSettings(); // listeyi tazele
+}
+window.isBlocked = isBlocked;
+window.toggleBlockPlayer = toggleBlockPlayer;
 
 // Oyuncu şikayeti (App Store 1.2 — kötüye kullanım bildirimi)
 function reportPlayer(name){
@@ -5444,7 +5466,7 @@ function reportPlayer(name){
   if(reason===null) return; // iptal
   if(!reason.trim()){ toast('Şikayet sebebi gir.',1); return; }
   io2.emit('player:report',{reportedUser:name,reason:reason.trim()},r=>{
-    if(r&&r.success) toast('🚩 Şikayetin alındı. En kısa sürede incelenecek. Sesini kısarak oyuncuyu susturabilirsin.');
+    if(r&&r.success) toast('🚩 Şikâyetin alındı, 24 saat içinde incelenecek. 🚫 ile oyuncuyu engelleyebilirsin.');
     else toast((r&&r.error)||'Şikayet gönderilemedi.',1);
   });
 }
@@ -5452,7 +5474,7 @@ window.reportPlayer = reportPlayer;
 
 function setMicSensitivity(val){
   val = parseInt(val) || 5;
-  Q('VSETTINGS_MIC_SENS_VAL').textContent = val;
+  const lbl = Q('VSETTINGS_MIC_SENS_VAL'); if (lbl) lbl.textContent = val;
   // 1=çok hassas (0.005), 10=az hassas (0.08)
   VOICE._speakThr = 0.005 + (10 - val) * 0.0083;
   try { localStorage.setItem('azap_mic_sens', val); } catch {}

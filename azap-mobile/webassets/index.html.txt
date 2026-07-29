@@ -92,7 +92,8 @@
 <input type="checkbox" id="HIDE_COSMETICS" onchange="_hideOtherCosmetics=this.checked;try{localStorage.setItem('azap_hide_cosmetics',this.checked?'1':'0')}catch{}">
 <span>Diğer oyuncuların kozmetik efektlerini gizle</span>
 </label>
-<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;margin-top:6px">
+<!-- Sesli sohbet pasife alındı (App Store 1.2) -->
+<label style="display:none;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;margin-top:6px">
 <input type="checkbox" id="VOICE_ENABLED" onchange="toggleVoiceEnabled(this.checked)">
 <span>🎤 Sesli sohbet (lobi & oyun)</span>
 </label>
@@ -264,23 +265,12 @@
 <div class="mdl-h"><h2>⚙️ Ayarlar</h2><button class="mdl-cl" onclick="closeModal('MDL_VSETTINGS')">✕</button></div>
 <div style="max-height:70vh;overflow-y:auto;padding:2px">
 
-  <!-- Sesli sohbet aç/kapa (switch satırı) -->
-  <div class="set-row" onclick="toggleVoiceEnabled(!VOICE.enabled)">
-    <span class="set-row-ico">🎙️</span>
-    <span class="set-row-txt">Sesli Sohbet</span>
-    <span class="set-switch" id="VSETTINGS_VOICE_SW"></span>
-  </div>
+  <!-- Sesli sohbet pasife alındı (App Store 1.2) — mikrofon ayarları kaldırıldı -->
 
-  <!-- Mikrofon hassasiyeti -->
-  <div class="set-block" id="VSETTINGS_MIC_BLOCK">
-    <div class="set-block-head"><span class="set-row-ico">🎤</span><span class="set-row-txt">Mikrofon Hassasiyeti</span><span id="VSETTINGS_MIC_SENS_VAL" class="set-val">5</span></div>
-    <input type="range" id="VSETTINGS_MIC_SENS" min="1" max="10" value="5" oninput="setMicSensitivity(this.value)">
-  </div>
-
-  <!-- Oyuncu sesleri (mute/kısma = App Store engelleme gereksinimi) -->
+  <!-- Oyuncular: şikayet + engelleme (App Store 1.2 gereksinimi) -->
   <div class="set-block" id="VSETTINGS_PLAYERS_BLOCK">
-    <div class="set-block-head"><span class="set-row-ico">🔊</span><span class="set-row-txt">Oyuncu Sesleri</span></div>
-    <div class="set-hint">Bir oyuncuyu tamamen susturmak için sesi 0'a çek.</div>
+    <div class="set-block-head"><span class="set-row-ico">👥</span><span class="set-row-txt">Oyuncular</span></div>
+    <div class="set-hint">🚩 şikâyet eder, 🚫 oyuncuyu engeller (mesajlarını görmezsin).</div>
     <div id="VSETTINGS_PLAYERS" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div>
   </div>
 

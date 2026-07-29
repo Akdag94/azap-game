@@ -71,11 +71,12 @@ const pages = {
 </ul>
 
 <h2>5. Kullanıcı İçeriği ve Sıfır Tolerans Politikası</h2>
-<p>${SITE_NAME}, kullanıcıların birbiriyle sesli sohbet, mesaj, kullanıcı adı ve profil fotoğrafı (avatar) aracılığıyla etkileşime girdiği bir platformdur. Uygunsuz içeriğe ve kötüye kullanan kullanıcılara karşı <strong>sıfır tolerans</strong> uygulanır.</p>
+<p>${SITE_NAME}, kullanıcıların birbiriyle oyun içi yazılı mesaj, kullanıcı adı ve profil fotoğrafı (avatar) aracılığıyla etkileşime girdiği bir platformdur. Uygunsuz içeriğe ve kötüye kullanan kullanıcılara karşı <strong>sıfır tolerans</strong> uygulanır; bu kuralları kabul etmeyen kullanıcılar platformu kullanamaz.</p>
 <ul>
   <li><strong>Yasaktır:</strong> hakaret, tehdit, taciz, cinsel/müstehcen içerik, nefret söylemi, ırkçılık, zorbalık, spam ve yanıltıcı kimlik.</li>
+  <li><strong>Otomatik filtreleme:</strong> Kullanıcı adları, oyuncu adları ve oyun içi mesajlar sunucuda otomatik içerik filtresinden geçer; uygunsuz içerik hiç yayınlanmaz.</li>
   <li><strong>Şikayet:</strong> Her kullanıcı, oyun içi Ayarlar menüsündeki 🚩 simgesiyle başka bir oyuncuyu anında şikayet edebilir.</li>
-  <li><strong>Engelleme:</strong> Kullanıcı, rahatsız edici bir oyuncunun sesini oyun içinden kısarak/susturarak etkileşimi durdurabilir.</li>
+  <li><strong>Engelleme:</strong> Her kullanıcı, oyun içi Ayarlar menüsündeki 🚫 simgesiyle rahatsız edici bir oyuncuyu engelleyebilir; engellenen oyuncunun mesajları bir daha gösterilmez.</li>
   <li><strong>İnceleme:</strong> Bize ulaşan şikayetler <strong>24 saat içinde</strong> incelenir; kuralları ihlal eden içerik kaldırılır ve ihlal eden kullanıcının hesabı askıya alınır veya kalıcı olarak kapatılır.</li>
   <li>Uygunsuz kullanıcı adı veya avatar tespit edilirse uyarısız kaldırılır.</li>
 </ul>

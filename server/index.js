@@ -9,6 +9,7 @@ const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
 const Reports = require('./reports');
 const Push = require('./push');
+const ContentFilter = require('./contentFilter');
 const { PHASES, TEAMS } = require('./gameConstants');
 const registerLegalRoutes = require('./legalPages');
 
@@ -303,13 +304,13 @@ app.get('/api/giphy/search', apiLimiter, async (req, res) => {
     const offset = Math.min(parseInt(req.query.offset) || 0, 1000);
     if (!q) {
       // Sorgu yoksa trending döndür
-      const url = `https://api.giphy.com/v1/gifs/trending?api_key=${encodeURIComponent(GIPHY_API_KEY)}&limit=${limit}&offset=${offset}&rating=pg-13`;
+      const url = `https://api.giphy.com/v1/gifs/trending?api_key=${encodeURIComponent(GIPHY_API_KEY)}&limit=${limit}&offset=${offset}&rating=g`;
       const r = await fetch(url);
       if (!r.ok) return res.status(502).json({ ok: false, error: 'Giphy hatası' });
       const data = await r.json();
       return res.json({ ok: true, gifs: (data.data || []).map(simplifyGif) });
     }
-    const url = `https://api.giphy.com/v1/gifs/search?api_key=${encodeURIComponent(GIPHY_API_KEY)}&q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}&rating=pg-13&lang=tr`;
+    const url = `https://api.giphy.com/v1/gifs/search?api_key=${encodeURIComponent(GIPHY_API_KEY)}&q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}&rating=g&lang=tr`;
     const r = await fetch(url);
     if (!r.ok) return res.status(502).json({ ok: false, error: 'Giphy hatası' });
     const data = await r.json();
@@ -2285,6 +2286,11 @@ io.on('connection', (socket) => {
     if (!d || typeof d !== 'object') return cb?.({ success: false, error: 'Geçersiz veri' });
     const cleanUser = sanitizeUsername(d.username);
     if (!cleanUser) return cb?.({ success: false, error: 'Kullanıcı adı 2-16 karakter, sadece harf/rakam/_/- olmalı' });
+    // App Store 1.2: uygunsuz kullanıcı adı en baştan engellenir (giriş yaparken
+    // filtre uygulanmaz — eski hesaplar kilitlenmesin, onlar şikayetle temizlenir)
+    if (!ContentFilter.isCleanName(cleanUser)) {
+      return cb?.({ success: false, error: 'Bu kullanıcı adı uygunsuz içerik barındırıyor. Lütfen başka bir ad seç.' });
+    }
     if (typeof d.password !== 'string' || d.password.length < 3 || d.password.length > 100) {
       return cb?.({ success: false, error: 'Şifre 3-100 karakter olmalı' });
     }
@@ -2506,6 +2512,8 @@ io.on('connection', (socket) => {
     if (typeof name !== 'string') return null;
     const trimmed = name.trim();
     if (trimmed.length < 1 || trimmed.length > 12) return null;
+    // App Store 1.2: uygunsuz oyuncu adı odaya hiç girmez
+    if (!ContentFilter.isCleanName(trimmed)) return null;
     // HTML kaçışı: < > & " ' karakterleri yok edilir
     return trimmed.replace(/[<>&"']/g, '');
   }
@@ -2514,7 +2522,7 @@ io.on('connection', (socket) => {
     const u = authed.get(socket.id);
     if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
     const cleanName = sanitizePlayerName(playerName);
-    if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı' });
+    if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı ve uygunsuz içerik barındıramaz' });
     const stats = Accounts.getStats(u);
     const cosm = Accounts.getEquipped(u);
     const code = genCode(), g = new GameEngine(code, socket.id);
@@ -2528,7 +2536,7 @@ io.on('connection', (socket) => {
     if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
     if (typeof code !== 'string' || code.length !== 4) return cb?.({ ok: false, err: 'Kod geçersiz' });
     const cleanName = sanitizePlayerName(playerName);
-    if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı' });
+    if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı ve uygunsuz içerik barındıramaz' });
     const g = rooms.get(code.toUpperCase());
     if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
     if (g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME) return cb?.({ ok: false, err: 'Oyun başlamış!' });
@@ -2629,20 +2637,26 @@ io.on('connection', (socket) => {
   });
 
   // ── SESLİ SOHBET SIGNALING (WebRTC mesh) ──
-  // Tüm voice event'leri sadece odadaki ve canHear() koşulunu sağlayan eşler için relay edilir.
+  // PASİF: App Store 1.2 nedeniyle sesli sohbet devre dışı. Sunucu hiçbir WebRTC
+  // signaling paketini relay etmez; değiştirilmiş bir istemci de ses kanalı kuramaz.
+  // VOICE_DISABLED=false yapılırsa aşağıdaki erken dönüşler kaldırılmalı.
+  const VOICE_DISABLED = true;
   socket.on('voice:offer', ({ to, sdp }) => {
+    if (VOICE_DISABLED) return;
     const rc = prooms.get(socket.id), g = rooms.get(rc);
     if (!g) return;
     if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return; // kanal yetkisi yok
     io.to(to).emit('voice:offer', { from: socket.id, sdp });
   });
   socket.on('voice:answer', ({ to, sdp }) => {
+    if (VOICE_DISABLED) return;
     const rc = prooms.get(socket.id), g = rooms.get(rc);
     if (!g) return;
     if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return;
     io.to(to).emit('voice:answer', { from: socket.id, sdp });
   });
   socket.on('voice:ice', ({ to, candidate }) => {
+    if (VOICE_DISABLED) return;
     const rc = prooms.get(socket.id), g = rooms.get(rc);
     if (!g) return;
     if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return;
@@ -2650,6 +2664,7 @@ io.on('connection', (socket) => {
   });
   // Konuşuyor mu? (VAD) — sadece duyabilenlere broadcast
   socket.on('voice:speaking', ({ speaking }) => {
+    if (VOICE_DISABLED) return;
     const rc = prooms.get(socket.id), g = rooms.get(rc);
     if (!g) return;
     if (!g.canSpeak(socket.id)) return; // Susturulmuş → indikatör de yok
@@ -2965,6 +2980,15 @@ io.on('connection', (socket) => {
     const p = g.players.get(socket.id);
     if (p?.actualTeam !== 'hain') return;
     if (typeof msg !== 'string' || msg.length === 0 || msg.length > 200) return;
+    // App Store 1.2: uygunsuz içerik hiç yayınlanmaz — sadece gönderene uyarı gider
+    const scan = ContentFilter.check(msg);
+    if (!scan.clean) {
+      console.log(`[Filtre] ${p.name} mesajı engellendi (eşleşme: ${scan.match})`);
+      return socket.emit('hainMsg', {
+        from: 'Sistem',
+        msg: 'Mesajın uygunsuz içerik nedeniyle gönderilmedi. AZAP&#39;ta küfür ve hakarete sıfır tolerans uygulanır.'
+      });
+    }
     const safeMsg = msg.replace(/[<>&"']/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c]));
     g.players.forEach((pp, pid) => {
       if (pp.actualTeam === 'hain')
@@ -3349,7 +3373,20 @@ io.on('connection', (socket) => {
       reportedUser: reportedUser.trim(),
       description: desc
     });
-    if (result.success) console.log(`[Şikayet] ${u} → ${reportedUser}: ${(reason || '').slice(0, 60)}`);
+    if (result.success) {
+      console.log(`[Şikayet] ${u} → ${reportedUser}: ${(reason || '').slice(0, 60)}`);
+      // App Store 1.2: şikayetlere 24 saat içinde müdahale taahhüdü — adminlere
+      // anında bildirim gitsin ki panele bakılması beklenmesin.
+      try {
+        Accounts.listAll()
+          .filter(acc => acc.isAdmin)
+          .forEach(acc => Push.sendToUser(Accounts, acc.username, {
+            title: '🚩 Yeni oyuncu şikayeti',
+            body: `${u} → ${reportedUser}`,
+            data: { type: 'player_report' }
+          }).catch(() => {}));
+      } catch (e) { console.error('[Şikayet] admin bildirimi gönderilemedi:', e.message); }
+    }
     cb?.(result.success ? { success: true } : result);
   });
 
