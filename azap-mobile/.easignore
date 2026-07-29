@@ -1,25 +1,50 @@
-# EAS Build'e yüklenen arşivden çıkarılacaklar.
-# Bu dizinde .gitignore yok; o yüzden node_modules ve dist arşive giriyordu
-# (714 MB → upload kopuyordu). EAS bağımlılıkları package-lock.json'dan
-# kendisi kurar, node_modules'a ihtiyacı yok.
+# EAS Build arşivine girmeyecek dosyalar.
+#
+# ÖNEMLİ: azap-mobile/ bir git repo'sunun ALT dizini. EAS arşivi repo kökünden
+# (azap/) alıyor, ama .easignore'u proje dizininde (azap-mobile/) arıyor.
+# Bu yüzden buradaki yollar REPO KÖKÜNE göre yazılır — "public/" demek
+# azap/public/ demektir, azap-mobile/public/ değil.
+#
+# Boyut sorunu: azap/public/ 717 MB (radyo MP3'leri) ve node_modules'lar
+# arşive giriyordu → 714 MB yükleme, bağlantı kopmaları.
+# Mobil uygulamanın ihtiyacı olan tek web içeriği azap-mobile/webassets/.
 
-node_modules/
-dist/
-.expo/
-.expo-shared/
+# Bağımlılıklar — EAS bunları package-lock.json'dan kendisi kurar
+**/node_modules/
+
+# Sunucu tarafı web kökü (radyo MP3'leri burada). Mobil build kullanmıyor;
+# oyun azap-mobile/webassets/ altından gömülü geliyor.
+public/
+
+# Sunucu ve geliştirme dosyaları — mobil build'e gerekmez
+server/
+tests/
+scripts/
+data/
+ios/
+appstore-shots/
+.github/
+DEPLOYMENT.md
+SECURITY.md
+ROLLER_REHBERI.md
+README.md
+make-admin.js
+
+# Derleme çıktıları
+**/dist/
+**/.expo/
 web-build/
-
-*.log
-npm-debug.log*
-yarn-error.log*
-.DS_Store
-
-# Yerel derleme çıktıları (varsa)
-ios/build/
-android/build/
-android/app/build/
 *.ipa
 *.apk
 *.aab
 
-# webassets/ ve assets/ ARŞİVDE KALMALI — uygulama oyunu gömülü olarak taşıyor.
+# Çeşitli
+.git/
+*.rar
+*.zip
+*.log
+.DS_Store
+
+# ARŞİVDE KALMALI: azap-mobile/webassets/, azap-mobile/assets/,
+# azap-mobile/src/, App.tsx, index.ts, app.json, eas.json,
+# package.json, package-lock.json, metro.config.js, tsconfig.json
