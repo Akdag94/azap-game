@@ -17,21 +17,7 @@ const registerLegalRoutes = require('./legalPages');
 // Yeni hali:
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || '4794akd.';
 
-// ── TURN sunucusu config (WebRTC relay — uzak bağlantılar için) ──
-const TURN_CONFIG = [];
-if (process.env.TURN_URL) {
-  TURN_CONFIG.push(
-    { urls: process.env.TURN_URL, username: process.env.TURN_USER || 'azap', credential: process.env.TURN_PASS || 'azap2026' }
-  );
-  if (process.env.TURN_URL_TCP) {
-    TURN_CONFIG.push(
-      { urls: process.env.TURN_URL_TCP, username: process.env.TURN_USER || 'azap', credential: process.env.TURN_PASS || 'azap2026' }
-    );
-  }
-  console.log('[TURN] Yapılandırıldı:', TURN_CONFIG.map(t => t.urls));
-} else {
-  console.warn('[TURN] TURN_URL env yok — uzak bağlantılar çalışmayabilir. .env dosyasına TURN_URL, TURN_USER, TURN_PASS ekleyin.');
-}
+// (Sesli sohbet ve WebRTC kaldırıldı — TURN sunucusu yapılandırması gerekmiyor.)
 
 // ── GÜVENLİK: opsiyonel middleware'ler (npm install helmet express-rate-limit) ──
 let helmet = null, rateLimit = null, compression = null;
@@ -1944,12 +1930,6 @@ function _emitImmediate(rc) {
         if (!spec) spec = g.spectatorState(); // lazy compute
         sock.emit('spec', spec);
       }
-      // Sesli sohbet: bu oyuncunun bağlanması gereken peer listesi
-      try {
-        const peers = g.getVoicePeers(pid);
-        const canSpeak = g.canSpeak(pid);
-        sock.emit('voice:peers', { peers, canSpeak, turnServers: TURN_CONFIG });
-      } catch(e) { /* voice opsiyonel — hata oyunu durdurmasın */ }
     });
     if (g.spectators.size > 0) {
       if (!spec) spec = g.spectatorState();
@@ -2636,44 +2616,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ── SESLİ SOHBET SIGNALING (WebRTC mesh) ──
-  // PASİF: App Store 1.2 nedeniyle sesli sohbet devre dışı. Sunucu hiçbir WebRTC
-  // signaling paketini relay etmez; değiştirilmiş bir istemci de ses kanalı kuramaz.
-  // VOICE_DISABLED=false yapılırsa aşağıdaki erken dönüşler kaldırılmalı.
-  const VOICE_DISABLED = true;
-  socket.on('voice:offer', ({ to, sdp }) => {
-    if (VOICE_DISABLED) return;
-    const rc = prooms.get(socket.id), g = rooms.get(rc);
-    if (!g) return;
-    if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return; // kanal yetkisi yok
-    io.to(to).emit('voice:offer', { from: socket.id, sdp });
-  });
-  socket.on('voice:answer', ({ to, sdp }) => {
-    if (VOICE_DISABLED) return;
-    const rc = prooms.get(socket.id), g = rooms.get(rc);
-    if (!g) return;
-    if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return;
-    io.to(to).emit('voice:answer', { from: socket.id, sdp });
-  });
-  socket.on('voice:ice', ({ to, candidate }) => {
-    if (VOICE_DISABLED) return;
-    const rc = prooms.get(socket.id), g = rooms.get(rc);
-    if (!g) return;
-    if (!g.canHear(to, socket.id) && !g.canHear(socket.id, to)) return;
-    io.to(to).emit('voice:ice', { from: socket.id, candidate });
-  });
-  // Konuşuyor mu? (VAD) — sadece duyabilenlere broadcast
-  socket.on('voice:speaking', ({ speaking }) => {
-    if (VOICE_DISABLED) return;
-    const rc = prooms.get(socket.id), g = rooms.get(rc);
-    if (!g) return;
-    if (!g.canSpeak(socket.id)) return; // Susturulmuş → indikatör de yok
-    g.players.forEach((_, pid) => {
-      if (pid === socket.id) return;
-      if (!g.canHear(pid, socket.id)) return; // duymuyor → indikatör yok (gece sızıntısı önleme)
-      io.to(pid).emit('voice:speaking', { from: socket.id, speaking: !!speaking });
-    });
-  });
+  // Sesli sohbet ve WebRTC signaling uygulamadan kaldırıldı (App Store 1.2).
 
   // ── BOT EKLEME (sadece admin + lider) ──
   socket.on('bot:add', ({ count } = {}, cb) => {

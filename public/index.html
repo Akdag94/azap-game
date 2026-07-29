@@ -29,20 +29,16 @@
 <div class="tnum" id="TN"></div>
 <div class="specbar" id="SB">👁️ İZLEYİCİ</div>
 
-<!-- SESLİ SOHBET KONTROL PANELİ (sürüklenebilir) -->
+<!-- OYUN İÇİ PANEL (sürüklenebilir) — ayarlar: şikâyet & engelleme -->
 <div id="VOICE_PANEL" style="display:none;position:fixed;top:46px;left:8px;z-index:9998;flex-direction:column;gap:6px;background:rgba(8,12,18,.85);backdrop-filter:blur(8px);border:1px solid rgba(180,150,90,.25);border-radius:10px;padding:6px">
   <div id="VOICE_DRAG_HANDLE" style="width:100%;height:10px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;cursor:grab">
     <div style="width:20px;height:3px;background:rgba(180,150,90,.35);border-radius:2px"></div>
   </div>
-  <button id="VOICE_MIC_BTN" onclick="toggleMic()" title="Mikrofonu aç/kapat" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">🎤</button>
-  <button id="VOICE_DEAF_BTN" onclick="toggleDeafen()" title="Tüm sesi sustur/aç" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">🎧</button>
-  <button id="VOICE_SETTINGS_BTN" onclick="toggleVoiceSettings()" title="Ses & Ayarlar" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">⚙️</button>
+  <button id="VOICE_SETTINGS_BTN" onclick="toggleVoiceSettings()" title="Ayarlar" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,90,.4);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .15s">⚙️</button>
   <button id="VOICE_RADIO_BTN" onclick="toggleMusic()" title="Radyo Aç/Kapat" style="display:none;width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,215,96,.3);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;align-items:center;justify-content:center;transition:all .15s">🎵</button>
   <button id="VOICE_RADIO_SKIP" onclick="radioSkipAdmin()" title="Şarkı Geç (Admin)" style="display:none;width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,215,96,.3);background:rgba(20,28,40,.7);color:#fff;cursor:pointer;font-size:1.05rem;align-items:center;justify-content:center;transition:all .15s">⏭️</button>
   <div id="VOICE_STATUS" style="font-size:.6rem;color:var(--dim);text-align:center;max-width:60px;line-height:1.1"></div>
 </div>
-<!-- Remote audio elements buraya enjekte edilir -->
-<div id="VOICE_AUDIO_CONTAINER" style="display:none"></div>
 <audio id="MUSIC_AUDIO" preload="none"></audio>
 
 <div class="dawn-overlay" id="DAWN"><div class="dawn-gradient"></div></div>
@@ -90,11 +86,6 @@
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.78rem">
 <input type="checkbox" id="HIDE_COSMETICS" onchange="_hideOtherCosmetics=this.checked;try{localStorage.setItem('azap_hide_cosmetics',this.checked?'1':'0')}catch{}">
 <span>Diğer oyuncuların kozmetik efektlerini gizle</span>
-</label>
-<!-- Sesli sohbet pasife alındı (App Store 1.2) -->
-<label style="display:none;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;margin-top:6px">
-<input type="checkbox" id="VOICE_ENABLED" onchange="toggleVoiceEnabled(this.checked)">
-<span>🎤 Sesli sohbet (lobi & oyun)</span>
 </label>
 <!-- Müzik sistemi pasife alındı -->
 <label style="display:none;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;margin-top:6px">
@@ -263,8 +254,6 @@
 <div class="mdl-bg" id="MDL_VSETTINGS"><div class="mdl set-modal" style="max-width:380px">
 <div class="mdl-h"><h2>⚙️ Ayarlar</h2><button class="mdl-cl" onclick="closeModal('MDL_VSETTINGS')">✕</button></div>
 <div style="max-height:70vh;overflow-y:auto;padding:2px">
-
-  <!-- Sesli sohbet pasife alındı (App Store 1.2) — mikrofon ayarları kaldırıldı -->
 
   <!-- Oyuncular: şikayet + engelleme (App Store 1.2 gereksinimi) -->
   <div class="set-block" id="VSETTINGS_PLAYERS_BLOCK">

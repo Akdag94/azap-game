@@ -2257,66 +2257,6 @@ class GameEngine {
   }
   isBot(pid) { return this.bots.has(pid); }
 
-  // ── SESLİ SOHBET KURALLARI (Klasik Mafya) ──
-  // Bu oyuncu mikrofonunu açıp konuşabilir mi?
-  canSpeak(pid) {
-    const p = this.players.get(pid);
-    if (!p) return false;
-    if (this.isBot(pid)) return false;
-    // Ölüler asla konuşamaz
-    if (!p.isAlive) return false;
-    // Lobi/post-game → herkes konuşabilir
-    const lobbyPhases = [PHASES.LOBBY, PHASES.POST_GAME, PHASES.GAME_OVER];
-    if (lobbyPhases.includes(this.phase)) return true;
-    // Gece → sadece hainler konuşabilir
-    if (this.phase === PHASES.NIGHT) {
-      return p.actualTeam === TEAMS.HAIN;
-    }
-    // Tartışma, oylama, başkan seçimi → canlılar konuşabilir
-    const speakPhases = [PHASES.DAY_DISCUSSION, PHASES.VOTING, PHASES.PRESIDENT_VOTE];
-    if (speakPhases.includes(this.phase)) {
-      if (p.isSilenced) return false; // Susturulmuş → gündüz konuşamaz
-      return true;
-    }
-    // Diğer fazlarda (sabah raporu, rol seçimi, vb.) konuşma kapalı
-    return false;
-  }
-  // Listener konuşmacıyı duyabilir mi?
-  canHear(listenerId, speakerId) {
-    if (listenerId === speakerId) return false;
-    if (this.isBot(listenerId) || this.isBot(speakerId)) return false;
-    const l = this.players.get(listenerId);
-    const s = this.players.get(speakerId);
-    if (!l || !s) return false;
-    // Konuşmacı konuşamıyorsa kimse duymaz
-    if (!this.canSpeak(speakerId)) return false;
-    // Lobi/post-game → herkes herkesi duyar
-    const lobbyPhases = [PHASES.LOBBY, PHASES.POST_GAME, PHASES.GAME_OVER];
-    if (lobbyPhases.includes(this.phase)) return true;
-    // Gece → sadece hainler birbirini duyar
-    if (this.phase === PHASES.NIGHT) {
-      return l.actualTeam === TEAMS.HAIN && s.actualTeam === TEAMS.HAIN;
-    }
-    // Tartışma, oylama, başkan seçimi → ölüler duyabilir (konuşamaz), canlılar da duyar
-    const speakPhases = [PHASES.DAY_DISCUSSION, PHASES.VOTING, PHASES.PRESIDENT_VOTE];
-    if (speakPhases.includes(this.phase)) {
-      return true; // Ölüler de duyar ama konuşamaz (canSpeak=false garantili)
-    }
-    // Diğer fazlarda ses yok
-    return false;
-  }
-  // Bir oyuncunun ses olarak bağlanması gereken peer ID listesi
-  getVoicePeers(pid) {
-    const peers = [];
-    for (const [otherId] of this.players) {
-      if (otherId === pid) continue;
-      if (this.isBot(otherId)) continue;
-      if (this.canHear(pid, otherId) || this.canHear(otherId, pid)) {
-        peers.push(otherId);
-      }
-    }
-    return peers;
-  }
 
   shuf(a) { for (let i = a.length - 1; i > 0; i--) { const j = crypto.randomInt(0, i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   hist(pid, action, target, result) { this.actionHistory.get(pid)?.push({ round: this.round, action, target, result }); }

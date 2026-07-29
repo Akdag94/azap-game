@@ -496,7 +496,12 @@ section('GÖLGE — susturma');
   const rep = g.resolveNight();
   check('Hedef susturulur', g.players.get('m').isSilenced);
   check('Susturulan bilgilendirilir', repTexts(rep, 'm').includes('susturdu'));
-  check('Susturulan gündüz konuşamaz (canSpeak)', (() => { g.phase = PHASES.DAY_DISCUSSION; return g.canSpeak('m') === false; })());
+  // Sesli sohbet kaldırıldığı için susturma artık masadaki sosyal kural olarak işler:
+  // sunucu susturma durumunu istemciye bildirir, istemci "🤐 Susturuldun" uyarısını basar.
+  check('Susturma gündüz durumunda istemciye bildirilir', (() => {
+    g.phase = PHASES.DAY_DISCUSSION;
+    return g.privateState('m').isSilenced === true;
+  })());
 }
 
 section('TAKİPÇİ & AJAN & DEDİKODUCU');
