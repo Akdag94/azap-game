@@ -7,9 +7,11 @@
  *
  * Köprüler (web → native):
  *   window.ReactNativeWebView.postMessage(JSON.stringify({bridge:'iap', action:'purchase', productId, packageId, username}))
+ *   window.ReactNativeWebView.postMessage(JSON.stringify({bridge:'iap', action:'prices', productIds}))
  *   window.ReactNativeWebView.postMessage(JSON.stringify({bridge:'push', action:'register'}))
  * Native → web:
  *   window.azapIapResult({ok, error})  ·  window.azapPushToken('<apns-hex>')
+ *   window.azapIapPrices({'<productId>': '<displayPrice>'})
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StatusBar, StyleSheet, View } from 'react-native';
@@ -17,7 +19,7 @@ import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Notifications from 'expo-notifications';
-import { purchaseIos, restoreIos } from './src/iap';
+import { purchaseIos, restoreIos, fetchIosPrices } from './src/iap';
 
 const SERVER = 'https://azap.online';
 const REMOTE_FALLBACK = `${SERVER}/?platform=ios`;
@@ -88,6 +90,13 @@ export default function App() {
     runJs(`window.azapIapResult && window.azapIapResult({ok:${ok ? 'true' : 'false'},error:${err}})`);
   };
 
+  // App Store'un yerelleştirilmiş fiyatlarını web tarafına ilet
+  const sendIapPrices = (prices: Record<string, string>) => {
+    // İki kez stringify: tırnak/ters bölü içeren değerler de güvenle geçer.
+    const payload = JSON.stringify(JSON.stringify(prices));
+    runJs(`window.azapIapPrices && window.azapIapPrices(JSON.parse(${payload}))`);
+  };
+
   const registerPush = async () => {
     try {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -118,6 +127,10 @@ export default function App() {
       } else if (msg.action === 'restore') {
         const r = await restoreIos(String(msg.username || ''), SERVER);
         sendIapResult(r.ok, r.error);
+      } else if (msg.action === 'prices') {
+        const ids = Array.isArray(msg.productIds) ? msg.productIds.map(String) : [];
+        const prices = await fetchIosPrices(ids);
+        if (Object.keys(prices).length > 0) sendIapPrices(prices);
       }
     }
   };

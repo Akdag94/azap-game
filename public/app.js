@@ -892,6 +892,26 @@ window.azapIapResult = function(result){
   }catch(e){}
 };
 
+// ── APP STORE FİYATLARI (iOS) ──
+// Katalogdaki ₺ fiyat sunucudan gelir, ama iOS'ta ödeme kullanıcının kendi
+// App Store bölgesinin para biriminden alınır. Yanlış para birimi göstermemek
+// için StoreKit'in yerelleştirilmiş fiyatlarını native taraftan iste.
+let _iapPrices = null;
+window.azapIapPrices = function(map){
+  if(!map || typeof map !== 'object') return;
+  _iapPrices = map;
+  // Zaten çizilmiş sekmeleri tazele
+  if(_shopPackages){ renderShopGoldPackages(); renderShopPremiumPackages(); }
+};
+function _pkgPriceText(id, pkg){
+  const p = _iapPrices && _iapPrices['online.azap.'+id];
+  return p ? p : '₺'+pkg.price.toFixed(2);
+}
+function _requestIapPrices(){
+  if(!IS_IOS_APP || _iapPrices || !_shopPackages) return;
+  _nativePost('iap',{action:'prices',productIds:Object.keys(_shopPackages).map(k=>'online.azap.'+k)});
+}
+
 // ── MAĞAZA ──
 let _shopPackages = null;
 let _shopDonationPresets = null;
@@ -920,7 +940,7 @@ function renderShopGoldPackages(){
         ${p.bonus ? `<div class="shop-pkg-bonus">🎁 +${p.bonus} bonus</div>` : ''}
       </div>
       <div class="shop-pkg-price">
-        <strong>₺${p.price.toFixed(2)}</strong>
+        <strong>${_pkgPriceText(id,p)}</strong>
         <button class="shop-pkg-buy" onclick="shopBuy('${id}')">Satın Al</button>
       </div>
     </div>
@@ -938,7 +958,7 @@ function renderShopPremiumPackages(){
         ${p.bonus ? `<div class="shop-pkg-bonus">✨ ${p.bonus}</div>` : ''}
       </div>
       <div class="shop-pkg-price">
-        <strong>₺${p.price.toFixed(2)}</strong>
+        <strong>${_pkgPriceText(id,p)}</strong>
         <button class="shop-pkg-buy premium-buy" onclick="shopBuy('${id}')">Satın Al</button>
       </div>
     </div>
@@ -1088,6 +1108,7 @@ function updateShopHeader(){
 async function openShopModal(){
   if(!user){toast('Önce giriş yap!',1);return;}
   await Promise.all([loadShopCatalog(), loadCosmeticCatalog()]);
+  _requestIapPrices();
   io2.emit('auth:stats',null,r=>{
     if(r){user=r;}
     updateShopHeader();
