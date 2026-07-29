@@ -1194,8 +1194,11 @@ setupPayment(app, io, {
 });
 
 // ── APPLE IN-APP PURCHASE DOĞRULAMA (iOS uygulaması) ──
-// iOS uygulaması StoreKit satın alımını bitirince base64 App Store receipt'ini buraya yollar.
-// Sunucu Apple verifyReceipt servisiyle doğrular, ürünü hesaba tanımlar.
+// iOS uygulaması StoreKit satın alımı bitince kanıtı buraya yollar. İki kanıt
+// tipi de kabul edilir: StoreKit 2 imzalı işlem (jws — iOS 15+'ta asıl kanıt)
+// ve eski tip base64 App Store receipt (receiptData). JWS yerel olarak Apple'ın
+// pinlenmiş kök sertifikasıyla, eski receipt Apple verifyReceipt servisiyle
+// doğrulanır; doğrulanan işlemlerdeki ürün hesaba tanımlanır.
 // Ürün eşlemesi: Apple product_id → PAYMENT_PACKAGES anahtarı.
 // Varsayılan: "online.azap.gold_100" → "gold_100" (prefix'i kırpar).
 // Özel eşleme için env: APPLE_IAP_PRODUCTS='{"com.x.gold":"gold_100"}'
@@ -1214,6 +1217,9 @@ function _iapMapProduct(productId) {
   const short = String(productId || '').split('.').pop();
   return PAYMENT_PACKAGES[short] ? short : null;
 }
+// StoreKit 2 imzalı işlem (JWS) doğrulaması — bkz server/appleJws.js
+const { looksLikeJws: _looksLikeJws, verifyAppleJws: _iapVerifyJws } = require('./appleJws');
+
 async function _iapVerifyWithApple(receiptData) {
   const body = JSON.stringify({
     'receipt-data': receiptData,
@@ -1230,54 +1236,86 @@ async function _iapVerifyWithApple(receiptData) {
   return res;
 }
 
+/** Doğrulanmış tek bir işlemi hesaba tanımla (tekrar tanımlamaya karşı korumalı) */
+function _iapCreditTx(username, txId, productId, credited, seen) {
+  if (!txId) return;
+  txId = String(txId);
+  if (seen.includes(txId)) return;
+  seen.push(txId);
+  if (_iapProcessedTx.has(txId)) return;
+  const packageId = _iapMapProduct(productId);
+  if (!packageId) { console.warn('[IAP] tanınmayan ürün:', productId); return; }
+  const r = applyPayment(username, packageId);
+  if (r && r.ok !== false) {
+    _iapProcessedTx.add(txId);
+    credited.push({ transactionId: txId, productId, packageId });
+    console.log(`[IAP] ${username} → ${packageId} tanımlandı (tx: ${txId})`);
+  } else {
+    console.error('[IAP] applyPayment başarısız:', username, packageId, r && r.error);
+  }
+}
+
 app.post('/api/iap/verify', paymentLimiter || ((r, s, n) => n()), async (req, res) => {
   try {
-    const { username, receiptData } = req.body || {};
+    const { username, receiptData, jws } = req.body || {};
     if (typeof username !== 'string' || username.length < 2 || username.length > 16) {
       return res.status(400).json({ ok: false, error: 'Kullanıcı adı geçersiz' });
     }
-    if (typeof receiptData !== 'string' || receiptData.length < 20 || receiptData.length > 2_000_000) {
+    const str = (v) => (typeof v === 'string' && v.length >= 20 && v.length <= 2_000_000 ? v : '');
+    const proofs = [str(jws), str(receiptData)].filter(Boolean);
+    if (proofs.length === 0) {
       return res.status(400).json({ ok: false, error: 'Receipt geçersiz' });
     }
     const userStats = Accounts.getStats(username);
     if (!userStats) return res.status(404).json({ ok: false, error: 'Kullanıcı bulunamadı' });
 
-    const appleRes = await _iapVerifyWithApple(receiptData);
-    if (!appleRes || appleRes.status !== 0) {
-      console.warn('[IAP] Doğrulama başarısız, status:', appleRes && appleRes.status);
-      return res.status(400).json({ ok: false, error: 'Apple doğrulaması başarısız', appleStatus: appleRes && appleRes.status });
-    }
-
-    // Bundle ID kontrolü (env tanımlıysa)
     const expectedBundle = process.env.APPLE_BUNDLE_ID;
-    if (expectedBundle && appleRes.receipt?.bundle_id !== expectedBundle) {
-      return res.status(400).json({ ok: false, error: 'Bundle ID uyuşmuyor' });
+    const credited = [];
+    // seen: doğrulanan TÜM işlem ID'leri. iOS istemcisi kendi transactionId'sini
+    // burada arar — gecikmelerde "tanımlandı mı?" sorusunu ayırt eder.
+    const seen = [];
+    let verifiedAny = false;
+    let appleStatus = null;
+
+    // 1) StoreKit 2 imzalı işlem (JWS) — iOS 15+ istemcinin asıl kanıtı
+    for (const proof of proofs) {
+      if (!_looksLikeJws(proof)) continue;
+      const payload = _iapVerifyJws(proof);
+      if (!payload) continue;
+      if (expectedBundle && payload.bundleId !== expectedBundle) {
+        console.warn('[IAP] JWS bundle uyuşmuyor:', payload.bundleId);
+        continue;
+      }
+      if (payload.revocationDate) { console.warn('[IAP] iptal edilmiş işlem:', payload.transactionId); continue; }
+      verifiedAny = true;
+      _iapCreditTx(username, payload.transactionId, payload.productId, credited, seen);
     }
 
-    // in_app + latest_receipt_info içindeki işlenmemiş işlemleri tanımla
-    const txs = [
-      ...(appleRes.receipt?.in_app || []),
-      ...(appleRes.latest_receipt_info || [])
-    ];
-    const credited = [];
-    // seen: receipt'te görülen TÜM işlem ID'leri. iOS istemcisi kendi transactionId'sini
-    // burada arar — receipt yayılma gecikmesinde "tanımlandı mı?" sorusunu ayırt eder.
-    const seen = [];
-    for (const tx of txs) {
-      const txId = tx.transaction_id;
-      if (!txId) continue;
-      seen.push(String(txId));
-      if (_iapProcessedTx.has(txId)) continue;
-      const packageId = _iapMapProduct(tx.product_id);
-      if (!packageId) { console.warn('[IAP] tanınmayan ürün:', tx.product_id); continue; }
-      const r = applyPayment(username, packageId);
-      if (r && r.ok !== false) {
-        _iapProcessedTx.add(txId);
-        credited.push({ transactionId: String(txId), productId: tx.product_id, packageId });
-        console.log(`[IAP] ${username} → ${packageId} tanımlandı (tx: ${txId})`);
+    // 2) Eski tip App Store receipt — verifyReceipt ile doğrula
+    const legacy = proofs.find((p) => !_looksLikeJws(p));
+    if (legacy) {
+      const appleRes = await _iapVerifyWithApple(legacy);
+      appleStatus = appleRes && appleRes.status;
+      if (appleRes && appleRes.status === 0) {
+        if (expectedBundle && appleRes.receipt?.bundle_id !== expectedBundle) {
+          console.warn('[IAP] receipt bundle uyuşmuyor:', appleRes.receipt?.bundle_id);
+        } else {
+          verifiedAny = true;
+          const txs = [
+            ...(appleRes.receipt?.in_app || []),
+            ...(appleRes.latest_receipt_info || [])
+          ];
+          for (const tx of txs) {
+            _iapCreditTx(username, tx.transaction_id, tx.product_id, credited, seen);
+          }
+        }
       } else {
-        console.error('[IAP] applyPayment başarısız:', username, packageId, r && r.error);
+        console.warn('[IAP] verifyReceipt başarısız, status:', appleStatus);
       }
+    }
+
+    if (!verifiedAny) {
+      return res.status(400).json({ ok: false, error: 'Apple doğrulaması başarısız', appleStatus });
     }
     if (credited.length > 0) _iapSaveTx();
 
