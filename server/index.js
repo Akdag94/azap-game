@@ -2511,6 +2511,37 @@ io.on('connection', (socket) => {
     cb?.({ ok: true, code }); emit(code);
   });
 
+  // ── ODA ÖNİZLEME (App Store 1.2) ──
+  // Kullanıcı bir odaya girmeden ÖNCE kiminle oynayacağını görür: kurucunun adı,
+  // odadaki oyuncuların adı/avatarı/istatistikleri. Ancak bunu gördükten sonra
+  // katılmayı onaylar ya da vazgeçer. Hiçbir gizli oyun bilgisi dönmez.
+  socket.on('room:preview', ({ code } = {}, cb) => {
+    const u = authed.get(socket.id);
+    if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    if (typeof code !== 'string' || code.length !== 4) return cb?.({ ok: false, err: 'Kod geçersiz' });
+    const g = rooms.get(code.toUpperCase());
+    if (!g) return cb?.({ ok: false, err: 'Oda yok!' });
+    const players = [...g.players.values()].map(p => ({
+      name: p.name,
+      username: p.username,
+      avatar: p.avatar,
+      wins: p.wins || 0,
+      mvp: p.mvp || 0,
+      isLeader: p.id === g.leaderId,
+      isBot: g.isBot(p.id)
+    }));
+    const leader = players.find(p => p.isLeader);
+    cb?.({
+      ok: true,
+      code: code.toUpperCase(),
+      leaderName: leader?.name || '—',
+      players,
+      count: players.length,
+      max: g.config?.MAX_PLAYERS || 20,
+      inProgress: g.phase !== PHASES.LOBBY && g.phase !== PHASES.POST_GAME
+    });
+  });
+
   socket.on('room:join', ({ code, playerName } = {}, cb) => {
     const u = authed.get(socket.id);
     if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });

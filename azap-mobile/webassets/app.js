@@ -2072,16 +2072,66 @@ function createRoom(){
   _intentionalLeave=false;
   io2.emit('room:create',{playerName:n},r=>{if(r.ok){me=io2.id;Q('LC').textContent=r.code;saveLastRoom(r.code,n);show('S2');buildRG();applyMusicForCurrentScreen();io2.emit('auth:stats',null,s=>{if(s){user=s;updateUserUI();}});}else toast(r.err,1);});
 }
+// ── ODAYA KATILMA (App Store 1.2) ──
+// Katılmadan önce odadaki oyuncular gösterilir; kullanıcı onaylar veya vazgeçer.
 function joinRoom(){
   const n=Q('IN').value.trim(),c=Q('IC').value.trim();
   if(!n)return toast('İsim gir!',1);if(c.length!==4)return toast('4 haneli kod!',1);
+  io2.emit('room:preview',{code:c},r=>{
+    if(!r||!r.ok) return toast((r&&r.err)||'Oda bulunamadı',1);
+    showRoomPreview(r,()=>_doJoinRoom(c,n));
+  });
+}
+
+function _doJoinRoom(c,n){
   _intentionalLeave=false;
   io2.emit('room:join',{code:c,playerName:n},r=>{if(r.ok){me=io2.id;Q('LC').textContent=r.code;saveLastRoom(r.code,n);show('S2');applyMusicForCurrentScreen();io2.emit('auth:stats',null,s=>{if(s){user=s;updateUserUI();}});}else toast(r.err,1);});
 }
+
 function spectate(){
   const c=Q('IC').value.trim();if(c.length!==4)return toast('4 haneli kod!',1);
-  io2.emit('room:spectate',{code:c},r=>{if(r.ok){isSpec=true;Q('SB').classList.add('sh');show('S10');stopMusic();}else toast(r.err,1);});
+  io2.emit('room:preview',{code:c},r=>{
+    if(!r||!r.ok) return toast((r&&r.err)||'Oda bulunamadı',1);
+    showRoomPreview(r,()=>{
+      io2.emit('room:spectate',{code:c},r2=>{if(r2.ok){isSpec=true;Q('SB').classList.add('sh');show('S10');stopMusic();}else toast(r2.err,1);});
+    },'İzle');
+  });
 }
+
+// Onay ekranını doldurup açar. onAccept yalnızca kullanıcı onaylarsa çalışır.
+function showRoomPreview(info, onAccept, acceptLabel){
+  const list=Q('RP_PLAYERS');
+  if(list){
+    list.innerHTML = info.players.length
+      ? info.players.map(p=>{
+          const badges=[
+            p.isLeader?'<span class="rp-badge rp-leader">👑 Kurucu</span>':'',
+            p.isBot?'<span class="rp-badge rp-bot">🤖 Bot</span>':''
+          ].join('');
+          const stats=p.isBot?'':`<span class="rp-stats">🏆 ${p.wins} galibiyet · ⭐ ${p.mvp} MVP</span>`;
+          return `<div class="rp-row">
+            ${avHTML(p.avatar,'md','👤')}
+            <div class="rp-info">
+              <div class="rp-name">${esc(p.name)}${badges}</div>
+              ${stats}
+            </div>
+          </div>`;
+        }).join('')
+      : '<div class="rp-empty">Oda şu an boş — ilk giren sen olacaksın.</div>';
+  }
+  const sub=Q('RP_SUB');
+  if(sub) sub.innerHTML = `<b>${esc(info.code)}</b> kodlu oda · <b>${info.count}/${info.max}</b> oyuncu`
+    + (info.leaderName?` · Kurucu: <b>${esc(info.leaderName)}</b>`:'')
+    + (info.inProgress?' · <span style="color:var(--hain)">Oyun başlamış</span>':'');
+
+  const btn=Q('RP_ACCEPT');
+  if(btn){
+    btn.textContent = acceptLabel ? '👁️ '+acceptLabel : '✅ Katıl';
+    btn.onclick=()=>{ closeModal('MDL_ROOM_PREVIEW'); onAccept(); };
+  }
+  openModal('MDL_ROOM_PREVIEW');
+}
+window.showRoomPreview = showRoomPreview;
 // ── ADMIN BOT KONTROLÜ ──
 function addBots(){
   const n = parseInt(Q('BOT_COUNT')?.value) || 1;
