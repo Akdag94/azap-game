@@ -1,0 +1,25 @@
+# EAS Build'e yüklenen arşivden çıkarılacaklar.
+# Bu dizinde .gitignore yok; o yüzden node_modules ve dist arşive giriyordu
+# (714 MB → upload kopuyordu). EAS bağımlılıkları package-lock.json'dan
+# kendisi kurar, node_modules'a ihtiyacı yok.
+
+node_modules/
+dist/
+.expo/
+.expo-shared/
+web-build/
+
+*.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+
+# Yerel derleme çıktıları (varsa)
+ios/build/
+android/build/
+android/app/build/
+*.ipa
+*.apk
+*.aab
+
+# webassets/ ve assets/ ARŞİVDE KALMALI — uygulama oyunu gömülü olarak taşıyor.
