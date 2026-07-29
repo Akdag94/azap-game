@@ -1,13 +1,19 @@
 // YENİDEN GÖNDERİM (2026-07-28 reddi sonrası)
 //
-// Kullanım:  node scripts/asc-resubmit.js <buildNumber>
-//   örn:     node scripts/asc-resubmit.js 7
+// Kullanım:  node scripts/asc-resubmit.js <buildNumber> [--no-submit]
+//   örn:     node scripts/asc-resubmit.js 9
+//            node scripts/asc-resubmit.js 9 --no-submit
 //
 // Yaptığı iş:
 //   1. Verilen build'i (CFBundleVersion) bulup 1.0 sürümüne bağlar
 //   2. Bekleyen/gönderilmemiş inceleme gönderimlerini iptal eder
 //   3. TEK bir gönderim oluşturur: app sürümü + uygulamada satılan 7 IAP
 //   4. Gönderir ve son durumu yazar
+//
+// --no-submit: kalemler eklendikten sonra GÖNDERMEDEN durur. IAP versiyonları
+// bir gönderime bağlanınca REJECTED'dan çıkar ve sandbox'ta tekrar görünür
+// hale gelir — inceleme başlamadan önce satın almayı test etmek için.
+// Sonra göndermek için: node scripts/asc-submit-pending.js <gönderimId>
 //
 // Kritik bilgi: reviewSubmissionItems'ta IAP ilişkisinin adı `inAppPurchaseVersion`
 // ve ilişkilendirilen tip `inAppPurchaseVersions` (IAP'ın kendisi DEĞİL, versiyonu).
@@ -29,7 +35,8 @@ const LIVE = ['gold_100', 'gold_500', 'gold_1500', 'gold_5000', 'premium30', 'pr
   .map(k => 'online.azap.' + k);
 
 const BUILD_NO = process.argv[2];
-if (!BUILD_NO) { console.error('Kullanım: node scripts/asc-resubmit.js <buildNumber>'); process.exit(1); }
+const NO_SUBMIT = process.argv.includes('--no-submit');
+if (!BUILD_NO) { console.error('Kullanım: node scripts/asc-resubmit.js <buildNumber> [--no-submit]'); process.exit(1); }
 
 (async () => {
   // ── 1. Build'i sürüme bağla ─────────────────────────────────────────
@@ -116,11 +123,17 @@ if (!BUILD_NO) { console.error('Kullanım: node scripts/asc-resubmit.js <buildNu
   }
   console.log(`  → ${added}/${iapVersions.length} IAP eklendi`);
 
-  // ── 5. Gönder ───────────────────────────────────────────────────────
-  const submit = await api('PATCH', `/v1/reviewSubmissions/${rs.id}`, {
-    data: { type: 'reviewSubmissions', id: rs.id, attributes: { submitted: true } }
-  });
-  console.log(`\n  GÖNDERİM: ${submit.ok ? '✓ ' + submit.json?.data?.attributes?.state : '✗ ' + detail(submit)}`);
+  // ── 5. Gönder (--no-submit verilmediyse) ────────────────────────────
+  if (NO_SUBMIT) {
+    console.log(`\n  ⏸ GÖNDERİLMEDİ (--no-submit). Gönderim id: ${rs.id}`);
+    console.log('     Sandbox testinden sonra göndermek için:');
+    console.log(`     node scripts/asc-submit-pending.js ${rs.id}`);
+  } else {
+    const submit = await api('PATCH', `/v1/reviewSubmissions/${rs.id}`, {
+      data: { type: 'reviewSubmissions', id: rs.id, attributes: { submitted: true } }
+    });
+    console.log(`\n  GÖNDERİM: ${submit.ok ? '✓ ' + submit.json?.data?.attributes?.state : '✗ ' + detail(submit)}`);
+  }
 
   // ── 6. Doğrula ──────────────────────────────────────────────────────
   await sleep(8000);

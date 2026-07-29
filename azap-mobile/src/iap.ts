@@ -26,6 +26,7 @@ import {
   purchaseErrorListener,
   validateReceiptIOS,
   getPendingTransactionsIOS,
+  emitter,
   type Purchase,
 } from 'expo-iap';
 
@@ -205,6 +206,50 @@ async function autoSettle(p: Purchase) {
   }
 }
 
+/**
+ * Ürünleri App Store'dan çek.
+ *
+ * expo-iap'in `fetchProducts`'ı sonucu `isProductIOS` ile süzüyor; bu süzgeç
+ * `platform === 'ios'` alanını şart koşuyor. Native serileştirme bu alanı
+ * göndermezse StoreKit ürünleri döndürse bile JS tarafı BOŞ liste görür.
+ * Bu yüzden liste boş gelirse ham native sonuca düşülür. `emitter` expo-iap'te
+ * native modülün ta kendisi (index.js: emitter = ExpoIapModule).
+ *
+ * `raw`/`filtered` sayıları teşhis içindir: raw=0 → StoreKit gerçekten ürün
+ * döndürmüyor (ASC/ortam sorunu); raw>0 & filtered=0 → kütüphane süzgeci eliyor.
+ */
+type ProductProbe = { products: any[]; raw: number; filtered: number; platform: string; error: string };
+
+async function loadProducts(skus: string[]): Promise<ProductProbe> {
+  const probe: ProductProbe = { products: [], raw: -1, filtered: -1, platform: '-', error: '' };
+  try {
+    const filtered = ((await fetchProducts({ skus, type: 'inapp' })) as any[]) || [];
+    probe.filtered = filtered.length;
+    if (filtered.length > 0) {
+      probe.products = filtered;
+      probe.raw = filtered.length;
+      probe.platform = String(filtered[0]?.platform ?? '-');
+      return probe;
+    }
+  } catch (e: any) {
+    probe.error = String(e?.message || e);
+  }
+  try {
+    const raw = ((await (emitter as any).fetchProducts({ skus, type: 'inapp' })) as any[]) || [];
+    probe.raw = raw.length;
+    probe.platform = String(raw[0]?.platform ?? '-');
+    probe.products = raw.filter((p) => p && skus.includes(String(p.id ?? p.productId ?? '')));
+  } catch (e: any) {
+    if (!probe.error) probe.error = String(e?.message || e);
+  }
+  return probe;
+}
+
+/** Teşhis eki — kullanıcı ekrandan okuyup bize iletebilsin diye */
+function probeTag(p: ProductProbe): string {
+  return ` [ham=${p.raw} filtre=${p.filtered} plat=${p.platform}${p.error ? ' hata=' + p.error.slice(0, 60) : ''}]`;
+}
+
 export async function purchaseIos(
   productId: string,
   username: string,
@@ -221,10 +266,10 @@ export async function purchaseIos(
   await settlePending(username, server);
 
   try {
-    const products = await fetchProducts({ skus: [productId], type: 'inapp' });
-    if (!products || products.length === 0) {
-      return { ok: false, error: `Ürün şu anda App Store'dan yüklenemedi (${productId}). Bağlantını kontrol edip tekrar dene.` };
-    }
+    // Ürün listesi boş gelse bile satın almayı DENE: liste kütüphanenin JS
+    // süzgeci yüzünden boş görünebiliyor. Ürün gerçekten yoksa StoreKit zaten
+    // anlamlı bir hata döndürür — bizim tahminimizden daha güvenilir.
+    const probe = await loadProducts([productId]);
 
     // Sonuç event'ini bekleyecek kaydı satın almayı BAŞLATMADAN ÖNCE kur:
     // StoreKit event'i requestPurchase dönmeden de yollayabiliyor.
@@ -253,6 +298,14 @@ export async function purchaseIos(
 
     const outcome = await outcomePromise;
     if (!outcome.purchase) {
+      // Ürün hiç yüklenememişse hatanın sebebi büyük olasılıkla bu — teşhis
+      // sayılarını mesaja ekle ki hangi katmanda takıldığı görülebilsin.
+      if (probe.products.length === 0 && !outcome.cancelled) {
+        return {
+          ok: false,
+          error: `Ürün şu anda App Store'dan yüklenemedi (${productId}).${probeTag(probe)} ${outcome.error || ''}`.trim(),
+        };
+      }
       return { ok: false, error: outcome.error || 'Satın alma tamamlanamadı.' };
     }
 
@@ -331,16 +384,12 @@ export async function fetchIosPrices(productIds: string[]): Promise<Record<strin
   const out: Record<string, string> = {};
   if (!productIds || productIds.length === 0) return out;
   if (!(await ensureConnection())) return out;
-  try {
-    const products = await fetchProducts({ skus: productIds, type: 'inapp' });
-    for (const pr of products || []) {
-      const anyPr = pr as any;
-      const id = String(anyPr?.id || '');
-      const price = String(anyPr?.displayPrice || '');
-      if (id && price) out[id] = price;
-    }
-  } catch (e) {
-    console.warn('[IAP] fiyatlar alınamadı:', e);
+  const probe = await loadProducts(productIds);
+  console.log('[IAP] fiyat sorgusu' + probeTag(probe));
+  for (const pr of probe.products) {
+    const id = String(pr?.id || '');
+    const price = String(pr?.displayPrice || '');
+    if (id && price) out[id] = price;
   }
   return out;
 }
