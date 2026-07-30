@@ -324,230 +324,20 @@ function avHTML(avatar, size, fallbackEmoji, extraStyle){
   return '<div class="av ' + cls + '"' + styleAttr + '>' + (fallbackEmoji||'👤') + '</div>';
 }
 
-// ── MÜZİK RADYO (Sunucu Senkronize MP3) ──
-let _musicAudio=null,_musicPlaying=false,_musicCurrentFile='',_musicCurrentName='';
-// MÜZİK SİSTEMİ KOMPLE PASİF — radyo/müzik hiçbir ekranda çalışmaz
-const MUSIC_DISABLED=true;
-let _musicMuted=true,_musicEnabled=false;
-
-// Sync state — NTP-style clock calibration, no per-sync network round-trips
-let _clockOffset=0,_trackStartTime=null,_radioSyncInterval=null,_clockCalibrated=false;
-
-// Sunucu saatiyle farkı hesapla (3 ping, medyan al) — sadece bir kere yapılır
-function _calibrateClock(done){
-  const samples=[];
-  let n=0;
-  const next=()=>{
-    const t0=Date.now();
-    io2.emit('time:ping',null,res=>{
-      if(!res) return;
-      const t1=Date.now();
-      samples.push(res.t+(t1-t0)/2-t1);
-      if(++n<3){ setTimeout(next,150); }
-      else{
-        samples.sort((a,b)=>a-b);
-        _clockOffset=samples[1]; // medyan
-        _clockCalibrated=true;
-        if(done) done();
-      }
-    });
-  };
-  next();
-}
-
-function _serverNow(){ return Date.now()+_clockOffset; }
-
-function _expectedMusicPos(){
-  if(!_trackStartTime) return null;
-  return (_serverNow()-_trackStartTime)/1000;
-}
-
-// Saf lokal matematik — ağ yok, RTT jitter yok, salınım imkansız
-function _radioCheckSync(){
-  if(!_musicAudio||!_trackStartTime||_musicAudio.paused||_musicMuted) return;
-  const ep=_expectedMusicPos();
-  if(ep===null||ep<0) return;
-  const drift=_musicAudio.currentTime-ep; // + = client ilerde, - = client geride
-  const abs=Math.abs(drift);
-  if(_musicAudio.playbackRate!==1&&abs<0.1){
-    _musicAudio.playbackRate=1; // düzeldi
-  } else if(abs>=0.3&&abs<=5){
-    // rate-based smooth correction: 10s'de telafi
-    _musicAudio.playbackRate=Math.max(0.95,Math.min(1.05,1-drift/10));
-  } else if(abs>5){
-    // çok büyük fark: tek seferlik seek (şarkı atladıysa vb.)
-    _musicAudio.playbackRate=1;
-    _musicAudio.currentTime=ep;
-  }
-  // dead zone [0.1, 0.3]: dokunma
-}
-
-function _initRadio(){
-  if(MUSIC_DISABLED) return;
-  if(_musicAudio) return;
-  const a=Q('MUSIC_AUDIO');
-  if(!a) return;
-  _musicAudio=a;
-  a.volume=0.3;
-  a.addEventListener('ended',()=>{ io2.emit('radio:ended'); });
-  a.addEventListener('playing',()=>{ _musicPlaying=true; updateMusicUI(); });
-  a.addEventListener('pause',()=>{ _musicPlaying=false; updateMusicUI(); });
-  // iOS: herhangi dokunuşta duran müziği başlat
-  document.addEventListener('click',_tryMobilePlay,{passive:true});
-  document.addEventListener('touchstart',_tryMobilePlay,{passive:true});
-}
-
-// iOS critical: bu fonksiyon click/touchstart gesture context'inden çağrılır
-function _tryMobilePlay(){
-  if(!shouldPlayMusic()||!_musicAudio||_musicMuted) return;
-  if(!_musicAudio.paused||!_musicAudio.src) return;
-  _musicAudio.muted=false; _musicAudio.volume=0.3;
-  if(_musicAudio.readyState<1) _musicAudio.load();
-  // Çalmadan önce doğru konuma getir (saat kalibre edildiyse)
-  const ep=_expectedMusicPos();
-  if(ep!==null&&ep>0) _musicAudio.currentTime=ep;
-  _musicAudio.play().catch(()=>{});
-}
-
-function _radioPreload(){
-  if(MUSIC_DISABLED) return;
-  _initRadio();
-  if(!io2||!io2.connected) return;
-  io2.emit('radio:now',null,d=>{
-    if(!d||!d.file||!_musicAudio) return;
-    if(d.trackStartTime) _trackStartTime=d.trackStartTime;
-    const same=decodeURIComponent(_musicAudio.src||'').endsWith(decodeURIComponent(d.file));
-    if(!same){
-      _musicCurrentFile=d.file; _musicCurrentName=d.name||'';
-      const lbl=document.querySelector('.music-radio-label');
-      if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
-      _musicAudio.src=d.file;
-      _musicAudio.load();
-    }
-    // konumu loadedmetadata'da set et (src değişsin ya da değişmesin)
-    _musicAudio.addEventListener('loadedmetadata',function sk(){
-      _musicAudio.removeEventListener('loadedmetadata',sk);
-      const ep=_expectedMusicPos();
-      if(ep!==null&&ep>0) _musicAudio.currentTime=ep;
-    });
-  });
-}
-
-function radioLoadTrack(data){
-  if(MUSIC_DISABLED) return;
-  if(!data||!data.file) return;
-  _initRadio();
-  if(!_musicAudio) return;
-  _musicCurrentFile=data.file; _musicCurrentName=data.name||'';
-  if(data.trackStartTime) _trackStartTime=data.trackStartTime;
-  const lbl=document.querySelector('.music-radio-label');
-  if(lbl) lbl.textContent=_musicCurrentName||'AZAP Radio';
-  const sameTrack=decodeURIComponent(_musicAudio.src||'').endsWith(decodeURIComponent(data.file));
-  const seekToPos=()=>{
-    const ep=_expectedMusicPos();
-    if(ep!==null&&ep>0) _musicAudio.currentTime=ep;
-  };
-  if(sameTrack){
-    seekToPos();
-  } else {
-    _musicAudio.src=data.file; _musicAudio.load();
-    _musicAudio.addEventListener('loadedmetadata',function seekOnce(){
-      _musicAudio.removeEventListener('loadedmetadata',seekOnce);
-      seekToPos();
-    });
-  }
-  _musicAudio.muted=false; _musicAudio.volume=0.3;
-  if(!_musicMuted&&shouldPlayMusic()) _musicAudio.play().catch(()=>{});
-  updateMusicUI();
-  if(!_radioSyncInterval){
-    // 2 saniyede bir lokal matematik — ağ yok, jitter yok
-    _radioSyncInterval=setInterval(_radioCheckSync,2000);
-  }
-}
-
-function shouldPlayMusic(){
-  if(MUSIC_DISABLED) return false;
-  if(!_musicEnabled) return false;
-  const s1=Q('S1'),s2=Q('S2');
-  return (s1&&s1.classList.contains('on'))||(s2&&s2.classList.contains('on'));
-}
-
-function applyMusicForCurrentScreen(){
-  _initRadio();
-  const bar=Q('MUSIC_BAR');
-  const canPlay=shouldPlayMusic();
-  if(bar) bar.style.display=canPlay?'flex':'none';
-  if(canPlay){
-    if(!_musicAudio||!_musicAudio.src){
-      _radioPreload(); // src'yi yükle; gesture gelince _tryMobilePlay çalar
-    } else if(!_musicMuted&&_musicAudio.paused){
-      _musicAudio.play().catch(()=>{}); // desktop/android; iOS: _tryMobilePlay halleder
-    }
-  } else if(_musicAudio&&!_musicAudio.paused){
-    _musicAudio.pause();
-  }
-  updateMusicUI();
-}
-
-function startMusic(){if(_musicAudio&&!_musicMuted&&_musicAudio.src){_musicAudio.play().catch(()=>{});}}
-function stopMusic(){if(_musicAudio) _musicAudio.pause();}
-
-function toggleMusic(){
-  if(MUSIC_DISABLED) return;
-  _musicMuted=!_musicMuted;
-  try{localStorage.setItem('azap_music_muted',_musicMuted?'1':'0');}catch{}
-  if(_musicAudio){
-    if(_musicMuted){
-      // Üçlü susturma: iOS dahil kesinlikle çalışır
-      _musicAudio.muted=true;
-      _musicAudio.volume=0;
-      _musicAudio.pause();
-    } else if(shouldPlayMusic()&&_musicAudio.src){
-      // iOS critical: play() mutlaka bu click handler'dan sync çağrılmalı
-      _musicAudio.muted=false; _musicAudio.volume=0.3;
-      if(_musicAudio.readyState<1) _musicAudio.load();
-      const ep=_expectedMusicPos();
-      if(ep!==null&&ep>0) _musicAudio.currentTime=ep;
-      _musicAudio.play().catch(()=>{});
-    }
-  }
-  updateMusicUI();
-}
-function toggleMusicCollapse(){} // compat stub
-function toggleMusicEnabled(on){
-  if(MUSIC_DISABLED) return;
-  _musicEnabled=!!on;
-  try{localStorage.setItem('azap_music_enabled',on?'1':'0');}catch{}
-  const cb=Q('MUSIC_ENABLED');if(cb) cb.checked=_musicEnabled;
-  if(!_musicEnabled){stopMusic();const bar=Q('MUSIC_BAR');if(bar)bar.style.display='none';}
-  else applyMusicForCurrentScreen();
-}
-function updateMusicUI(){
-  if(MUSIC_DISABLED){
-    const bar=Q('MUSIC_BAR');if(bar)bar.style.display='none';
-    const vrb=Q('VOICE_RADIO_BTN');if(vrb)vrb.style.display='none';
-    const vskip=Q('VOICE_RADIO_SKIP');if(vskip)vskip.style.display='none';
-    const skip=Q('MUSIC_SKIP');if(skip)skip.style.display='none';
-    return;
-  }
-  const icoOn=Q('MUSIC_ICO_ON'),icoOff=Q('MUSIC_ICO_OFF');
-  if(icoOn) icoOn.style.display=_musicMuted?'none':'block';
-  if(icoOff) icoOff.style.display=_musicMuted?'block':'none';
-  const bar=Q('MUSIC_BAR');
-  if(bar) bar.classList.toggle('muted',_musicMuted);
-  const dot=document.querySelector('.music-radio-live');
-  if(dot) dot.classList.toggle('paused',_musicMuted);
-  // Voice panel radyo butonu
-  const vrb=Q('VOICE_RADIO_BTN');
-  if(vrb){vrb.style.opacity=_musicMuted?'.4':'1';vrb.textContent=_musicMuted?'🔇':'🎵';}
-  // Admin skip butonları
-  const skip=Q('MUSIC_SKIP');
-  if(skip) skip.style.display=(user&&user.isAdmin)?'flex':'none';
-  const vskip=Q('VOICE_RADIO_SKIP');
-  if(vskip) vskip.style.display=(user&&user.isAdmin)?'flex':'none';
-}
-function loadYouTubeAPI(){} // compat stub
-function tryStartMusicNow(){ applyMusicForCurrentScreen(); }
+// ── MÜZİK / RADYO: KALDIRILDI ──
+// Sunucu senkronize MP3 radyosu istemciden, sunucudan ve public/radio/
+// altindan tamamen kaldirildi. Lisanssiz ticari muzik yayinlamak App Store
+// Kural 5.2 (fikri mulkiyet) kapsaminda ret ve hukuki risk yaratiyordu.
+// Asagidakiler yalnizca eski cagri noktalari kirilmasin diye duran no-op'lar.
+function applyMusicForCurrentScreen(){}
+function startMusic(){}
+function stopMusic(){}
+function toggleMusic(){}
+function toggleMusicCollapse(){}
+function toggleMusicEnabled(){}
+function updateMusicUI(){}
+function shouldPlayMusic(){ return false; }
+function loadYouTubeAPI(){}
 
 // Şifre göster/gizle
 function togglePw(inputId, btnId){
@@ -4607,12 +4397,6 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Radio track: server'dan gelen şarkı bilgisini her zaman sakla, uygunsa çal
-io2.on('radio:track',(data)=>{
-  const cb=Q('MUSIC_ENABLED');if(cb) cb.checked=_musicEnabled;
-  if(shouldPlayMusic()&&_musicEnabled) radioLoadTrack(data);
-});
-
 // Admin: iOS cihazlara push duyurusu gönder
 function amPushBroadcast(){
   const title=Q('AM_PUSH_TITLE')?.value?.trim(), body=Q('AM_PUSH_BODY')?.value?.trim();
@@ -4631,17 +4415,10 @@ function amPushBroadcast(){
   });
 }
 
-function radioSkipAdmin(){
-  io2.emit('radio:skip',null,r=>{
-    if(r&&!r.ok) toast(r.err||'Yetkin yok',1);
-  });
-}
-
 io2.on('connect',()=>{
   me=io2.id;
   Q('CONN_BANNER').style.display='none';
   console.log('[connect] Socket bağlandı, id:',me);
-  _calibrateClock(); // saat kalibrasyonu — bir kere, bağlantıda
   // HER bağlantıda (ilk + reconnect) token varsa server'da authed map'e kayıt ettir
   // Aksi halde room:create gibi auth gerektiren işlemler başarısız olur
   let token = null;
@@ -4653,8 +4430,7 @@ io2.on('connect',()=>{
           // İlk yükleme — UI'yı kur
           user = r.user;
           updateUserUI();
-          userMusicPref = true;
-          setTimeout(()=>{ show('S1'); _radioPreload(); setupDraggableButtons(); }, 300);
+          setTimeout(()=>{ show('S1'); setupDraggableButtons(); }, 300);
           updateRoleInfoBtn();
         } else {
           user = { ...user, ...r.user };

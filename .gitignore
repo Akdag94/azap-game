@@ -19,3 +19,7 @@ data/iap_transactions.json
 data/apns-key.p8
 azap-mobile/node_modules/
 azap-mobile/.expo/
+
+# Radyo ozelligi kaldirildi (App Store 5.2 — lisanssiz ticari muzik riski).
+# MP3 dosyalari repoda tutulmuyor; diskte kalanlar kullaniciya ait.
+public/radio/

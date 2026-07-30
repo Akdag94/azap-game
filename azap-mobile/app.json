@@ -12,6 +12,7 @@
       "bundleIdentifier": "online.azap.app",
       "appleTeamId": "CNANRXP44Q",
       "supportsTablet": false,
+      "buildNumber": "14",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "AZAP, profil fotoğrafı çekmek ve şikâyet bildirimine görüntü eklemek için kameranıza erişir.",
@@ -40,9 +41,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "92edaac4-6313-4cc1-a458-6fba35a1b081"
+        "projectId": "98e2151f-3589-4b51-9316-35ca1e8d682b"
       }
     },
-    "owner": "akdag94"
+    "owner": "akdag994"
   }
 }

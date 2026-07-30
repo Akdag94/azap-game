@@ -825,18 +825,6 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 /* ══════════════════════════════════════════
    MÜZİK RADYO (Horizontal Pill)
 ══════════════════════════════════════════ */
-#MUSIC_BAR{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:9990;display:flex;transition:opacity .3s}
-#MUSIC_BAR.muted{opacity:.45}
-.music-radio-pill{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 12px;background:rgba(0,0,0,.32);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.06);border-radius:20px;min-width:0}
-.music-radio-live{width:6px;height:6px;border-radius:50%;background:#1db954;flex-shrink:0;animation:musicPulse 2s ease-in-out infinite}
-#MUSIC_BAR.muted .music-radio-live{background:rgba(255,255,255,.2);animation:none}
-.music-radio-label{font-size:.62rem;color:rgba(255,255,255,.55);letter-spacing:.8px;font-weight:500;white-space:nowrap;user-select:none}
-.music-radio-btn{width:22px;height:22px;border-radius:50%;border:none;background:transparent;color:rgba(255,255,255,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s;flex-shrink:0}
-.music-radio-btn:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.08)}
-.music-radio-btn:active{transform:scale(.88)}
-.music-radio-btn svg{width:12px;height:12px;fill:currentColor}
-#MUSIC_BAR.muted .music-radio-btn{color:rgba(255,255,255,.25)}
-@keyframes musicPulse{0%,100%{opacity:1}50%{opacity:.35}}
 
 /* ══════════════════════════════════════════
    MATRIX KRALLIĞI (MK) UI
