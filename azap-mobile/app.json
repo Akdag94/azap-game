@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "AZAP Online",
-    "slug": "azap-mobile",
+    "slug": "azap-online-v2",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -41,7 +41,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "98e2151f-3589-4b51-9316-35ca1e8d682b"
+        "projectId": "e0132820-a136-4768-acf2-53602677bbaa"
       }
     },
     "owner": "akdag994"
