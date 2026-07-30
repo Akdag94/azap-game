@@ -6,7 +6,7 @@
   "scripts": {
     "start": "expo start",
     "sync-web": "node ../ios/sync-web-assets.js",
-    "build:ios": "eas build -p ios --profile production",
+    "build:ios": "node eas-build-ios.js",
     "submit:ios": "eas submit -p ios --latest"
   },
   "dependencies": {

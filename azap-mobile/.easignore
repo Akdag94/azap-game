@@ -39,6 +39,9 @@ web-build/
 *.aab
 
 # Çeşitli
+# NOT: .git satırı EAS'in git istemcisine İŞLEMEZ. Bu repoda .git 710 MB
+# (263 MP3 commit geçmişinde) ve varsayılan build onu da yükler. Bu yüzden
+# build'i `npm run build:ios` ile çalıştır — EAS_NO_VCS=1 verir, arşiv 1.5 MB.
 .git/
 *.rar
 *.zip
