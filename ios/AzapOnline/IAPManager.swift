@@ -62,12 +62,16 @@ final class IAPManager {
     }
 
     /// Bekleyen bir işlemi sunucuya tanımlat; başarılıysa finish et.
-    private func settle(_ transaction: Transaction) async {
-        guard let username = lastUsername, !username.isEmpty else { return }
+    /// Dönüş: işlem hesaba yazılıp kapatıldı mı?
+    @discardableResult
+    private func settle(_ transaction: Transaction) async -> Bool {
+        guard let username = lastUsername, !username.isEmpty else { return false }
         let r = await verifyWithServer(username: username, transactionId: String(transaction.id))
         if r.ok && r.sawTransaction {
             await transaction.finish()
+            return true
         }
+        return false
     }
 
     /// Satın alma başlat + sunucu doğrulaması
@@ -109,33 +113,27 @@ final class IAPManager {
         }
     }
 
-    /// Önceki satın almaları geri yükle (App Store zorunluluğu: restore butonu)
-    func restorePurchases(username: String) async -> (ok: Bool, error: String?) {
-        guard !username.isEmpty else { return (false, "Giriş yapmış olman gerekiyor.") }
+    /// AZAP'ın kendi geri yükleme mekanizması — Apple ID parolası İSTEMEZ.
+    ///
+    /// App Store 3.1.1: sattığımız tüm ürünler tüketilebilir (CONSUMABLE).
+    /// Tüketilebilir ürünler Apple hesabıyla geri yüklenemez, bu yüzden
+    /// `AppStore.sync()` (parola sorar) ve `Transaction.currentEntitlements`
+    /// ARTIK KULLANILMIYOR. Yalnızca ödemesi alınmış ama hesaba yazılamamış
+    /// yerel işlemler (`Transaction.unfinished`) tamamlanır. Ürünün kalıcı
+    /// sahipliği sunucudaki AZAP hesabındadır: kullanıcı hesabına hangi
+    /// cihazdan girerse girsin altını ve premium süresi onunla gelir.
+    ///
+    /// Dönüş: settled = hesaba yazılıp kapatılan işlem sayısı (0 hata değildir).
+    func syncPurchases(username: String) async -> (ok: Bool, settled: Int, error: String?) {
+        guard !username.isEmpty else { return (false, 0, "Giriş yapmış olman gerekiyor.") }
         lastUsername = username
-        // Consumable'lar currentEntitlements'ta görünmez — önce kuyrukta
-        // bekleyen (finish edilmemiş) işlemleri tanımlamayı dene.
+        var settled = 0
         for await unfinished in Transaction.unfinished {
             if case .verified(let transaction) = unfinished {
-                await settle(transaction)
+                if await settle(transaction) { settled += 1 }
             }
         }
-        do {
-            try await AppStore.sync()
-        } catch {
-            return (false, "Geri yükleme başarısız: \(error.localizedDescription)")
-        }
-        let serverOk = await verifyWithServer(username: username, transactionId: nil).ok
-        // Sunucu tanımladıysa bekleyen transactionları bitir
-        if serverOk {
-            for await entitlement in Transaction.currentEntitlements {
-                if case .verified(let transaction) = entitlement {
-                    await transaction.finish()
-                }
-            }
-            return (true, nil)
-        }
-        return (false, "Geri yüklenecek satın alma bulunamadı.")
+        return (true, settled, nil)
     }
 
     // MARK: - Sunucu doğrulaması

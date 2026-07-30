@@ -90,11 +90,15 @@ struct AzapWebView: UIViewRepresentable {
                     let result = await IAPManager.shared.purchase(productId: productId, username: username)
                     self.sendIapResult(ok: result.ok, error: result.error)
                 }
-            } else if action == "restore" {
+            } else if action == "sync" {
+                // AZAP'ın kendi geri yükleme mekanizması — Apple ID parolası sormaz.
                 let username = body["username"] as? String ?? ""
+                let silent = body["silent"] as? Bool ?? false
                 Task { @MainActor in
-                    let result = await IAPManager.shared.restorePurchases(username: username)
-                    self.sendIapResult(ok: result.ok, error: result.error)
+                    let result = await IAPManager.shared.syncPurchases(username: username)
+                    if !silent || result.settled > 0 {
+                        self.sendIapSyncResult(ok: result.ok, settled: result.settled, error: result.error)
+                    }
                 }
             }
         }
@@ -110,6 +114,22 @@ struct AzapWebView: UIViewRepresentable {
                 errJs = "null"
             }
             let js = "window.azapIapResult && window.azapIapResult({ok:\(ok ? "true" : "false"),error:\(errJs)})"
+            webView?.evaluateJavaScript(js, completionHandler: nil)
+        }
+
+        /// Eşitleme (kendi geri yükleme mekanizmamız) sonucu — satın alma
+        /// sonucundan ayrı, çünkü settled=0 normal bir durum, hata değil.
+        @MainActor
+        func sendIapSyncResult(ok: Bool, settled: Int, error: String?) {
+            let errJs: String
+            if let e = error {
+                let escaped = e.replacingOccurrences(of: "\\", with: "\\\\")
+                              .replacingOccurrences(of: "'", with: "\\'")
+                errJs = "'\(escaped)'"
+            } else {
+                errJs = "null"
+            }
+            let js = "window.azapIapSyncResult && window.azapIapSyncResult({ok:\(ok ? "true" : "false"),settled:\(settled),error:\(errJs)})"
             webView?.evaluateJavaScript(js, completionHandler: nil)
         }
 

@@ -161,6 +161,11 @@ Sunucudaki `/api/iap/verify` endpoint'i:
 ## 6. Web Tarafı Köprü Sözleşmesi (referans)
 
 - Web → Native: `window.webkit.messageHandlers.iap.postMessage({action:'purchase', packageId, productId, username})`
-- Web → Native: `{action:'restore', username}` (restore butonu eklemek istersen)
+- Web → Native: `{action:'sync', username, silent:true}` — kullanıcıya dönük bir
+  "geri yükleme" DEĞİL; yalnızca ödemesi alınıp hesaba yazılamamış işlemleri
+  sessizce tamamlar. Tüm ürünler tüketilebilir olduğu için Apple ID ile geri
+  yükleme (`AppStore.sync`) kullanılmaz — App Store 3.1.1 reddinin sebebi buydu.
 - Native → Web: `window.azapIapResult({ok:true|false, error:null|'mesaj'})`
+- Native → Web: `window.azapIapSyncResult({ok, settled, error})` — yalnızca
+  `settled > 0` iken gönderilir.
 - iOS tespiti: URL `?platform=ios` **veya** User-Agent içinde `AzapiOS`

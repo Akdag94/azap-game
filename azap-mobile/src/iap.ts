@@ -13,7 +13,10 @@
  * 3. İşlemin JWS'i (+ varsa eski tip receipt) sunucuya gönderilir: POST /api/iap/verify
  * 4. Sunucu Apple'a doğrulatıp paketi hesaba tanımlar
  * 5. Sunucu ONAYLAMADAN finishTransaction çağrılmaz — doğrulama başarısız
- *    olursa satın alma kaybolmaz, restore/tekrar açılışta yeniden denenir.
+ *    olursa satın alma kaybolmaz, tekrar açılışta/eşitlemede yeniden denenir.
+ *
+ * App Store 3.1.1: tüm ürünler tüketilebilir olduğundan Apple ID ile geri
+ * yükleme (AppStore.sync / getAvailablePurchases) KULLANILMAZ; bkz. settlePending.
  */
 import {
   initConnection,
@@ -21,7 +24,6 @@ import {
   fetchProducts,
   requestPurchase,
   finishTransaction,
-  getAvailablePurchases,
   purchaseUpdatedListener,
   purchaseErrorListener,
   validateReceiptIOS,
@@ -310,8 +312,9 @@ export async function purchaseIos(
     }
 
     if (await creditAndFinish(outcome.purchase, username, server)) return { ok: true };
-    // Sunucu doğrulayamadı: transaction açık kalır, restore ile tekrar denenir
-    return { ok: false, error: 'Satın alman alındı, ancak hesabına tanımlanamadı. Birazdan otomatik tanımlanacak; olmazsa mağazadaki “Satın Almaları Geri Yükle”ye dokun.' };
+    // Sunucu doğrulayamadı: transaction AÇIK KALIR (finish edilmez), böylece
+    // uygulama bir sonraki açılışta/girişte sessizce tamamlar — para kaybolmaz.
+    return { ok: false, error: 'Satın alman alındı, ancak hesabına henüz tanımlanamadı. Uygulamayı tekrar açtığında otomatik tanımlanacak.' };
   } catch (e: any) {
     const msg = String(e?.message || e || 'Bilinmeyen hata');
     if (/cancel/i.test(msg)) return { ok: false, error: 'Satın alma iptal edildi.' };
@@ -336,9 +339,14 @@ function dedupe(purchases: Purchase[]): Purchase[] {
  * Kuyrukta bekleyen (finish edilmemiş) işlemleri sunucuya tanımlat ve kapat.
  * Sessiz çalışır; kaç işlem kapatıldığını döner.
  *
- * NOT: getAvailablePurchases varsayılanı yalnızca "aktif" kalemleri döndürür —
- * tüketilebilir (altın) işlemleri bu listede GÖRÜNMEZ. onlyIncludeActiveItemsIOS
- * false verilir, ayrıca bitmemiş işlemler için getPendingTransactionsIOS okunur.
+ * ÖNEMLİ (App Store 3.1.1 reddi): AZAP'ın SATTIĞI TÜM ÜRÜNLER TÜKETİLEBİLİR
+ * (CONSUMABLE — 4 altın paketi + 3 premium süre paketi). Tüketilebilir ürünler
+ * Apple hesabı/parolası istenerek geri yüklenemez, bu yüzden `getAvailablePurchases`
+ * / `restorePurchases` (AppStore.sync → Apple ID parola sorar) ARTIK ÇAĞRILMIYOR.
+ * Bunun yerine yalnızca StoreKit'in yerel bitmemiş işlem kuyruğu okunur
+ * (`Transaction.unfinished`) — parola sormaz, sadece ödemesi alınmış ama hesaba
+ * yazılamamış işlemleri tamamlar. Ürünün kalıcı sahipliği bizim tarafımızda:
+ * satın alma AZAP hesabına yazılır ve hesapla birlikte her cihazda gelir.
  */
 async function settlePending(username: string, server: string): Promise<number> {
   if (!username) return 0;
@@ -346,12 +354,8 @@ async function settlePending(username: string, server: string): Promise<number> 
   _lastServer = server;
   let closed = 0;
   try {
-    const lists = await Promise.all([
-      getPendingTransactionsIOS().catch(() => [] as Purchase[]),
-      getAvailablePurchases({ onlyIncludeActiveItemsIOS: false }).catch(() => [] as Purchase[]),
-    ]);
-    const purchases = dedupe(([] as Purchase[]).concat(...(lists as Purchase[][])));
-    for (const p of purchases) {
+    const pending = await getPendingTransactionsIOS().catch(() => [] as Purchase[]);
+    for (const p of dedupe(pending as Purchase[])) {
       if (await creditAndFinish(p, username, server)) closed++;
     }
   } catch (e) {
@@ -360,18 +364,25 @@ async function settlePending(username: string, server: string): Promise<number> 
   return closed;
 }
 
-export async function restoreIos(
+/**
+ * Sessiz güvenlik ağı — kullanıcıya dönük bir "geri yükleme" ÖZELLİĞİ DEĞİLDİR.
+ *
+ * Ödemesi alınmış ama ağ hatası yüzünden hesaba yazılamamış yerel işlemleri
+ * tamamlar. Apple ID parolası İSTEMEZ. Kullanıcının aldığı altın/premium zaten
+ * sunucudaki AZAP hesabında durur; başka bir cihazda hesabına giriş yapmak
+ * satın almalara erişmenin tek ve yeterli yoludur.
+ */
+export async function syncPurchasesIos(
   username: string,
   server: string
-): Promise<{ ok: boolean; error?: string }> {
-  if (!username) return { ok: false, error: 'Giriş yapmış olman gerekiyor.' };
-  if (!(await ensureConnection())) return { ok: false, error: 'App Store bağlantısı kurulamadı.' };
+): Promise<{ ok: boolean; settled: number; error?: string }> {
+  if (!username) return { ok: false, settled: 0, error: 'Giriş yapmış olman gerekiyor.' };
+  if (!(await ensureConnection())) return { ok: false, settled: 0, error: 'App Store bağlantısı kurulamadı.' };
   try {
-    const closed = await settlePending(username, server);
-    if (closed > 0) return { ok: true };
-    return { ok: false, error: 'Tanımlanacak bekleyen satın alma bulunamadı.' };
+    // settled = 0 bir HATA DEĞİL: bekleyen işlem yok, satın almalar zaten hesapta.
+    return { ok: true, settled: await settlePending(username, server) };
   } catch (e: any) {
-    return { ok: false, error: 'Geri yükleme hatası: ' + String(e?.message || e) };
+    return { ok: false, settled: 0, error: 'Eşitleme hatası: ' + String(e?.message || e) };
   }
 }
 

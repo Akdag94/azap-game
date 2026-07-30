@@ -837,7 +837,7 @@ function applyIosShopRestrictions(){
   const tabs=document.querySelectorAll('.shop-tab');
   if(IS_IOS_APP){
     tabs.forEach(b=>{ if(b.dataset.tab==='donate') b.style.display='none'; });
-    const rr=Q('SHOP_RESTORE_ROW'); if(rr) rr.style.display='block';
+    const rr=Q('SHOP_SYNC_ROW'); if(rr) rr.style.display='block';
   } else {
     // Web: gerçek para gerektiren tüm sekmeleri gizle
     tabs.forEach(b=>{ if(['gold','premium','donate'].includes(b.dataset.tab)) b.style.display='none'; });
@@ -869,16 +869,38 @@ io2.on('connect',()=>{
   setTimeout(()=>{ if(_pendingPushToken&&user) window.azapPushToken(_pendingPushToken); },1500);
 });
 
-// Tamamlanmamış satın almaları App Store'dan geri yükle (iOS mağaza sekmesindeki buton)
-function iapRestore(){
-  if(!IS_IOS_APP){ toast('Bu özellik yalnızca AZAP uygulamasında çalışır.',1); return; }
-  if(!user){ toast('Giriş yap!',1); return; }
-  if(_nativePost('iap',{action:'restore',username:user.username})){
-    toast('Satın almalar kontrol ediliyor...');
-  } else {
-    toast('App Store bağlantısı kurulamadı.',1);
-  }
+// ── SATIN ALMA GERİ YÜKLEME: YOK (App Store 3.1.1) ──
+// Sattığımız 8 ürünün tamamı TÜKETİLEBİLİR. Tüketilebilir ürünler Apple hesabı
+// ve parolası girilerek geri yüklenemez; 1.0(13) sürümü tam da bu yüzden
+// reddedildi. Bu nedenle kullanıcıya dönük "Satın Almaları Geri Yükle" özelliği
+// tamamen kaldırıldı — ne buton var, ne de AppStore.sync çağrısı.
+//
+// Kalıcı sahiplik zaten bizde: satın alma sunucuda AZAP hesabına yazılır
+// (transactionId ile tekilleştirilir), kullanıcı hesabına hangi cihazdan
+// girerse girsin bakiyesi onunla gelir.
+//
+// Geriye tek bir sessiz güvenlik ağı kalıyor: ödemesi alındığı hâlde ağ hatası
+// yüzünden hesaba yazılamamış bir işlem varsa, giriş sonrası arka planda
+// tamamlanır. Kullanıcı arayüzünde hiçbir karşılığı yoktur ve Apple ID
+// parolası sormaz (yalnızca StoreKit'in yerel bitmemiş işlem kuyruğunu okur).
+function _iapSettlePendingSilently(){
+  if(!IS_IOS_APP||!user)return;
+  _nativePost('iap',{action:'sync',username:user.username,silent:true});
 }
+function iapSyncOnLogin(){
+  if(!IS_IOS_APP||!user)return;
+  setTimeout(_iapSettlePendingSilently,2000);
+}
+
+// Sessiz tamamlama sonucu. Native yalnızca GERÇEKTEN bir işlem tanımlandığında
+// haber verir; bekleyen işlem çıkmaması normaldir ve kullanıcıya yansımaz.
+window.azapIapSyncResult = function(res){
+  try{
+    if(!res || !res.settled) return;
+    io2.emit('auth:stats',null,r=>{ if(r){ user=r; updateUserUI(); updateShopHeader(); } });
+    toast('✅ Bekleyen satın alman hesabına tanımlandı.');
+  }catch(e){}
+};
 
 // Native iOS uygulamasından satın alma sonucu döner (WKWebView evaluateJavaScript ile çağrılır)
 window.azapIapResult = function(result){
@@ -1532,11 +1554,27 @@ function deleteAccount(){
   });
 }
 
+// App Store 2.1(a) reddi: inceleme ekibi odaya katılamadı — "Oyun içi isim"
+// alanı boş kaldığı için Katıl butonu "İsim gir!" ile bloklanıyordu. Alan artık
+// hesap adıyla otomatik dolar; kullanıcı isterse üzerine yazar.
+let _iapSyncedOnce=false;
+function defaultPlayerName(){
+  const raw=(user&&user.username)?String(user.username):'';
+  return raw.trim().slice(0,12);
+}
+function fillPlayerNameInput(){
+  const el=Q('IN');
+  if(el&&!el.value.trim()){ const d=defaultPlayerName(); if(d) el.value=d; }
+}
+
 function updateUserUI(){
   if(!user)return;
   // iOS: giriş yapılmış kullanıcı için push izni akışını (bir kez) başlat
   if(typeof _maybeAskPushPermission==='function') _maybeAskPushPermission();
+  // iOS: yarım kalmış satın almayı giriş sonrası bir kez sessizce tamamla
+  if(!_iapSyncedOnce){ _iapSyncedOnce=true; if(typeof iapSyncOnLogin==='function') iapSyncOnLogin(); }
   Q('WN').textContent=user.username;
+  fillPlayerNameInput();
   // Ana menüde avatar + frame (köşeli 13px)
   const fw = cosmeticFrameWrap(user.equipped, true);
   let avatarHtml = avHTML(user.avatar,'md','👤');
@@ -2067,16 +2105,25 @@ function clearLastRoom(){
   try{localStorage.setItem('azap_left_time',Date.now().toString());}catch{}
   console.log('[clearLastRoom] Oda verisi temizlendi, kasıtlı çıkış flag\'i set edildi');
 }
+// Alan boşsa hesap adına düş; yine de boşsa alanı odakla ki kullanıcı ne
+// yapması gerektiğini görsün (eskiden yalnızca küçük bir toast çıkıyordu).
+function readPlayerName(){
+  const el=Q('IN');
+  let n=(el&&el.value||'').trim();
+  if(!n){ n=defaultPlayerName(); if(n&&el) el.value=n; }
+  if(!n){ toast('İsim gir!',1); try{ el?.focus(); el?.scrollIntoView({block:'center',behavior:'smooth'}); }catch{} }
+  return n;
+}
 function createRoom(){
-  const n=Q('IN').value.trim();if(!n)return toast('İsim gir!',1);
+  const n=readPlayerName();if(!n)return;
   _intentionalLeave=false;
   io2.emit('room:create',{playerName:n},r=>{if(r.ok){me=io2.id;Q('LC').textContent=r.code;saveLastRoom(r.code,n);show('S2');buildRG();applyMusicForCurrentScreen();io2.emit('auth:stats',null,s=>{if(s){user=s;updateUserUI();}});}else toast(r.err,1);});
 }
 // ── ODAYA KATILMA (App Store 1.2) ──
 // Katılmadan önce odadaki oyuncular gösterilir; kullanıcı onaylar veya vazgeçer.
 function joinRoom(){
-  const n=Q('IN').value.trim(),c=Q('IC').value.trim();
-  if(!n)return toast('İsim gir!',1);if(c.length!==4)return toast('4 haneli kod!',1);
+  const n=readPlayerName(),c=Q('IC').value.trim();
+  if(!n)return;if(c.length!==4)return toast('4 haneli kod!',1);
   io2.emit('room:preview',{code:c},r=>{
     if(!r||!r.ok) return toast((r&&r.err)||'Oda bulunamadı',1);
     showRoomPreview(r,()=>_doJoinRoom(c,n));

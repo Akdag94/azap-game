@@ -19,7 +19,7 @@ import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Notifications from 'expo-notifications';
-import { purchaseIos, restoreIos, fetchIosPrices } from './src/iap';
+import { purchaseIos, syncPurchasesIos, fetchIosPrices } from './src/iap';
 
 const SERVER = 'https://azap.online';
 const REMOTE_FALLBACK = `${SERVER}/?platform=ios`;
@@ -90,6 +90,13 @@ export default function App() {
     runJs(`window.azapIapResult && window.azapIapResult({ok:${ok ? 'true' : 'false'},error:${err}})`);
   };
 
+  // Kendi geri yükleme (eşitleme) sonucu — "satın alma başarılı" mesajından ayrı,
+  // çünkü bekleyen işlem çıkmaması normal bir durum, hata değil.
+  const sendIapSyncResult = (ok: boolean, settled: number, error?: string | null) => {
+    const err = error ? `'${String(error).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'` : 'null';
+    runJs(`window.azapIapSyncResult && window.azapIapSyncResult({ok:${ok ? 'true' : 'false'},settled:${settled | 0},error:${err}})`);
+  };
+
   // App Store'un yerelleştirilmiş fiyatlarını web tarafına ilet
   const sendIapPrices = (prices: Record<string, string>) => {
     // İki kez stringify: tırnak/ters bölü içeren değerler de güvenle geçer.
@@ -124,9 +131,13 @@ export default function App() {
       if (msg.action === 'purchase') {
         const r = await purchaseIos(String(msg.productId || ''), String(msg.username || ''), SERVER);
         sendIapResult(r.ok, r.error);
-      } else if (msg.action === 'restore') {
-        const r = await restoreIos(String(msg.username || ''), SERVER);
-        sendIapResult(r.ok, r.error);
+      } else if (msg.action === 'sync') {
+        // Kullanıcıya dönük "geri yükleme" YOK (App Store 3.1.1 — tüm ürünler
+        // tüketilebilir). Bu yalnızca sessiz güvenlik ağı: ödemesi alınmış ama
+        // hesaba yazılamamış işlem varsa tamamlanır. Apple ID parolası sormaz.
+        // Web tarafına sadece gerçekten bir işlem tanımlandıysa haber verilir.
+        const r = await syncPurchasesIos(String(msg.username || ''), SERVER);
+        if (r.settled > 0) sendIapSyncResult(true, r.settled, null);
       } else if (msg.action === 'prices') {
         const ids = Array.isArray(msg.productIds) ? msg.productIds.map(String) : [];
         const prices = await fetchIosPrices(ids);

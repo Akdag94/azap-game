@@ -135,10 +135,16 @@
   <!-- ALTIN SEKMESİ -->
   <div class="shop-pane" id="SHOP_PANE_gold">
     <div id="SHOP_GOLD_PACKAGES"></div>
-    <!-- Yalnızca iOS uygulamasında görünür (applyIosShopRestrictions açar) -->
-    <div id="SHOP_RESTORE_ROW" style="display:none;margin-top:14px;text-align:center">
-      <button onclick="iapRestore()" style="font-size:.78rem;padding:8px 16px;background:transparent;border:1px solid var(--brd);color:var(--hi);border-radius:20px;cursor:pointer">🔄 Satın Almaları Geri Yükle</button>
-      <div style="font-size:.68rem;color:var(--dim);margin-top:6px">Satın alman hesabına tanımlanmadıysa buraya dokun.</div>
+    <!--
+      App Store 3.1.1: satılan 8 ürünün TAMAMI tüketilebilir (CONSUMABLE).
+      Tüketilebilir ürünler için "Satın Almaları Geri Yükle" ne zorunludur ne de
+      mümkündür — Apple bu yüzden 1.0(13) sürümünü reddetti. Buton KALDIRILDI.
+      Yerine yalnızca bilgi metni var (dokunulabilir değil); yarım kalmış bir
+      ödeme varsa uygulama açılışında/girişte sessizce hesaba tanımlanır.
+      Yalnızca iOS uygulamasında görünür (applyIosShopRestrictions açar).
+    -->
+    <div id="SHOP_SYNC_ROW" style="display:none;margin-top:14px;text-align:center">
+      <div style="font-size:.68rem;color:var(--dim);line-height:1.5">Altınların ve premium üyeliğin <strong>AZAP hesabına</strong> tanımlanır — hangi cihazdan girersen gir bakiyen seninle gelir.</div>
     </div>
   </div>
 
