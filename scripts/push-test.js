@@ -17,6 +17,7 @@ const REASONS = {
   BadDeviceToken: 'Token bu ortama ait değil. En sık sebep: sandbox tokenı production sunucusuna (ya da tersi) gönderiliyor. APNS_PRODUCTION değerini kontrol et (TestFlight/App Store = true, Xcode debug build = false).',
   Unregistered: 'Uygulama cihazdan silinmiş. Token otomatik temizlendi.',
   DeviceTokenNotForTopic: 'Token başka bir bundle ID\'ye ait. APNS_TOPIC "online.azap.app" olmalı.',
+  BadEnvironmentKeyInToken: 'Anahtar SANDBOX-ONLY olarak kaydedilmiş, production\'a gönderemiyor. Apple Developer → Keys sayfasında anahtar oluştururken "Apple Push Notifications service (APNs)" seçilmeliydi; "APNs Sandbox" seçeneği yalnızca Xcode debug build\'leri içindir. App Store/TestFlight sürümleri production ortamını kullanır. Çözüm: anahtarı düzenleyip tam APNs servisini aç ya da yeni anahtar oluştur.',
   TopicDisallowed: 'Bu anahtarın bu topic\'e gönderme yetkisi yok.',
   InvalidProviderToken: 'JWT reddedildi — APNS_KEY_ID veya APNS_TEAM_ID yanlış, ya da anahtar bu takıma ait değil.',
   ExpiredProviderToken: 'JWT süresi dolmuş (sunucu saati kaymış olabilir).',

@@ -18,6 +18,8 @@ ios/AzapOnline/WebAssets/
 data/iap_transactions.json
 data/apns-key.p8
 data/settings.json
+# Apple ozel anahtarlari (APNs / App Store Connect API) — nerede olursa olsun
+*.p8
 azap-mobile/node_modules/
 azap-mobile/.expo/
 
