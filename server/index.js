@@ -9,6 +9,7 @@ const GameEngine = require('./gameEngine');
 const Accounts = require('./accounts');
 const Reports = require('./reports');
 const Push = require('./push');
+const Settings = require('./settings');
 const ContentFilter = require('./contentFilter');
 const { PHASES, TEAMS } = require('./gameConstants');
 const registerLegalRoutes = require('./legalPages');
@@ -1164,6 +1165,24 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 const rooms = new Map(), prooms = new Map(), authed = new Map(), timers = new Map();
+// socketId -> 'ios-app' | 'phone-web' | 'desktop-web'  (istemci bağlanınca 'client:hello' ile bildirir)
+const clientPlatform = new Map();
+
+// ── TARAYICI KAPISI ──
+// Uygulama (WebView) sunucuya normal bir mobil Safari gibi göründüğü için
+// User-Agent'a bakarak ayırt etmek MÜMKÜN DEĞİL — istemcinin kendi bildirimine
+// güveniyoruz. Bu yüzden kapı teknik bir duvar değil, yönlendirmedir; amacı
+// izinsiz kullanıcıyı uygulamaya göndermek, kararlı birini durdurmak değil.
+// Gerçek yetki kontrolü hesap bazlı `webAccess` iznidir ve o sunucuda tutulur.
+function webGateBlocks(socketId, username) {
+  const mode = Settings.getWebAccessMode();
+  if (mode === 'off') return false;
+  const platform = clientPlatform.get(socketId) || 'desktop-web';
+  if (platform === 'ios-app') return false;                 // uygulama her zaman serbest
+  if (mode === 'phone' && platform !== 'phone-web') return false; // masaüstü serbest
+  return !Accounts.canAccessWeb(username);
+}
+const WEB_GATE_ERR = 'Bu cihazda oynamak için AZAP uygulamasını indir ya da yöneticiden web erişim izni iste.';
 const disconnectTimers = new Map(); // socketId -> timeoutId (3dk sonra oyundan otomatik çıkar)
 const mkStates = new Map(); // rc -> MK game state (Matrix Krallığı modu)
 const MK = require('./matrixKingdom');
@@ -2209,6 +2228,18 @@ io.on('connection', (socket) => {
     return trimmed;
   }
 
+  // ── İSTEMCİ TANITIMI ──
+  // Bağlantı kurulur kurulmaz istemci hangi platformdan geldiğini bildirir.
+  // Değer bir kez sabitlenir (sonradan değiştirilemez) ki oyun ortasında
+  // platform değiştirip kapıyı atlamak mümkün olmasın.
+  socket.on('client:hello', ({ platform } = {}, cb) => {
+    if (!clientPlatform.has(socket.id)) {
+      const ok = ['ios-app', 'phone-web', 'desktop-web'];
+      clientPlatform.set(socket.id, ok.includes(platform) ? platform : 'desktop-web');
+    }
+    cb?.({ ok: true, webAccessMode: Settings.getWebAccessMode() });
+  });
+
   socket.on('auth:register', (d, cb) => {
     if (!d || typeof d !== 'object') return cb?.({ success: false, error: 'Geçersiz veri' });
     const cleanUser = sanitizeUsername(d.username);
@@ -2226,7 +2257,7 @@ io.on('connection', (socket) => {
       kickOldSessions(cleanUser, socket.id);
       authed.set(socket.id, cleanUser);
     }
-    cb(r);
+    cb({ ...r, webAccessMode: Settings.getWebAccessMode() });
   });
   socket.on('auth:login', (d, cb) => {
     if (!d || typeof d !== 'object') return cb?.({ success: false, error: 'Geçersiz veri' });
@@ -2240,7 +2271,7 @@ io.on('connection', (socket) => {
       kickOldSessions(cleanUser, socket.id);
       authed.set(socket.id, cleanUser);
     }
-    cb(r);
+    cb({ ...r, webAccessMode: Settings.getWebAccessMode() });
   });
   // Token ile otomatik giriş
   socket.on('auth:loginByToken', ({ token } = {}, cb) => {
@@ -2252,7 +2283,7 @@ io.on('connection', (socket) => {
       kickOldSessions(r.user.username, socket.id);
       authed.set(socket.id, r.user.username);
     }
-    cb(r);
+    cb({ ...r, webAccessMode: Settings.getWebAccessMode() });
   });
   // Çıkış yap
   socket.on('auth:logout', ({ token } = {}, cb) => {
@@ -2286,13 +2317,11 @@ io.on('connection', (socket) => {
     }
     if (!Push.enabled()) return cb?.({ ok: false, err: 'APNs yapılandırılmamış (sunucu .env)' });
     const users = Accounts.listPushUsers();
-    let queued = 0;
-    users.forEach(uname => {
-      queued++;
-      Push.sendToUser(Accounts, uname, { title: title.trim().slice(0, 60), body: body.trim().slice(0, 200) });
-    });
-    console.log(`[Push] Admin duyurusu → ${queued} kullanıcı (${u})`);
-    cb?.({ ok: true, userCount: queued });
+    // Eşzamanlılık sınırlı toplu gönderim — yanıtı bekletmeden arka planda çalışır
+    Push.sendToUsers(Accounts, users, { title: title.trim().slice(0, 60), body: body.trim().slice(0, 200) })
+      .then(r => console.log(`[Push] Admin duyurusu (${u}) → ${r.users}/${users.length} kullanıcı, ${r.sent} cihaz`))
+      .catch(e => console.error('[Push] Duyuru hatası:', e.message));
+    cb?.({ ok: true, userCount: users.length });
   });
 
   // Hesabı kalıcı sil (App Store 5.1.1(v): uygulama içi hesap silme zorunlu)
@@ -2448,6 +2477,7 @@ io.on('connection', (socket) => {
   socket.on('room:create', ({ playerName } = {}, cb) => {
     const u = authed.get(socket.id);
     if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    if (webGateBlocks(socket.id, u)) return cb?.({ ok: false, err: WEB_GATE_ERR, webGate: true });
     const cleanName = sanitizePlayerName(playerName);
     if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı ve uygunsuz içerik barındıramaz' });
     const stats = Accounts.getStats(u);
@@ -2492,6 +2522,7 @@ io.on('connection', (socket) => {
   socket.on('room:join', ({ code, playerName } = {}, cb) => {
     const u = authed.get(socket.id);
     if (!u) return cb?.({ ok: false, err: 'Giriş yap!' });
+    if (webGateBlocks(socket.id, u)) return cb?.({ ok: false, err: WEB_GATE_ERR, webGate: true });
     if (typeof code !== 'string' || code.length !== 4) return cb?.({ ok: false, err: 'Kod geçersiz' });
     const cleanName = sanitizePlayerName(playerName);
     if (!cleanName) return cb?.({ ok: false, err: 'İsim 1-12 karakter olmalı ve uygunsuz içerik barındıramaz' });
@@ -2508,6 +2539,7 @@ io.on('connection', (socket) => {
   socket.on('room:spectate', ({ code }, cb) => {
     const u = authed.get(socket.id);
     if (!u) return cb({ ok: false, err: 'Giriş yap!' });
+    if (webGateBlocks(socket.id, u)) return cb({ ok: false, err: WEB_GATE_ERR, webGate: true });
     const g = rooms.get(code);
     if (!g) return cb({ ok: false, err: 'Oda yok!' });
     const stats = Accounts.getStats(u);
@@ -3591,6 +3623,35 @@ io.on('connection', (socket) => {
     cb?.(r.success ? { ok: true } : { ok: false, err: r.error });
   });
 
+  // ── TARAYICI ERİŞİM İZNİ ──
+  // Kullanıcı bazlı izin: bu hesap kapıya takılmadan tarayıcıdan oynayabilir.
+  socket.on('admin:setWebAccess', ({ username, allowed }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Accounts.adminSetWebAccess(username, !!allowed);
+    if (!r.success) return cb?.({ ok: false, err: r.error });
+    // İzin anında geçerli olsun: kullanıcı açıksa haber ver, sayfayı tazelesin
+    for (const [sid, uname] of authed.entries()) {
+      if (uname?.toLowerCase() === String(username || '').toLowerCase()) {
+        io.to(sid).emit('web:accessChanged', { webAccess: !!allowed });
+      }
+    }
+    console.log(`[Kapı] ${username} web erişimi → ${allowed ? 'AÇIK' : 'KAPALI'}`);
+    cb?.({ ok: true });
+  });
+
+  // Site geneli kapı modu (off | phone | all)
+  socket.on('admin:getSettings', (_, cb) => {
+    if (!requireAdmin(cb)) return;
+    cb?.({ ok: true, settings: Settings.all(), modes: Settings.VALID_MODES });
+  });
+  socket.on('admin:setWebAccessMode', ({ mode }, cb) => {
+    if (!requireAdmin(cb)) return;
+    const r = Settings.setWebAccessMode(mode);
+    if (!r.success) return cb?.({ ok: false, err: r.error });
+    io.emit('web:modeChanged', { webAccessMode: r.mode });
+    cb?.({ ok: true, mode: r.mode });
+  });
+
   // Bug raporlarını listele
   socket.on('admin:listReports', (_, cb) => {
     if (!requireAdmin(cb)) return;
@@ -3717,6 +3778,7 @@ io.on('connection', (socket) => {
       prooms.delete(socket.id);
     }
     authed.delete(socket.id);
+    clientPlatform.delete(socket.id);
   });
 });
 

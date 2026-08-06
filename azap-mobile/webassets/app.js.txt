@@ -421,6 +421,7 @@ function doAuth(){
   io2.emit(AM==='login'?'auth:login':'auth:register',{username:u,password:p,rememberMe},r=>{
     if(r.success){
       user=r.user;
+      if(r.webAccessMode) _webAccessMode=r.webAccessMode;
       if(r.token){
         try{ localStorage.setItem('azap_token', r.token); }catch{}
       }
@@ -431,7 +432,7 @@ function doAuth(){
         isReg ? '🎉' : '✓',
         isReg ? 'Hesap Oluşturuldu!' : 'Giriş Başarılı',
         'Hoş geldin, ' + user.username + '!',
-        ()=>{ show('S1'); setupDraggableButtons(); checkRejoin(); }
+        ()=>{ enterLobbyOrGate(checkRejoin); }
       );
     }else toast(r.error,1);
   });
@@ -567,9 +568,10 @@ function tryAutoLogin(){
   io2.emit('auth:loginByToken',{token},r=>{
     if(r?.success){
       user=r.user;
+      if(r.webAccessMode) _webAccessMode=r.webAccessMode;
       updateUserUI();
       toast('Hoş geldin '+user.username+'!');
-      setTimeout(()=>{ show('S1'); setupDraggableButtons(); tryAutoRejoin(); }, 300);
+      setTimeout(()=>{ enterLobbyOrGate(tryAutoRejoin); }, 300);
       updateRoleInfoBtn();
     } else {
       // Token geçersiz - sil
@@ -586,15 +588,141 @@ function tryAutoLogin(){
 // "AzapiOS" eklemeli. App Store Kuralı 3.1.1: dijital içerik (altın, premium,
 // bağış) uygulama içinde SADECE Apple In-App Purchase ile satılabilir.
 // Bu modda gerçek para sekmeleri gizlenir; IAP entegrasyonu native tarafta yapılır.
+// Native köprü gerçekten var mı? (Expo WebView veya WKWebView mesaj kanalı)
+// Her ikisi de sayfa scriptleri çalışmadan ÖNCE enjekte edilir.
+function _hasNativeBridge(){
+  try{
+    if (window.ReactNativeWebView) return true;
+    const mh = window.webkit && window.webkit.messageHandlers;
+    return !!(mh && (mh.iap || mh.push));
+  }catch{ return false; }
+}
+
 const IS_IOS_APP = (() => {
   try {
-    if (window.AZAP_PLATFORM === 'ios') return true; // gömülü istemci (sync scripti enjekte eder)
+    if (window.AZAP_PLATFORM === 'ios') return true;        // gömülü istemci (sync scripti enjekte eder)
+    if (/AzapiOS/i.test(navigator.userAgent)) return true;  // native Swift sarmalayıcı
+    // "?platform=ios" YALNIZCA gerçek native köprü varken kabul edilir. Aksi hâlde
+    // herhangi biri bu parametreyi ekleyip tarayıcı kapısını kalıcı olarak atlardı
+    // (parametre localStorage'a yazılıyor). Uygulamanın uzak yedek yolu
+    // (azap.online/?platform=ios) WebView içinde açıldığı için köprü orada mevcut.
+    if (!_hasNativeBridge()) { try{ localStorage.removeItem('azap_platform'); }catch{} return false; }
     const qp = new URLSearchParams(location.search);
     if (qp.get('platform') === 'ios') localStorage.setItem('azap_platform', 'ios');
     if (localStorage.getItem('azap_platform') === 'ios') return true;
   } catch {}
-  return /AzapiOS/i.test(navigator.userAgent);
+  return false;
 })();
+
+// ── TELEFON TARAYICISI TESPİTİ ──
+const IS_PHONE_BROWSER = (() => {
+  if (IS_IOS_APP) return false;
+  try {
+    const ua = navigator.userAgent;
+    if (/iPhone|iPod/.test(ua)) return true;
+    if (/Android/.test(ua) && /Mobile/.test(ua)) return true;
+    // "Masaüstü sitesi iste": UA masaüstüne döner ama dokunmatik ekran ve dar
+    // ekran kalır. iPad dışarıda kalsın diye kısa kenar eşiği 500px — iPad'in
+    // kısa kenarı 744pt ve uygulama zaten iPad'i desteklemiyor.
+    if ((navigator.maxTouchPoints || 0) > 1 && Math.min(screen.width, screen.height) < 500) return true;
+  } catch {}
+  return false;
+})();
+
+// Telefonun işletim sistemi — kapıda hangi metnin gösterileceğini belirler.
+// "Masaüstü sitesi iste" açıkken UA'dan anlaşılamaz; o durumda ikisini de göster.
+const PHONE_OS = (() => {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPod|iPad/i.test(ua)) return 'ios';
+  if (/Android/i.test(ua)) return 'android';
+  return 'unknown';
+})();
+
+const CLIENT_PLATFORM = IS_IOS_APP ? 'ios-app' : (IS_PHONE_BROWSER ? 'phone-web' : 'desktop-web');
+
+// ── TARAYICI KAPISI ──
+// Sunucudaki mod: 'off' (kapı yok) | 'phone' (telefonlar) | 'all' (tüm web).
+// Hesabında webAccess izni olan (ve tüm adminler) her modda geçer.
+const APPSTORE_URL = 'https://apps.apple.com/app/id6792583659';
+let _webAccessMode = 'phone';
+
+function _gateShouldBlock(){
+  if (IS_IOS_APP || _hasNativeBridge()) return false;   // uygulama asla kapıya çarpmaz
+  if (_webAccessMode === 'off') return false;
+  if (_webAccessMode === 'phone' && !IS_PHONE_BROWSER) return false;
+  return !(user && user.webAccess);
+}
+
+function hideAppGate(){
+  const ov = Q('APP_GATE');
+  if (ov) ov.classList.remove('on');
+  document.body.classList.remove('gated');
+}
+
+// Kapı gerekiyorsa göster ve true döndür (çağıran S1'e geçmemeli).
+function maybeShowAppGate(){
+  if (!_gateShouldBlock()) { hideAppGate(); return false; }
+  const ov = Q('APP_GATE'); if (!ov) return false;
+
+  const uname = user?.username || '';
+  const who = Q('GATE_USER'); if (who) who.textContent = uname ? uname + ', ' : '';
+  // iOS bloğu: Android telefon dışındaki herkese göster (masaüstü dahil —
+  // "all" modunda tek gerçek çıkış yolu uygulamayı indirmek).
+  const ios = Q('GATE_IOS'), and = Q('GATE_ANDROID');
+  if (ios) ios.style.display = (PHONE_OS === 'android') ? 'none' : 'block';
+  // Android bloğu yalnızca gerçekten bir telefondayken anlamlı; masaüstünde
+  // "Android sürümü yakında" demek alakasız olur.
+  if (and) and.style.display = (IS_PHONE_BROWSER && PHONE_OS !== 'ios') ? 'block' : 'none';
+  // "Şimdilik bilgisayarından oynayabilirsin" ancak masaüstü serbestse doğru
+  const soonSub = Q('GATE_SOON_SUB');
+  if (soonSub) soonSub.style.display = (_webAccessMode === 'phone') ? 'block' : 'none';
+  // Masaüstü de kapalıysa ("all" modu) metin telefona özel olmamalı
+  const lead = Q('GATE_LEAD');
+  if (lead) {
+    lead.textContent = IS_PHONE_BROWSER
+      ? 'Telefon tarayıcısından oynanamıyor.'
+      : 'Tarayıcıdan oynamak şu anda yalnızca izinli hesaplara açık.';
+  }
+  // "Bilgisayardan oynayabilirsin" ipucu yalnızca masaüstü serbestken doğru
+  const alt = Q('GATE_ALT');
+  if (alt) alt.style.display = (_webAccessMode === 'phone') ? 'block' : 'none';
+  ov.classList.add('on');
+  document.body.classList.add('gated');
+
+  // Emniyet ağı: köprü geç enjekte edildiyse (uygulamanın uzak yedek yolu)
+  // kapı kendini kapatsın — kullanıcı uygulama içinde kilitli kalmasın.
+  setTimeout(()=>{ if (_hasNativeBridge()) { hideAppGate(); show('S1'); setupDraggableButtons(); } }, 1500);
+  return true;
+}
+
+// Giriş sonrası ortak çıkış noktası: kapı varsa S1'e geçme.
+function enterLobbyOrGate(after){
+  if (maybeShowAppGate()) return;
+  show('S1');
+  setupDraggableButtons();
+  if (after) after();
+}
+
+// Platformu sunucuya bildir — her bağlantıda (reconnect dahil) tekrarlanmalı,
+// çünkü sunucu bu bilgiyi socket id'ye göre tutuyor.
+function _sendClientHello(){
+  io2.emit('client:hello', { platform: CLIENT_PLATFORM }, r=>{
+    if (r && r.webAccessMode) _webAccessMode = r.webAccessMode;
+  });
+}
+io2.on('connect', _sendClientHello);
+if (io2.connected) _sendClientHello();
+
+// Admin izni canlı değişirse anında yansıt
+io2.on('web:accessChanged', ({ webAccess } = {})=>{
+  if (user) user.webAccess = !!webAccess;
+  if (webAccess) { hideAppGate(); toast('✅ Web erişim izni verildi!'); show('S1'); setupDraggableButtons(); }
+  else if (user) maybeShowAppGate();
+});
+io2.on('web:modeChanged', ({ webAccessMode } = {})=>{
+  if (webAccessMode) _webAccessMode = webAccessMode;
+  if (user) { if (!_gateShouldBlock()) hideAppGate(); else maybeShowAppGate(); }
+});
 
 // iOS uygulamasında: ödeme Apple IAP ile yapıldığından Türkiye'ye özgü mesafeli
 // satış / iptal-iade metinleri gereksiz ve kafa karıştırıcı — gizle.
@@ -3637,7 +3765,7 @@ function amSwitchTab(tab){
   Q('AM_USERS_PANE').style.display = tab==='users' ? 'block' : 'none';
   Q('AM_STATS_PANE').style.display = tab==='stats' ? 'block' : 'none';
   Q('AM_REPORTS_PANE').style.display = tab==='reports' ? 'block' : 'none';
-  if(tab==='users') amLoadUsers();
+  if(tab==='users'){ amLoadUsers(); amLoadWebMode(); }
   else if(tab==='stats') amLoadStats();
   else if(tab==='reports') amLoadReports();
 }
@@ -3759,6 +3887,7 @@ function amFilterUsers(){
     if(flt==='admin'&&!u.isAdmin)return false;
     if(flt==='premium'&&!u.premium?.active)return false;
     if(flt==='donor'&&!(u.totalDonated>0))return false;
+    if(flt==='webaccess'&&!u.webAccess)return false;
     return true;
   });
   if(countEl)countEl.textContent=users.length!==amAllUsers.length?`${users.length} / ${amAllUsers.length} kullanıcı`:`${amAllUsers.length} kullanıcı`;
@@ -3775,6 +3904,7 @@ function amFilterUsers(){
           ${u.isAdmin?'<span class="am-badge admin">ADMIN</span>':''}
           ${u.premium?.active?`<span class="am-badge premium">PRE${premDays?' '+premDays+'g':''}</span>`:''}
           ${u.totalDonated>0?'<span class="am-badge donor">BAĞIŞÇI</span>':''}
+          ${u.webAccess&&!u.isAdmin?'<span class="am-badge webaccess">WEB</span>':''}
         </div>
         <div class="am-user-meta">🏆 ${u.stats.won} &nbsp;🎮 ${u.stats.played} &nbsp;❤️ ${u.stats.mvp||0} &nbsp;<span style="color:var(--gold)">💰 ${u.coins??0}</span></div>
       </div>
@@ -3783,6 +3913,7 @@ function amFilterUsers(){
         <button class="am-btn" onclick="amEditCoins('${u.username}',${u.coins??0})" title="Coin yönet" style="color:var(--gold)">💰</button>
         <button class="am-btn${u.premium?.active?' active-st':''}" onclick="amSetPremium('${u.username}',${!!u.premium?.active})" title="${u.premium?.active?'Premium kaldır ('+(premDays)+' gün kaldı)':'Premium ver'}">👑</button>
         <button class="am-btn${u.totalDonated>0?' active-st-pink':''}" onclick="amSetDonor('${u.username}',${!(u.totalDonated>0)})" title="${u.totalDonated>0?'Bağışçı yetkisini kaldır':'Bağışçı yap'}">💝</button>
+        <button class="am-btn${u.webAccess?' active-st-web':''}" onclick="amSetWebAccess('${u.username}',${!u.webAccess})" title="${u.isAdmin?'Adminler her zaman tarayıcıdan oynayabilir':(u.webAccess?'Tarayıcı erişim iznini kaldır':'Tarayıcıdan oynamasına izin ver')}"${u.isAdmin?' disabled':''}>🌐</button>
         <button class="am-btn" onclick="amResetPassword('${u.username}')" title="Şifre sıfırla" style="color:var(--dim)">🔑</button>
         <button class="am-btn${u.isAdmin?' active-st':''}" onclick="amToggleAdmin('${u.username}',${!u.isAdmin})" title="${u.isAdmin?'Admin yetkisini kaldır':'Admin yap'}">👁️</button>
         <button class="am-btn danger" onclick="amDeleteUser('${u.username}')" title="Hesabı sil">🗑️</button>
@@ -3833,6 +3964,30 @@ function amSetPremium(username,hasActive){
       else toast(r.err||'Hata!',1);
     });
   }
+}
+// ── TARAYICI ERİŞİM İZNİ ──
+function amSetWebAccess(username,allow){
+  io2.emit('admin:setWebAccess',{username,allowed:allow},r=>{
+    if(r.ok){toast(allow?`🌐 ${username} artık tarayıcıdan oynayabilir.`:`🚫 ${username} için tarayıcı erişimi kapatıldı.`);amLoadUsers();}
+    else toast(r.err||'Hata!',1);
+  });
+}
+// Site geneli kapı modu
+function amLoadWebMode(){
+  const sel=Q('AM_WEB_MODE'); if(!sel)return;
+  io2.emit('admin:getSettings',{},r=>{
+    if(r?.ok&&r.settings) sel.value=r.settings.webAccessMode;
+  });
+}
+function amSetWebMode(){
+  const sel=Q('AM_WEB_MODE'); if(!sel)return;
+  const mode=sel.value;
+  io2.emit('admin:setWebAccessMode',{mode},r=>{
+    if(r.ok){
+      const names={off:'Kapı kapalı — herkes tarayıcıdan oynar',phone:'Telefonlar kapıya çarpar, masaüstü serbest',all:'Tüm tarayıcılar kapıya çarpar'};
+      toast('✅ '+names[r.mode]);
+    } else { toast(r.err||'Hata!',1); amLoadWebMode(); }
+  });
 }
 function amSetDonor(username,makeDonor){
   io2.emit('admin:setDonor',{username,isDonor:makeDonor},r=>{

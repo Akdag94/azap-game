@@ -10,11 +10,24 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="AZAP">
-<!-- Open Graph (sosyal paylaşım) -->
+<!-- iOS Safari Smart App Banner: sayfanın üstünde gerçek App Store önizlemesi
+     (ikon, isim, AL/AÇ) gösterir. Masaüstünde ve uygulama içinde yok sayılır. -->
+<meta name="apple-itunes-app" content="app-id=6792583659, app-argument=https://azap.online/">
+<!-- Open Graph (sosyal paylaşım) — mutlak URL şart, paylaşım botları göreli yolu çözemez -->
 <meta property="og:title" content="AZAP - Sosyal Dedüksiyon">
 <meta property="og:description" content="Türkçe sosyal dedüksiyon oyunu. Hain bul, masum kal.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="a.png">
+<meta property="og:url" content="https://azap.online/">
+<meta property="og:site_name" content="AZAP">
+<meta property="og:image" content="https://azap.online/a.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="AZAP - Sosyal Dedüksiyon">
+<meta name="twitter:description" content="Türkçe sosyal dedüksiyon oyunu. Hain bul, masum kal.">
+<meta name="twitter:image" content="https://azap.online/a.png">
+<!-- App Links: paylaşılan bağlantı iOS'ta uygulamayı önerir -->
+<meta property="al:ios:app_store_id" content="6792583659">
+<meta property="al:ios:app_name" content="AZAP Online">
+<meta property="al:ios:url" content="azap://">
 <title>AZAP - Sosyal Dedüksiyon</title>
 <link rel="icon" type="image/png" href="a.png?v=3">
 
@@ -390,6 +403,19 @@
           </div>
         </div>
       </div>
+      <!-- Tarayıcı kapısı: kimler tarayıcıdan oynayabilir -->
+      <div class="am-webmode">
+        <div class="am-webmode-hdr">🌐 Tarayıcı Kapısı</div>
+        <select id="AM_WEB_MODE" onchange="amSetWebMode()">
+          <option value="off">Kapalı — herkes tarayıcıdan oynayabilir</option>
+          <option value="phone">Telefonlar kapalı — masaüstü serbest</option>
+          <option value="all">Tüm tarayıcılar kapalı — sadece izinliler</option>
+        </select>
+        <div class="am-webmode-note">
+          İzinsiz kullanıcılara App Store bağlantısı gösterilir. Aşağıdaki 🌐 butonuyla
+          tek tek izin verebilirsin; adminler her zaman muaftır. iOS uygulaması etkilenmez.
+        </div>
+      </div>
       <div class="am-toolbar">
         <input id="AM_SEARCH" class="am-search" placeholder="🔍 Kullanıcı ara..." oninput="amFilterUsers()">
         <select id="AM_FILTER" class="am-filter-sel" onchange="amFilterUsers()">
@@ -397,6 +423,7 @@
           <option value="admin">Admin</option>
           <option value="premium">Premium</option>
           <option value="donor">Bağışçı</option>
+          <option value="webaccess">Web izinli</option>
         </select>
       </div>
       <div id="AM_USERS_COUNT" class="am-users-count"></div>
@@ -574,6 +601,36 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
 
 <!-- Auth AI Arka Plan -->
 <div id="AI_AUTH_BG"></div>
+
+<!-- ── UYGULAMA KAPISI ──
+     Tarayıcıdan oynama izni olmayan hesaplara giriş sonrası gösterilir.
+     iOS uygulamasının içinde asla görünmez (IS_IOS_APP / native köprü kontrolü). -->
+<div id="APP_GATE">
+  <div class="gate-card">
+    <img class="gate-icon" src="a.png?v=3" alt="AZAP" onerror="this.style.display='none'">
+    <div class="gate-title">AZAP Online</div>
+    <div class="gate-lead" id="GATE_LEAD">Telefon tarayıcısından oynanamıyor.</div>
+    <div class="gate-note">
+      <span id="GATE_USER"></span>hesabın hazır — uygulamada <b>aynı kullanıcı adı ve şifreyle</b>
+      giriş yap. Altınların, eşyaların ve istatistiklerin aynen taşınır.
+    </div>
+
+    <div class="gate-block" id="GATE_IOS">
+      <a class="gate-badge" href="https://apps.apple.com/app/id6792583659" target="_blank" rel="noopener">
+        <img src="https://azap.online/appstore-badge-tr.svg" alt="App Store'dan indirin">
+      </a>
+      <a class="gate-open" href="azap://">Uygulama zaten yüklü → Aç</a>
+    </div>
+
+    <div class="gate-block" id="GATE_ANDROID">
+      <div class="gate-soon">🤖 Android sürümü yakında</div>
+      <div class="gate-soon-sub" id="GATE_SOON_SUB">Şimdilik bilgisayarından oynayabilirsin.</div>
+    </div>
+
+    <div class="gate-alt" id="GATE_ALT">Bilgisayardan <b>azap.online</b> adresine girerek oynamaya devam edebilirsin.</div>
+    <button class="gate-logout" onclick="doLogout()">Çıkış yap</button>
+  </div>
+</div>
 
 <!-- Auth -->
 <div class="scr on" id="S0">

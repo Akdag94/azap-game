@@ -53,7 +53,14 @@ function ensureStats(u) {
   if (typeof u.totalDonated !== 'number') u.totalDonated = 0;
   // Ödeme geçmişi
   if (!u.payments) u.payments = []; // { id, type, amount, currency, status, date }
+  // Tarayıcıdan oynama izni (admin verir; adminlerde her zaman açık sayılır)
+  if (typeof u.webAccess !== 'boolean') u.webAccess = false;
   return u;
+}
+
+// Tarayıcı kapısını geçebilir mi? Adminler otomatik geçer.
+function hasWebAccess(u) {
+  return !!u && (!!u.webAccess || !!u.isAdmin);
 }
 
 // Coin işlemleri (ekleme her zaman OK; çıkarma 0'ın altına düşüremez)
@@ -100,9 +107,9 @@ module.exports = {
     if (key.length < 2 || key.length > 16) return { success: false, error: 'Kullanıcı adı 2-16 karakter.' };
     if (password.length < 3) return { success: false, error: 'Şifre en az 3 karakter.' };
     if (db[key]) return { success: false, error: 'Bu kullanıcı adı alınmış.' };
-    db[key] = { username: username.trim(), hash: bcrypt.hashSync(password, 8), avatar: null, stats: { played: 0, won: 0, lost: 0, mvp: 0 }, coins: 100, inventory: [], created: Date.now() };
+    db[key] = { username: username.trim(), hash: bcrypt.hashSync(password, 8), avatar: null, stats: { played: 0, won: 0, lost: 0, mvp: 0 }, coins: 100, inventory: [], webAccess: false, created: Date.now() };
     write(db);
-    return { success: true, user: { username: db[key].username, avatar: null, stats: db[key].stats, coins: 100, inventory: [], equipped: {}, premium: { active: false, daysLeft: 0 } } };
+    return { success: true, user: { username: db[key].username, avatar: null, stats: db[key].stats, coins: 100, inventory: [], equipped: {}, premium: { active: false, daysLeft: 0 }, webAccess: false } };
   },
   login(username, password, rememberMe) {
     const db = read(), key = username.toLowerCase().trim(), u = db[key];
@@ -117,7 +124,7 @@ module.exports = {
       if (u.tokens.length > 5) u.tokens = u.tokens.slice(-5);
     }
     write(db);
-    return { success: true, user: { username: u.username, avatar: avatarUrl(u.avatar), stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin }, token };
+    return { success: true, user: { username: u.username, avatar: avatarUrl(u.avatar), stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin, webAccess: hasWebAccess(u) }, token };
   },
 
   // Token ile otomatik giriş
@@ -128,7 +135,7 @@ module.exports = {
       const u = db[key];
       if (u.tokens?.some(t => t.token === token)) {
         ensureStats(u);
-        return { success: true, user: { username: u.username, avatar: avatarUrl(u.avatar), stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin } };
+        return { success: true, user: { username: u.username, avatar: avatarUrl(u.avatar), stats: u.stats, coins: u.coins, inventory: u.inventory, equipped: getEquippedFromUser(u), premium: { active: isPremiumActive(u), expiresAt: u.premium.expiresAt, daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 }, isAdmin: !!u.isAdmin, webAccess: hasWebAccess(u) } };
       }
     }
     return { success: false };
@@ -301,7 +308,8 @@ module.exports = {
         daysLeft: isActive ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0
       },
       totalDonated: u.totalDonated || 0,
-      isAdmin: !!u.isAdmin
+      isAdmin: !!u.isAdmin,
+      webAccess: hasWebAccess(u)
     };
   },
   // Coin işlemleri
@@ -494,6 +502,7 @@ module.exports = {
         premium: { active: isPremiumActive(u), daysLeft: isPremiumActive(u) ? Math.ceil((u.premium.expiresAt - Date.now()) / 86400000) : 0 },
         totalDonated: u.totalDonated || 0,
         isAdmin: !!u.isAdmin,
+        webAccess: hasWebAccess(u),
         created: u.created || 0
       };
     }).sort((a, b) => (b.created || 0) - (a.created || 0));
@@ -580,6 +589,20 @@ module.exports = {
   },
 
   // Admin tarafından bağışçı permi ver / kaldır
+  // Tarayıcıdan oynama izni ver / kaldır
+  adminSetWebAccess(username, allowed) {
+    const db = read(), key = (username || '').toLowerCase().trim();
+    if (!db[key]) return { success: false, error: 'Kullanıcı yok.' };
+    ensureStats(db[key]);
+    db[key].webAccess = !!allowed;
+    write(db);
+    return { success: true, webAccess: !!allowed };
+  },
+  // Sunucu tarafı kapı kontrolü — adminler her zaman geçer
+  canAccessWeb(username) {
+    const db = read(), u = db[(username || '').toLowerCase().trim()];
+    return hasWebAccess(u);
+  },
   adminSetDonor(username, isDonor) {
     const db = read(), key = (username || '').toLowerCase().trim();
     if (!db[key]) return { success: false, error: 'Kullanıcı yok.' };
