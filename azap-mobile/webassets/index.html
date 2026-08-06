@@ -35,7 +35,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;700&family=Bebas+Neue&family=Smooch+Sans:wght@400;700&family=Changa+One&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Sacramento&family=Caveat:wght@400;700&family=Pacifico&family=Kaushan+Script&display=swap" rel="stylesheet">
 <script src="https://azap.online/socket.io/socket.io.js"></script>
-<link rel="stylesheet" href="style.css?v=20260720h">
+<link rel="stylesheet" href="style.css?v=20260806a">
 </head>
 <body class="modern-ui">
 <div id="CONN_BANNER" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(160,40,20,.95);color:#fff;text-align:center;padding:7px 12px;font-size:.78rem;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4)">🔌 Bağlantı koptu — yeniden bağlanılıyor...</div>
@@ -604,8 +604,13 @@ Hain/tarafsız ise hedef ölür. Masum vurursan SEN ölürsün. (TEK KULLANIM!)
 
 <!-- ── UYGULAMA KAPISI ──
      Tarayıcıdan oynama izni olmayan hesaplara giriş sonrası gösterilir.
-     iOS uygulamasının içinde asla görünmez (IS_IOS_APP / native köprü kontrolü). -->
-<div id="APP_GATE">
+     iOS uygulamasının içinde asla görünmez (IS_IOS_APP / native köprü kontrolü).
+
+     GÖRÜNÜRLÜK SATIR İÇİ STİLLE KAPALI — bilerek. CSS ya da JS bayat/eksik
+     gelirse (CDN cache, yarım deploy) kapı kendiliğinden AÇIK kalmamalı.
+     Satır içi stil HTML ile birlikte taşındığı için tek doğru varsayılan bu.
+     Görünürlüğü app.js doğrudan style.display ile yönetir, sınıfla değil. -->
+<div id="APP_GATE" style="display:none">
   <div class="gate-card">
     <img class="gate-icon" src="a.png?v=3" alt="AZAP" onerror="this.style.display='none'">
     <div class="gate-title">AZAP Online</div>
@@ -1163,6 +1168,6 @@ if (document.getElementById('AI_AUTH_BG')?.classList.contains('on') || document.
   window.startThreeAiAuthBg();
 }
 </script>
-<script src="app.js?v=20260720h"></script>
+<script src="app.js?v=20260806a"></script>
 </body>
 </html>

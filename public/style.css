@@ -1021,10 +1021,13 @@ body.day.modern-ui .tb.sel{border-color:var(--hi);background:linear-gradient(180
 .rp-actions .b{flex:1}
 
 /* ── UYGULAMA KAPISI (tarayıcıdan oynama izni yoksa) ── */
-#APP_GATE{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:20px;
+/* NOT: `display` BİLEREK burada tanımlı değil. Varsayılan gizlilik index.html'de
+   satır içi `style="display:none"` ile geliyor; app.js gösterirken doğrudan
+   style.display='flex' yapıyor. Böylece bu dosya bayat/eksik gelse bile kapı
+   kendiliğinden açık kalmaz (CDN cache kaynaklı beyaz ekranın sebebi buydu). */
+#APP_GATE{position:fixed;inset:0;z-index:100000;align-items:center;justify-content:center;padding:20px;
   background:radial-gradient(ellipse 90% 70% at 50% 0%,rgba(139,0,0,.18),transparent 62%),rgba(4,4,10,.97);
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);overflow-y:auto}
-#APP_GATE.on{display:flex}
 body.gated{overflow:hidden}
 .gate-card{max-width:380px;width:100%;text-align:center;padding:26px 22px 22px;border-radius:18px;
   background:linear-gradient(165deg,rgba(20,18,34,.94),rgba(9,8,18,.96));

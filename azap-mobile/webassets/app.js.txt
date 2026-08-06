@@ -646,8 +646,18 @@ const CLIENT_PLATFORM = IS_IOS_APP ? 'ios-app' : (IS_PHONE_BROWSER ? 'phone-web'
 const APPSTORE_URL = 'https://apps.apple.com/app/id6792583659';
 let _webAccessMode = 'phone';
 
+// URL "?platform=ios" diyorsa kapıyı BASTIR — bu adresi üreten tek şey
+// uygulamanın kendi yedek yolu (App.tsx REMOTE_FALLBACK / watchdog).
+// Bunu mağaza-IAP ayrıcalığı için YETERLİ SAYMIYORUZ (o hâlâ gerçek köprü ister,
+// bkz. IS_IOS_APP). Risk dengesi asimetrik: kapının uygulama içinde açılması
+// kullanıcıyı tamamen kilitler; bu parametreyle kapının atlanması ise sadece
+// bir yönlendirmenin atlanmasıdır.
+const _URL_CLAIMS_IOS = (()=>{
+  try{ return new URLSearchParams(location.search).get('platform') === 'ios'; }catch{ return false; }
+})();
+
 function _gateShouldBlock(){
-  if (IS_IOS_APP || _hasNativeBridge()) return false;   // uygulama asla kapıya çarpmaz
+  if (IS_IOS_APP || _hasNativeBridge() || _URL_CLAIMS_IOS) return false;   // uygulama asla kapıya çarpmaz
   if (_webAccessMode === 'off') return false;
   if (_webAccessMode === 'phone' && !IS_PHONE_BROWSER) return false;
   return !(user && user.webAccess);
@@ -655,7 +665,8 @@ function _gateShouldBlock(){
 
 function hideAppGate(){
   const ov = Q('APP_GATE');
-  if (ov) ov.classList.remove('on');
+  // display'i doğrudan yaz — CSS sınıfına güvenme (bayat stylesheet riski)
+  if (ov) { ov.style.display = 'none'; ov.classList.remove('on'); }
   document.body.classList.remove('gated');
 }
 
@@ -686,6 +697,7 @@ function maybeShowAppGate(){
   // "Bilgisayardan oynayabilirsin" ipucu yalnızca masaüstü serbestken doğru
   const alt = Q('GATE_ALT');
   if (alt) alt.style.display = (_webAccessMode === 'phone') ? 'block' : 'none';
+  ov.style.display = 'flex';
   ov.classList.add('on');
   document.body.classList.add('gated');
 
